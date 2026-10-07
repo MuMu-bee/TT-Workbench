@@ -130,7 +130,7 @@ export function renderNav(view: TalosView): void {
 	for (const page of PRIMARY_NAVIGATION) {
 		const active = page.key === route.primary;
 		const item = groupEl.createDiv({
-			cls: `command${page.key === "system" ? " talos-settings-nav-command" : ""}${active ? " active" : ""}`,
+			cls: `command${page.key === "settings" ? " talos-settings-nav-command" : ""}${active ? " active" : ""}`,
 		});
 		const mark = item.createDiv({ cls: "mark" });
 		setIcon(mark, page.icon);
@@ -196,8 +196,9 @@ export function renderSecondaryTabs(view: TalosView): void {
 	view.pageTabsEl.empty();
 	const route = view.pageRouter.current();
 	const page = primaryPage(route.primary);
-	view.pageTabsEl.toggleClass("is-hidden", page.children.length === 0);
-	if (page.children.length === 0) return;
+	// 只有一个分区的入口（设置）不需要二级页签
+	view.pageTabsEl.toggleClass("is-hidden", page.children.length <= 1);
+	if (page.children.length <= 1) return;
 	view.pageTabsEl.setAttribute("aria-label", `${page.label}二级页面`);
 	for (const child of page.children) {
 		const active = child.key === route.secondary;

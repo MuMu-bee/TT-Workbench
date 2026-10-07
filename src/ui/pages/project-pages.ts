@@ -13,7 +13,6 @@ export function renderOutputPage(view: TalosView, page: HTMLElement, d: Collecte
 	const hero = moduleHero(view, page, {
 		ac: "#FB7185",
 		icon: "send",
-		eyebrow: "OUTPUT WAR ROOM",
 		title: "输出作战室",
 		desc: "统一出口里的待发条目、各平台闭环情况与发布后的运营候选。",
 		stats: [],
@@ -121,7 +120,6 @@ export function renderHealthPage(view: TalosView, page: HTMLElement, d: Collecte
 	moduleHero(view, page, {
 		ac: "#34D399",
 		icon: "activity",
-		eyebrow: "SYSTEM HEALTH",
 		title: "系统健康",
 		desc: "把健康分、审批池、偏好候选和错误模式放到同一屏，优先处理会卡住系统的风险。",
 		stats: [
@@ -242,7 +240,6 @@ export function renderProjectsPage(view: TalosView, page: HTMLElement, d: Collec
 	moduleHero(view, page, {
 		ac: "#F59E0B",
 		icon: "folder-kanban",
-		eyebrow: "PROJECT SCENES",
 		title: "项目场景",
 		desc: "按活跃度和优先级扫项目，先让高频项目露头，再进入具体场景推进。",
 		stats: [

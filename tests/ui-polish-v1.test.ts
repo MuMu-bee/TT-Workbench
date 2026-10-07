@@ -66,4 +66,16 @@ describe("UI polish v1", () => {
 		expect(main).toContain("flex-direction: column !important");
 		expect(rule(".talos-page-tabs:not(.is-hidden) ~ .page-content")).toContain("flex: 1 1 auto !important");
 	});
+
+	it("keeps the animated pixel patrol in every business page header", () => {
+		const modules = readFileSync(`${root}src/ui/view-modules.ts`, "utf8");
+		expect(modules).toContain("const scene = buildPixelPatrol(view, hero);");
+		const base = readFileSync(`${root}styles.talos.css`, "utf8");
+		expect(base).toContain("animation: tl-pixel-patrol 12s steps(42,end) infinite;");
+		expect(base).toContain("@keyframes tl-pixel-commute");
+		// 本轮新增的覆盖规则不得关闭或替换像素小人的动画
+		for (const block of polish.split("}")) {
+			if (/talos-pixel|pixel-bot|pixel-patrol/.test(block)) expect(block).not.toMatch(/animation\s*:/);
+		}
+	});
 });

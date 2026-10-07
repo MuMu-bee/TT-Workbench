@@ -5,6 +5,7 @@ import { renderTalosPageHeader } from "./page-primitives";
 import { setIcon } from "obsidian";
 import type { TalosView } from "../view";
 import { buildPixelPatrol } from "./view-cosmos";
+import { routeContextLabel } from "./navigation-model";
 
 export function addActionButtonContent(view: TalosView, button: HTMLElement, label: string, variant: "" | "compact" | "mini" = ""): void {
 	button.dataset.talosActionButton = "true";
@@ -24,7 +25,8 @@ export function moduleHero(view: TalosView, parent: HTMLElement, options: Module
 	const hero = renderTalosPageHeader(parent, {
 		accent: options.ac,
 		icon: options.icon,
-		eyebrow: options.eyebrow,
+		eyebrow: options.eyebrow
+			?? [routeContextLabel(view.pageRouter.current()), options.eyebrowDetail].filter(Boolean).join(" · "),
 		title: options.title,
 		description: options.desc,
 		metrics: options.stats.map((stat) => ({

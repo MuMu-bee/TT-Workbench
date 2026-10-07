@@ -4,6 +4,7 @@ import {
 	PRIMARY_NAVIGATION,
 	WORKBENCH_MODULES,
 	resolvePageRoute,
+	routeContextLabel,
 } from "../src/ui/navigation-model";
 import {
 	decodeTalosViewState,
@@ -15,22 +16,24 @@ import { viewSource as readViewSource } from "./helpers/source-text";
 const viewSource = readViewSource();
 
 describe("TALOS navigation model", () => {
-	it("groups the console into five task-ordered destinations", () => {
+	it("groups the console into five task-ordered destinations plus settings at the bottom", () => {
 		expect(PRIMARY_NAVIGATION.map((item) => item.key)).toEqual([
 			"today",
 			"flow",
 			"projects",
 			"assistant",
 			"system",
+			"settings",
 		]);
 		expect(PRIMARY_NAVIGATION.map((item) => item.children.map((child) => child.key))).toEqual([
 			["today", "daily"],
 			["inbox", "knowledge", "output"],
 			["projects", "talos"],
 			["chat", "jarvis"],
-			["health", "vault", "capability", "identity", "settings"],
+			["health", "vault", "capability", "identity"],
+			["settings"],
 		]);
-		expect(resolvePageRoute("settings")).toEqual({ primary: "system", secondary: "settings" });
+		expect(resolvePageRoute("settings")).toEqual({ primary: "settings", secondary: "settings" });
 	});
 
 	it("renders every secondary page that the navigation can open", () => {
@@ -58,6 +61,12 @@ describe("TALOS navigation model", () => {
 		expect(resolvePageRoute("talos-quyuan-view")).toEqual({ primary: "assistant", secondary: "chat" });
 		expect(resolvePageRoute("overview")).toEqual({ primary: "today", secondary: "today" });
 		expect(resolvePageRoute("jarvis")).toEqual({ primary: "assistant", secondary: "jarvis" });
+	});
+
+	it("labels page headers with their group, like Lens' context line", () => {
+		expect(routeContextLabel({ primary: "flow", secondary: "inbox" })).toBe("内容流 · 收件箱");
+		expect(routeContextLabel({ primary: "settings", secondary: "settings" })).toBe("设置");
+		expect(viewSource).not.toContain('eyebrow: "INTAKE DIGEST"');
 	});
 
 	it("keeps all nine legacy customer-module routes addressable", () => {
@@ -91,7 +100,9 @@ describe("TalosPageRouter", () => {
 
 		router.selectPrimary("system");
 		expect(router.current()).toEqual({ primary: "system", secondary: "health" });
-		router.selectSecondary("settings");
+		router.selectSecondary("identity");
+		expect(router.renderKey()).toBe("identity");
+		router.selectPrimary("settings");
 		expect(router.renderKey()).toBe("settings");
 
 		router.selectPrimary("assistant");

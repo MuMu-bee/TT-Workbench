@@ -194,7 +194,6 @@ export function renderTalosPage(view: TalosView, page: HTMLElement, d: Collected
 	moduleHero(view, page, {
 		ac: "#1D4ED8",
 		icon: "filter",
-		eyebrow: "TALOS PRODUCT",
 		title: "TALOS 产品",
 		desc: "产品分区、发布闸门和交付资产集中巡航，避免产品推进散在不同文件里。",
 		stats: [
@@ -321,7 +320,6 @@ export function renderInboxPage(view: TalosView, page: HTMLElement, d: Collected
 	const hero = moduleHero(view, page, {
 		ac: "#FBBF24",
 		icon: "inbox",
-		eyebrow: "INTAKE DIGEST",
 		title: "收件箱",
 		desc: "先看积压、年龄和主题包，再决定今天是归档、消化，还是只挑高价值条目。",
 		stats: [],

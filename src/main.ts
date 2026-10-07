@@ -61,6 +61,7 @@ import { initializeQuyuanWorkbench } from "./plugin/quyuan-workbench-init";
 import { executeTalosAskCommand, getTalosProviderFacade, syncAgentWorkbenchProviderProfiles, syncCodexHarnessEnvironment } from "./plugin/provider-runtime";
 import { createTalosActionRuntime } from "./plugin/action-runtime";
 import { initializeFirstRunContext } from "./plugin/first-run";
+import { registerPageCommands } from "./plugin/page-commands";
 
 // 统一的 TALOS 品牌图标：TalosBall 0.3.0 的固定 blob 静态姿态。Ribbon 与视图标签共用。
 export const TALOS_ICON = "talos-logo";
@@ -156,6 +157,7 @@ export default class TalosPlugin extends Plugin {
 			name: "全库问答",
 			callback: () => void this.executeTalosAskCommand(),
 		});
+		registerPageCommands(this, (pageKey) => this.openTalosPage(pageKey));
 		this.addCommand({
 			id: "refresh-peer-status",
 			name: "刷新状态桥快照（只读）",
@@ -392,6 +394,14 @@ export default class TalosPlugin extends Plugin {
 	async activateTalosView(): Promise<void> {
 		const leaf = await this.openOrReviveTalosLeaf(false);
 		if (leaf) void this.app.workspace.revealLeaf(leaf);
+	}
+
+	/** 打开 TALOS 控制台并切到指定页面（命令面板入口）。 */
+	async openTalosPage(pageKey: string): Promise<void> {
+		const leaf = await this.openOrReviveTalosLeaf(false);
+		if (!leaf) return;
+		if (leaf.view instanceof TalosView) leaf.view.navigateToPage(pageKey);
+		void this.app.workspace.revealLeaf(leaf);
 	}
 
 	private async activateHomeView(): Promise<void> {

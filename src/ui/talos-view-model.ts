@@ -128,7 +128,10 @@ export interface ModuleHeroAction {
 export interface ModuleHeroOptions {
 	ac: string;
 	icon: string;
-	eyebrow: string;
+	/** 完整覆盖页头小字；缺省时显示「分组 · 页面」。 */
+	eyebrow?: string;
+	/** 追加在「分组 · 页面」之后的补充信息，例如日期。 */
+	eyebrowDetail?: string;
 	title: string;
 	desc: string;
 	stats: ModuleHeroStat[];

@@ -3,7 +3,8 @@ export type TalosPrimaryPageKey =
 	| "flow"
 	| "projects"
 	| "assistant"
-	| "system";
+	| "system"
+	| "settings";
 
 export type TalosSecondaryPageKey =
 	| "today"
@@ -89,14 +90,21 @@ export const PRIMARY_NAVIGATION: readonly TalosPrimaryPage[] = [
 		key: "system",
 		label: "系统",
 		icon: "settings-2",
-		subtitle: "健康、全库、能力、身份与设置",
+		subtitle: "健康、全库、能力与身份",
 		children: [
 			{ key: "health", label: "系统健康", icon: "activity" },
 			{ key: "vault", label: "全库视图", icon: "database" },
 			{ key: "capability", label: "能力中心", icon: "blocks" },
 			{ key: "identity", label: "身份上下文", icon: "fingerprint" },
-			{ key: "settings", label: "设置", icon: "settings" },
 		],
+	},
+	// 与 Lens 一致：设置单独放在导航底部，不混入业务分组。
+	{
+		key: "settings",
+		label: "设置",
+		icon: "settings",
+		subtitle: "插件界面、目录、数据源与 AI 配置",
+		children: [{ key: "settings", label: "设置", icon: "settings" }],
 	},
 ] as const;
 
@@ -139,7 +147,7 @@ const PAGE_ROUTES: Readonly<Record<string, TalosPageRoute>> = {
 	vault: { primary: "system", secondary: "vault" },
 	capability: { primary: "system", secondary: "capability" },
 	identity: { primary: "system", secondary: "identity" },
-	settings: { primary: "system", secondary: "settings" },
+	settings: { primary: "settings", secondary: "settings" },
 };
 
 export interface WorkbenchModuleEntry {
@@ -190,4 +198,11 @@ export function defaultRouteForPrimary(
 	return page.children[0]
 		? { primary: key, secondary: page.children[0].key }
 		: { primary: key };
+}
+
+/** 页头上下文：「分组 · 页面」；分组只有一个同名页面时只显示一次。 */
+export function routeContextLabel(route: TalosPageRoute): string {
+	const group = primaryPage(route.primary);
+	const page = group.children.find((child) => child.key === route.secondary);
+	return page && page.label !== group.label ? `${group.label} · ${page.label}` : group.label;
 }

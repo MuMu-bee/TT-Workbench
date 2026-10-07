@@ -19,7 +19,7 @@ export function renderDailyPage(view: TalosView, page: HTMLElement, d: Collected
 	moduleHero(view, page, {
 		ac: "#4D8DFF",
 		icon: "calendar-check",
-		eyebrow: `DAILY EXECUTION · ${dateLabel}`,
+		eyebrowDetail: dateLabel,
 		title: "每日执行",
 		desc: "把今天压成一个胜利条件、两个深度块和一次收工回填。",
 		stats: [

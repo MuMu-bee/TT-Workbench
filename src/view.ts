@@ -101,6 +101,8 @@ export class TalosView extends ItemView {
 	data: Collected | null = null;
 	private peerStatus: TalosPeerStatusState | null = null;
 	readonly pageRouter = new TalosPageRouter();
+	private readonly pageScroll = new Map<string, number>();
+	private renderedPage: string | null = null;
 	activeCap = "commands";
 	selectedModuleByScope = new Map<string, string>();
 	lastApprovalFeedback: ApprovalDecisionFeedback | null = null;
@@ -558,6 +560,13 @@ export class TalosView extends ItemView {
 
 	renderPage(): void {
 		const page = this.pageEl;
+		// 与 Lens 一致：离开页面时记下滚动位置，切回时恢复；同页刷新保持原位。
+		const leaving = this.renderedPage;
+		if (leaving && leaving !== this.activePage) this.pageScroll.set(leaving, this.contentEl.scrollTop);
+		const scrollTarget = leaving === this.activePage
+			? this.contentEl.scrollTop
+			: this.pageScroll.get(this.activePage) ?? 0;
+		this.renderedPage = this.activePage;
 		this.applyPageState();
 		this.renderSecondaryTabs();
 		// 已在屈原页且已挂载：保持不动（不打断朗读/不闪跳）
@@ -592,6 +601,9 @@ export class TalosView extends ItemView {
 		}
 		this.wireModuleSelection(page, this.activePage);
 		this.syncPixelScene(d);
+		if (this.activePage !== "chat" && this.activePage !== "jarvis") {
+			this.contentEl.scrollTop = scrollTarget;
+		}
 	}
 
 	private syncPixelScene(d: Collected): void {

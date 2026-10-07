@@ -11,7 +11,6 @@ export function renderKnowledgePage(view: TalosView, page: HTMLElement, d: Colle
 	const hero = moduleHero(view, page, {
 		ac: "#A78BFA",
 		icon: "brain",
-		eyebrow: "KNOWLEDGE HUB",
 		title: "知识枢纽",
 		desc: "收件消化后的原创洞察与外部素材，以及按概念组织的 MOC 入口。",
 		stats: [],
@@ -102,7 +101,6 @@ export function renderIdentityPage(view: TalosView, page: HTMLElement, d: Collec
 	moduleHero(view, page, {
 		ac: "#6366F1",
 		icon: "fingerprint",
-		eyebrow: "IDENTITY CONTEXT",
 		title: "身份上下文",
 		desc: "用户身份、AI 灵魂和工作记忆并排巡检，确保行动没有脱离长期自我和当前状态。",
 		stats: [
@@ -308,7 +306,6 @@ export function renderVaultPage(view: TalosView, page: HTMLElement, d: Collected
 	moduleHero(view, page, {
 		ac: "#38E1FF",
 		icon: "database",
-		eyebrow: "VAULT MAP",
 		title: "全库视图",
 		desc: "从内容分布、顶层模块到创建热力图，给整个外脑系统做一次横向巡航。",
 		stats: [
@@ -500,7 +497,6 @@ export function renderCapabilityPage(view: TalosView, page: HTMLElement, d: Coll
 	moduleHero(view, page, {
 		ac: "#14B8A6",
 		icon: "blocks",
-		eyebrow: "CAPABILITY CENTER",
 		title: "能力中心",
 		desc: "把命令、Agents 和工作流做成可复制入口，需要调用时不再从规则文件里翻。",
 		stats: [
