@@ -5,6 +5,7 @@ import type {
 } from "../contracts/runtime-adapter";
 import { LocalFilePreviewPicker } from "./file-preview/local-preview-modal";
 import { ContextMeter, type ContextUsage } from "./context-usage";
+import { discoverProjectCommands, type ProjectCommand } from "./project-commands";
 
 /**
  * 图片外发尚未纳入出库审计：发送前审计对任何图片都会拦截（image-egress-not-audited）。
@@ -75,6 +76,7 @@ export class NativeComposer {
 	private selectedFiles: TFile[] = [];
 	private images: ImageDraft[] = [];
 	private contextMeter: ContextMeter | null = null;
+	private projectCommands: ProjectCommand[] = [];
 	private enabledMcpServers = new Set<string>();
 	private mcpServers: string[] = [];
 	private busy = false;
@@ -164,6 +166,11 @@ export class NativeComposer {
 		container.appendChild(root);
 		this.root = root;
 		void this.discoverMcpServers();
+		void this.loadProjectCommands();
+	}
+
+	private async loadProjectCommands(): Promise<void> {
+		this.projectCommands = await discoverProjectCommands(this.options.app.vault.adapter);
 	}
 
 	private imageButton(): HTMLButtonElement {
@@ -244,7 +251,9 @@ export class NativeComposer {
 		const before = this.textarea.value.slice(0, this.textarea.selectionStart);
 		if (/^\/[^\s]*$/.test(before)) {
 			const query = before.toLowerCase();
-			this.renderCommandSuggestions(BUILTIN_COMMANDS.filter((command) => command.value.startsWith(query)));
+			const builtin = new Set<string>(BUILTIN_COMMANDS.map((command) => command.value));
+			const commands = [...BUILTIN_COMMANDS, ...this.projectCommands.filter((command) => !builtin.has(command.value))];
+			this.renderCommandSuggestions(commands.filter((command) => command.value.toLowerCase().startsWith(query)));
 			return;
 		}
 		const match = /(?:^|\s)@([^\s@]*)$/.exec(before);
