@@ -3604,3 +3604,77 @@ body[data-talos-vault-theme] .talos-console
 	height: auto !important;
 	min-height: 0 !important;
 }
+
+/* ============================================================
+   导航重构第二期 · 内容流流水线（收件 → 洞察 → 素材 → 待发 → 已发）
+   放在收件箱 / 知识库 / 输出三页页头原指标位置，替代重复的指标卡。
+   当前站高亮；卡点站（积压超两周、有待发、未闭环）用警示色描边。
+   ============================================================ */
+.talos-console .talos-ui-page-header__metrics.has-flow-pipeline {
+	display: block;
+	min-width: 0;
+}
+
+.talos-console .talos-flow-pipeline {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: stretch;
+	gap: var(--talos-space-2);
+	min-width: 0;
+}
+
+.talos-console .talos-flow-station {
+	position: relative;
+	display: grid;
+	flex: 1 1 96px;
+	gap: 2px;
+	min-width: 0;
+	padding: var(--talos-space-2) var(--talos-space-3);
+	border: 1px solid var(--talos-ui-line);
+	background: var(--talos-ui-surface);
+	color: var(--talos-ui-ink);
+	cursor: pointer;
+}
+
+.talos-console .talos-flow-station + .talos-flow-station::before {
+	content: "→";
+	position: absolute;
+	left: calc(-1 * var(--talos-space-2) + 1px);
+	top: 50%;
+	transform: translate(-50%, -50%);
+	color: var(--talos-ui-muted);
+	font-size: var(--talos-type-meta);
+	pointer-events: none;
+}
+
+.talos-console .talos-flow-station small,
+.talos-console .talos-flow-station span {
+	overflow: hidden;
+	color: var(--talos-ui-muted);
+	font-size: var(--talos-type-meta);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-console .talos-flow-station b {
+	font-size: clamp(16px, 1.4cqw, 22px);
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.talos-console .talos-flow-station.is-current {
+	border-width: 2px;
+	border-color: var(--talos-ui-ink);
+	background: color-mix(in srgb, var(--ac, var(--talos-ui-accent)) 18%, var(--talos-ui-surface));
+	cursor: default;
+}
+
+.talos-console .talos-flow-station.is-stuck {
+	box-shadow: inset 0 -3px 0 var(--talos-status-warning, #e0a100);
+}
+
+.talos-console .talos-flow-station:not(.is-current):is(:hover, :focus-visible) {
+	border-color: var(--talos-ui-ink);
+	outline: 2px solid var(--talos-ui-focus);
+	outline-offset: 1px;
+}

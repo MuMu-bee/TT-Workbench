@@ -9,12 +9,14 @@ const css = readFileSync(`${root}styles.ui-v2.css`, "utf8");
 const page = functionSource(view, "renderKnowledgePage");
 
 describe("Knowledge hub v2", () => {
-	it("uses an equal asset-structure and recent-entry first screen", () => {
+	it("puts recent entries and MOCs side by side under the shared flow pipeline", () => {
 		expect(page).toContain(
 			'cls: "knowledge-v2-primary knowledge-hub-v2-primary"'
 		);
-		expect(page).toContain('"data-knowledge-section", "core-data"');
+		expect(page).toContain('mountFlowPipeline(view, hero, d, "knowledge")');
+		expect(page).toContain("stats: []");
 		expect(page).toContain('"attention-and-entry"');
+		expect(page).toMatch(/const moc = view\.panel\(\s*primary,/);
 		expect(page).not.toContain("panel-grid cols-3");
 		expect(page).not.toContain("fillMetricGrid");
 		expect(css).toMatch(
@@ -22,12 +24,9 @@ describe("Knowledge hub v2", () => {
 		);
 	});
 
-	it("builds the treemap from parsed metric values and real shares", () => {
-		expect(view).toContain("private fillKnowledgeTreemap(");
-		expect(view).toContain('metric.value.replace(/[^\\d.]/g, "")');
-		expect(view).toContain("const share = (node.value / total) * 100");
-		expect(view).toContain('"--knowledge-share"');
-		expect(css).toContain("flex: 1 1 var(--knowledge-share)");
+	it("no longer repeats the insight / material counts as a treemap", () => {
+		expect(view).not.toContain("fillKnowledgeTreemap(");
+		expect(page).not.toContain('"data-knowledge-section", "core-data"');
 	});
 
 	it("keeps recent insight/material groups and moves MOCs to a compact lower entry", () => {

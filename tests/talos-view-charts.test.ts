@@ -12,9 +12,7 @@ import {
 	fillGates,
 	fillInboxAgeDist,
 	fillInboxClusters,
-	fillKnowledgeTreemap,
 	fillOutputClosureChart,
-	fillPlatforms,
 	fillProjectPortfolioChart,
 	fillSignalList,
 	fillTalosModules,
@@ -123,27 +121,6 @@ describe("distribution charts", () => {
 		expect(dom.all("talos-v2-gate-chart__key")).toHaveLength(4);
 	});
 
-	it("sorts treemap tiles by parsed value and disables tiles without a source", () => {
-		const { el, dom } = host();
-		fillKnowledgeTreemap(view, el, [
-			{ label: "素材", value: "1", sub: "篇" },
-			{ label: "洞察", value: "3 篇", sub: "篇", path: "insight.md", tone: "good" },
-		]);
-		const tiles = dom.all("knowledge-v2-treemap-node");
-		expect(tiles.map((tile) => tile.style.props["--knowledge-share"])).toEqual(["75%", "25%"]);
-		expect(tiles[0].className).toContain("tone-good");
-		expect(tiles[0].getAttribute("aria-label")).toBe("洞察：3 篇，占 75%");
-		expect(tiles[1].disabled).toBe(true);
-		tiles[0].click();
-		expect(opened).toHaveBeenCalledWith(app, "insight.md");
-	});
-
-	it("shows the knowledge empty state when every value is zero", () => {
-		const { el, dom } = host();
-		fillKnowledgeTreemap(view, el, [{ label: "素材", value: "0", sub: "" }]);
-		expect(dom.one("talos-ui-empty-state").textContent).toContain("暂无知识资产统计");
-	});
-
 	it("splits output bars into published, pending and unclassified shares", () => {
 		const { el, dom } = host();
 		fillOutputClosureChart(view, el, [
@@ -159,6 +136,15 @@ describe("distribution charts", () => {
 		expect(first.getAttribute("aria-label")).toBe("抖音：已发布 5，待闭环 3，未分类 2");
 		expect(second.classList.contains("is-empty")).toBe(true);
 		expect(second.children).toHaveLength(0);
+	});
+
+	it("opens the platform folder from a closure row and the latest draft from its line", () => {
+		const { el, dom } = host();
+		fillOutputClosureChart(view, el, [platform({ name: "小红书", count: 4, published: 1, pending: 2, latestTitle: "新稿", latestPath: "out/new.md" })]);
+		expect(dom.one("output-v2-bar-row__latest").textContent).toBe("最新：新稿");
+		dom.one("output-v2-bar-row__latest").click();
+		dom.one("output-v2-bar-row").click();
+		expect(opened.mock.calls).toEqual([[app, "out/new.md"], [app, "out/README.md"]]);
 	});
 
 	it("summarises tracked task completion and priority spread", () => {
@@ -231,15 +217,6 @@ describe("trend, banner and cards", () => {
 		expect(dom.all("banner-tag")).toHaveLength(1);
 		expect(dom.classList.contains("is-alert")).toBe(true);
 		expect(dom.all("banner-num").map((num) => num.textContent)).toEqual(["2/3", "5", "已触发"]);
-	});
-
-	it("opens the platform readme from the card and the latest draft from its line", () => {
-		const { el, dom } = host();
-		fillPlatforms(view, el, [platform({ name: "小红书", count: 4, published: 1, pending: 2, latestTitle: "新稿", latestPath: "out/new.md" })]);
-		expect(dom.one("big").textContent).toBe("4");
-		dom.one("module-latest").click();
-		dom.one("platform-card").click();
-		expect(opened.mock.calls).toEqual([[app, "out/new.md"], [app, "out/README.md"]]);
 	});
 
 	it("links TALOS module cards to their readme and latest note", () => {

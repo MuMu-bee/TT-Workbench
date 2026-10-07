@@ -1,6 +1,6 @@
 // TALOS 控制台图表与列表填充器；由 TalosView 委托调用，只依赖传入的视图实例。
 import type { CapabilityGroup } from "../../data/capabilities";
-import type { DistBar, GateItem, HealthPoint, InboxDigest, MetricTile, OutputCenter, ProjectScene, ReleaseWarRoom, SignalItem, TalosProduct } from "../../types";
+import type { DistBar, GateItem, HealthPoint, InboxDigest, OutputCenter, ProjectScene, ReleaseWarRoom, SignalItem, TalosProduct } from "../../types";
 import { openFile } from "../../actions";
 import { renderTalosEmptyState } from "../page-primitives";
 import type { TalosView } from "../../view";
@@ -120,53 +120,6 @@ export function fillGateStateChart(view: TalosView, parent: HTMLElement, gates: 
 	}
 }
 
-export function fillKnowledgeTreemap(view: TalosView, parent: HTMLElement, metrics: MetricTile[]): void {
-	const nodes = metrics
-		.map((metric) => {
-			const value = Number.parseFloat(
-				metric.value.replace(/[^\d.]/g, "")
-			);
-			return {
-				metric,
-				value: Number.isFinite(value) ? Math.max(0, value) : 0,
-			};
-		})
-		.sort((left, right) => right.value - left.value);
-	const total = nodes.reduce((sum, node) => sum + node.value, 0);
-	if (total <= 0) {
-		renderTalosEmptyState(
-			parent,
-			"暂无知识资产统计",
-			"MOC、洞察或素材出现后，这里会按真实数量形成树状占比。"
-		);
-		return;
-	}
-
-	for (const node of nodes) {
-		const share = (node.value / total) * 100;
-		const tile = parent.createEl("button", {
-			cls: `metric-card knowledge-v2-treemap-node tone-${node.metric.tone || "default"}`,
-			attr: {
-				type: "button",
-				"aria-label": `${node.metric.label}：${node.metric.value}，占 ${Math.round(share)}%`,
-			},
-		});
-		tile.style.setProperty("--knowledge-share", `${share}%`);
-		tile.createEl("small", { text: node.metric.label });
-		tile.createEl("strong", { text: node.metric.value });
-		tile.createEl("span", {
-			text: `${Math.round(share)}% · ${node.metric.sub}`,
-		});
-		if (node.metric.path) {
-			tile.addEventListener("click", () =>
-				void openFile(view.app, node.metric.path || "")
-			);
-		} else {
-			tile.disabled = true;
-		}
-	}
-}
-
 export function fillOutputClosureChart(view: TalosView, parent: HTMLElement, platforms: OutputCenter["platforms"]): void {
 	if (platforms.length === 0) {
 		renderTalosEmptyState(
@@ -195,11 +148,23 @@ export function fillOutputClosureChart(view: TalosView, parent: HTMLElement, pla
 		const total = Math.max(platform.count, classified);
 		const unclassified = Math.max(0, total - classified);
 		const row = parent.createDiv({ cls: "output-v2-bar-row" });
+		row.setAttribute("role", "button");
+		row.setAttribute("tabindex", "0");
+		row.setAttribute("aria-label", `打开${platform.name}平台目录`);
+		row.addEventListener("click", () => void openFile(view.app, platform.readme));
 		const head = row.createDiv({ cls: "output-v2-bar-row__head" });
 		head.createEl("strong", { text: platform.name });
 		head.createEl("span", {
 			text: `${platform.published}/${total} 已发布 · ${platform.pending} 待闭环`,
 		});
+		if (platform.latestPath) {
+			const latestPath = platform.latestPath;
+			const latest = row.createEl("small", { cls: "output-v2-bar-row__latest module-latest", text: `最新：${platform.latestTitle}` });
+			latest.addEventListener("click", (event) => {
+				event.stopPropagation();
+				void openFile(view.app, latestPath);
+			});
+		}
 
 		const track = row.createDiv({ cls: "output-v2-bar-track" });
 		track.setAttribute("role", "img");
@@ -316,23 +281,6 @@ export function fillProjectPortfolioChart(view: TalosView, parent: HTMLElement, 
 		track.setAttribute("role", "img");
 		track.createSpan().style.width =
 			`${(item.count / maxCount) * 100}%`;
-	}
-}
-
-export function fillPlatforms(view: TalosView, parent: HTMLElement, platforms: OutputCenter["platforms"]): void {
-	for (const platform of platforms) {
-		const card = parent.createDiv({ cls: "platform-card" });
-		card.createEl("b", { text: platform.name });
-		card.createEl("span", { cls: "big", text: String(platform.count) });
-		card.createEl("small", { text: `${platform.published} 已发布 · ${platform.pending} 待闭环` });
-		const latest = card.createEl("small", { cls: "module-latest", text: `最新：${platform.latestTitle}` });
-		if (platform.latestPath) {
-			latest.addEventListener("click", (ev) => {
-				ev.stopPropagation();
-				void openFile(view.app, platform.latestPath || "");
-			});
-		}
-		card.addEventListener("click", () => void openFile(view.app, platform.readme));
 	}
 }
 

@@ -10,6 +10,7 @@ import { renderTalosEmptyState } from "../page-primitives";
 import type { TalosView } from "../../view";
 import { fillBanner, fillGateStateChart, fillGates, fillInboxAgeDist, fillInboxClusters, fillSignalList, fillTalosModules } from "../charts/talos-view-charts";
 import { moduleHero } from "../view-modules";
+import { mountFlowPipeline } from "../flow-pipeline";
 
 export async function renderChatPage(view: TalosView, page: HTMLElement): Promise<void> {
 	try {
@@ -317,35 +318,13 @@ export function renderInboxPage(view: TalosView, page: HTMLElement, d: Collected
 	);
 	const priorityCluster = rankedClusters[0];
 
-	moduleHero(view, page, {
+	const hero = moduleHero(view, page, {
 		ac: "#FBBF24",
 		icon: "inbox",
 		eyebrow: "INTAKE DIGEST",
 		title: "收件箱",
 		desc: "先看积压、年龄和主题包，再决定今天是归档、消化，还是只挑高价值条目。",
-		stats: [
-			{
-				label: "待处理",
-				value: String(d.inbox.count),
-				sub: `${d.inbox.oldestDays}d oldest`,
-				path: view.paths.readme("inbox"),
-				tone: d.inbox.count > 0 ? "warn" : "good",
-			},
-			{
-				label: "主题包",
-				value: String(d.inbox.clusters.length),
-				sub: "按标题自动聚类",
-				path: view.paths.readme("inbox"),
-				tone: "default",
-			},
-			{
-				label: "最近进入",
-				value: `${d.inbox.recent.length} 条`,
-				sub: "最近改动的收件箱文件",
-				path: view.paths.readme("inbox"),
-				tone: d.inbox.recent.length > 0 ? "default" : "good",
-			},
-		],
+		stats: [],
 		actions: [
 			{ label: "开始归档", icon: "copy", command: "/intake" },
 			{ label: "消化偏好", icon: "copy", command: "/digest" },
@@ -356,6 +335,7 @@ export function renderInboxPage(view: TalosView, page: HTMLElement, d: Collected
 			},
 		],
 	});
+	mountFlowPipeline(view, hero, d, "inbox");
 
 	const triage = page.createDiv({
 		cls: "workflow-v2-primary inbox-v2-primary",

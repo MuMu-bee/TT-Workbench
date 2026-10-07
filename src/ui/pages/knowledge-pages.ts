@@ -3,49 +3,18 @@ import type { Collected } from "../talos-view-model";
 import { openFile } from "../../actions";
 import { renderTalosEmptyState } from "../page-primitives";
 import type { TalosView } from "../../view";
-import { fillCapabilityDistribution, fillDist, fillKnowledgeTreemap, fillSignalList, fillTrend } from "../charts/talos-view-charts";
+import { fillCapabilityDistribution, fillDist, fillSignalList, fillTrend } from "../charts/talos-view-charts";
 import { moduleHero } from "../view-modules";
+import { mountFlowPipeline } from "../flow-pipeline";
 
 export function renderKnowledgePage(view: TalosView, page: HTMLElement, d: Collected): void {
-	const mocs =
-		d.knowledge.metrics.find((item) => item.label === "MOC 枢纽") ||
-		d.knowledge.metrics[0];
-	const insightMetric =
-		d.knowledge.metrics.find((item) => item.label === "原创洞察") ||
-		d.knowledge.metrics[1];
-	const materialMetric =
-		d.knowledge.metrics.find((item) => item.label === "外部素材") ||
-		d.knowledge.metrics[2];
-
-	moduleHero(view, page, {
+	const hero = moduleHero(view, page, {
 		ac: "#A78BFA",
 		icon: "brain",
 		eyebrow: "KNOWLEDGE HUB",
 		title: "知识枢纽",
-		desc: "原创洞察、外部素材和 MOC 入口分层展示，快速判断该检索、该整理，还是该产出。",
-		stats: [
-			{
-				label: mocs?.label || "MOC 枢纽",
-				value: mocs?.value || "0",
-				sub: mocs?.sub,
-				path: mocs?.path,
-				tone: mocs?.tone || "default",
-			},
-			{
-				label: insightMetric?.label || "原创洞察",
-				value: insightMetric?.value || "0",
-				sub: insightMetric?.sub,
-				path: insightMetric?.path,
-				tone: insightMetric?.tone || "default",
-			},
-			{
-				label: materialMetric?.label || "外部素材",
-				value: materialMetric?.value || "0",
-				sub: materialMetric?.sub,
-				path: materialMetric?.path,
-				tone: materialMetric?.tone || "default",
-			},
-		],
+		desc: "收件消化后的原创洞察与外部素材，以及按概念组织的 MOC 入口。",
+		stats: [],
 		actions: [
 			{
 				label: "MOC",
@@ -64,23 +33,12 @@ export function renderKnowledgePage(view: TalosView, page: HTMLElement, d: Colle
 			},
 		],
 	});
+	mountFlowPipeline(view, hero, d, "knowledge");
 
 	const primary = page.createDiv({
 		cls: "knowledge-v2-primary knowledge-hub-v2-primary",
 	});
 	primary.setAttribute("data-knowledge-layout", "split");
-
-	const structure = view.panel(
-		primary,
-		"#A78BFA",
-		"知识资产结构",
-		"按真实总量生成树状占比"
-	);
-	structure.setAttribute("data-knowledge-section", "core-data");
-	fillKnowledgeTreemap(view, 
-		structure.createDiv({ cls: "knowledge-v2-treemap" }),
-		d.knowledge.metrics
-	);
 
 	const recent = view.panel(
 		primary,
@@ -125,7 +83,7 @@ export function renderKnowledgePage(view: TalosView, page: HTMLElement, d: Colle
 	}
 
 	const moc = view.panel(
-		page,
+		primary,
 		"#38E1FF",
 		"MOC 概念入口",
 		view.paths.mocDir

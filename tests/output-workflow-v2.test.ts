@@ -34,13 +34,14 @@ describe("Output workflow v2", () => {
 		}
 	});
 
-	it("keeps queue, candidates, and themed platform cards", () => {
+	it("keeps queue and candidates, and folds platform cards into the closure chart", () => {
 		expect(outputPage).toContain('"今日待发"');
 		expect(outputPage).toContain('"运营候选"');
 		expect(outputPage).toContain("fillSignalList(");
-		expect(outputPage).toContain("fillPlatforms(");
-		expect(outputPage).toContain("output-v2-platform-panel");
-		expect(css).toContain(".output-v2-platform-panel .platform-grid");
+		expect(outputPage).toContain('mountFlowPipeline(view, hero, d, "output")');
+		expect(outputPage).toContain("stats: []");
+		expect(outputPage).not.toContain("fillPlatforms(");
+		expect(outputPage).not.toContain("output-v2-platform-panel");
 	});
 
 	it("reflows platform details and respects reduced motion", () => {

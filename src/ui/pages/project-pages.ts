@@ -5,49 +5,18 @@ import { openFile } from "../../actions";
 import { renderTalosEmptyState } from "../page-primitives";
 import { setIcon } from "obsidian";
 import type { TalosView } from "../../view";
-import { fillOutputClosureChart, fillPlatforms, fillProjectPortfolioChart, fillSignalList, fillTrend } from "../charts/talos-view-charts";
+import { fillOutputClosureChart, fillProjectPortfolioChart, fillSignalList, fillTrend } from "../charts/talos-view-charts";
 import { moduleHero } from "../view-modules";
+import { mountFlowPipeline } from "../flow-pipeline";
 
 export function renderOutputPage(view: TalosView, page: HTMLElement, d: Collected): void {
-	const pending =
-		d.output.metrics.find((item) => item.label === "今日待发") ||
-		d.output.metrics[0];
-	const platformMetric =
-		d.output.metrics.find((item) => item.label === "平台稿件") ||
-		d.output.metrics[1];
-	const opsMetric =
-		d.output.metrics.find((item) => item.label === "运营候选") ||
-		d.output.metrics[2];
-
-	moduleHero(view, page, {
+	const hero = moduleHero(view, page, {
 		ac: "#FB7185",
 		icon: "send",
 		eyebrow: "OUTPUT WAR ROOM",
 		title: "输出作战室",
-		desc: "从统一出口到五平台分发，把待发、发布、回填放在同一条线上看。",
-		stats: [
-			{
-				label: pending?.label || "今日待发",
-				value: pending?.value || "0",
-				sub: pending?.sub,
-				path: pending?.path,
-				tone: pending?.tone || "default",
-			},
-			{
-				label: platformMetric?.label || "平台稿件",
-				value: platformMetric?.value || "0",
-				sub: platformMetric?.sub,
-				path: platformMetric?.path,
-				tone: platformMetric?.tone || "default",
-			},
-			{
-				label: opsMetric?.label || "运营候选",
-				value: opsMetric?.value || "0",
-				sub: opsMetric?.sub,
-				path: opsMetric?.path,
-				tone: opsMetric?.tone || "default",
-			},
-		],
+		desc: "统一出口里的待发条目、各平台闭环情况与发布后的运营候选。",
+		stats: [],
 		actions: [
 			{
 				label: "统一出口",
@@ -62,6 +31,7 @@ export function renderOutputPage(view: TalosView, page: HTMLElement, d: Collecte
 			},
 		],
 	});
+	mountFlowPipeline(view, hero, d, "output");
 
 	const primary = page.createDiv({
 		cls: "workflow-v2-primary output-v2-primary",
@@ -121,19 +91,6 @@ export function renderOutputPage(view: TalosView, page: HTMLElement, d: Collecte
 			group.empty
 		);
 	}
-
-	const platforms = view.panel(
-		page,
-		"#38E1FF",
-		"平台分发明细",
-		"抖音 / 小红书 / X / 公众号 / 知识星球"
-	);
-	platforms.addClass("output-v2-platform-panel");
-	platforms.setAttribute("data-workflow-section", "platform-details");
-	fillPlatforms(view, 
-		platforms.createDiv({ cls: "platform-grid" }),
-		d.output.platforms
-	);
 }
 
 export function renderHealthPage(view: TalosView, page: HTMLElement, d: Collected): void {
