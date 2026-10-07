@@ -75,6 +75,8 @@ import { addActionButtonContent, wireModuleSelection } from "./ui/view-modules";
 
 export const VIEW_TYPE_TALOS = "talos-console-view";
 
+const LEGACY_SECTION_PAGES = ["chat", "settings"] as const;
+
 export class TalosView extends ItemView {
 	plugin: TalosPlugin;
 
@@ -312,10 +314,18 @@ export class TalosView extends ItemView {
 		for (const page of PRIMARY_NAVIGATION) {
 			this.contentEl.classList.remove(`section-${page.key}`);
 		}
+		for (const pageKey of LEGACY_SECTION_PAGES) {
+			this.contentEl.classList.remove(`section-${pageKey}`);
+		}
 		this.contentEl.classList.add(`page-${this.activePage}`);
 		this.contentEl.classList.add(
 			`section-${this.pageRouter.current().primary}`
 		);
+		// 对话与设置曾是独立一级入口，整屏布局样式按 .section-chat / .section-settings 编写；
+		// 2026-10-07 并入「助手」「系统」后仍需保留这两个 class，否则对话页塌成内容高度。
+		if ((LEGACY_SECTION_PAGES as readonly string[]).includes(this.activePage)) {
+			this.contentEl.classList.add(`section-${this.activePage}`);
+		}
 		this.updateCosmosHeader();
 	}
 

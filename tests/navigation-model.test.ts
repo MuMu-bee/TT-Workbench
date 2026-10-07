@@ -42,6 +42,11 @@ describe("TALOS navigation model", () => {
 		expect(viewSource).not.toContain('case "overview": ');
 	});
 
+	it("keeps the full-screen section classes for chat and settings after regrouping", () => {
+		expect(viewSource).toContain('const LEGACY_SECTION_PAGES = ["chat", "settings"] as const;');
+		expect(viewSource).toContain("this.contentEl.classList.add(`section-${this.activePage}`);");
+	});
+
 	it("keeps every legacy page key and Claudian view addressable inside its group", () => {
 		const legacy = [...LEGACY_PAGE_KEYS, "workbench", "workflow", "voice", "chat", "talos-quyuan-view", "settings"];
 		for (const key of legacy) {
