@@ -1,5 +1,7 @@
 # Changelog
 
+- 2026-10-07 v0.4.7 界面打磨（本地候选）：业务页页头整体收紧，标题回到 24–32px 规范字号，主卡按内容高度，像素小人压成 56px 身份带；健康趋势图纵轴改为从「最低分 − 5」起画并在图头标明区间，85–90 分的波动看得出来，图头分数改为一行「最新 N」并去掉色板外的渐变；页头内部卡片不再叠加硬投影，指标强调色跟随本页、数字用主题墨色，替代原先统一的粉色；修复收件箱根目录文件把文件名重复显示为文件夹标签的问题；长文本不再撑破面板；空状态高度从 76px 降到 44px。
+
 - 2026-10-07 v0.4.6 性能与结构优化，功能不变：Claude Agent SDK 单独打包为 `claude-sdk.cjs`，首次使用 Claude 时才加载，`main.js` 由 1.6MB 降到约 0.8MB，并加入防止 SDK 回流主包的构建守卫；`view.ts`（4503 行）与 `main.ts`（2091 行）拆分为 `src/ui/pages`、`src/ui/charts`、`src/ui/view-*` 与 `src/plugin/*` 共 17 个模块，各文件不超过 800 行，搬迁函数逐一做等价比对；删除 775 条已不再渲染的旧版样式并在构建时压缩，`styles.css` 由 855KB 降到约 600KB；接入 `@vitest/coverage-v8` 并补充图表模块渲染测试（845 项回归）。同时包含 v0.4.5 之后合并的 PR #4（Claude Agent SDK 在 Electron 下的 AbortSignal 补丁，经 postinstall 打入 `claude-sdk.cjs`）、#5（dsh ≥ 0.1.2 web token 认证）与 #6（会话历史面板操作与显示修复）。手动安装需同时放入新增的 `claude-sdk.cjs`；Windows 上的 SDK 按需加载尚未实机验证。
 
 - 2026-09-04 源码许可调整：TALOS 自有材料从完全专有许可切换为 `TALOS Personal Use Source License 1.0`，允许个人非商业使用、学习、修改及按同一许可非商业分享；公司内部使用、客户交付、收费服务、托管、转售、白标与其他商业用途仍须事先书面授权。README、许可证徽章、`package.json`、lockfile、第三方边界、设置页、欢迎页联系方式、构建许可审计与 bundle banner 同步更新；项目明确标记为 Source Available，而非 OSI Open Source。
