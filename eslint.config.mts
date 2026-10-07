@@ -17,11 +17,17 @@ export default tseslint.config(
 		'backups',
 		'*.selftest.mjs',
 		'build-styles.mjs',
+		// Node .mjs 合同由 Vitest 执行（bundle 守卫有专项测试）
+		'scripts/check-peer-status-bundle.mjs',
+		'scripts/check-claude-sdk-split.mjs',
 		'esbuild.config.mjs',
 		'third-party-licenses.mjs',
+		// Node 安装脚本由 SDK 补丁回归测试执行；不适用 Obsidian 类型规则。
+		'patches/apply-sdk-electron-patch.mjs',
 		'version-bump.mjs',
 		'versions.json',
 		'main.js',
+		'claude-sdk.cjs',
 		'package.json',
 		'package-lock.json',
 		'tsconfig.json',

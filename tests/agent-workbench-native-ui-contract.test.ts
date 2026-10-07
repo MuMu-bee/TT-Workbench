@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { AgentWorkbenchService } from "../src/agent-workbench/core/agent-workbench-service";
 import { migrateLegacyTabManagerState, WorkbenchUiStateStore } from "../src/agent-workbench/storage/workbench-ui-state-store";
+import { pluginSource as readPluginSource } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const source = (path: string) => readFileSync(`${root}${path}`, "utf8");
@@ -11,7 +12,7 @@ const conversation = source("src/agent-workbench/ui/native-conversation-view.ts"
 const serviceSource = source("src/agent-workbench/core/agent-workbench-service.ts");
 const composer = source("src/agent-workbench/ui/native-composer.ts");
 const renderer = source("src/agent-workbench/ui/native-event-renderer.ts");
-const main = source("src/main.ts");
+const main = readPluginSource();
 const css = source("styles.ui-v2.css");
 const styleIndex = source("src/agent-workbench/ui/styles/index.css");
 
@@ -19,6 +20,7 @@ describe("TALOS native agent workbench UI", () => {
 	it("owns every production chat entry without importing the retired implementation", () => {
 		expect(main).toContain("TalosAgentRecoveryView");
 		expect(main).not.toContain("setSystemContext(this.quyuanSoul");
+		expect(main).not.toContain("setSystemContext(plugin.quyuanSoul");
 		expect(main).toContain("VIEW_TYPE_TALOS_AGENT_RECOVERY");
 		expect(main).toContain("ConversationInputLedger");
 		expect(main).toContain("WorkbenchUiStateStore");
@@ -187,6 +189,28 @@ describe("TALOS native agent workbench UI", () => {
 		});
 		await allClosed.save({ schemaVersion: 1, openConversationIds: [], historyOpen: false });
 		await expect(allClosed.load()).resolves.toEqual({ schemaVersion: 1, openConversationIds: [], historyOpen: false });
+	});
+
+	it("hides soft-deleted conversations from history and never uses window.prompt for rename", () => {
+		// 软删除（lifecycle=deleted）的会话必须从会话历史主列表隐藏，
+		// 否则已删会话与活跃会话外观一致地堆积，造成"删了还在/克隆"的错觉。
+		const historyStart = conversation.indexOf("private async renderHistory");
+		const historyEnd = conversation.indexOf("private historyAction", historyStart);
+		const historyBody = conversation.slice(historyStart, historyEnd);
+		expect(historyBody).toContain('lifecycle !== "deleted"');
+		// archived 仍可展示（可恢复），因此过滤只针对 deleted。
+		expect(historyBody).not.toContain('lifecycle === "deleted"');
+		expect(historyBody).not.toContain('lifecycle !== "archived"');
+
+		// 重命名不能用 window.prompt()（Electron/Obsidian 不实现，返回 null 即静默失败），
+		// 必须用原生 Obsidian Modal。
+		const renameStart = conversation.indexOf("private async renameConversation");
+		const renameEnd = conversation.indexOf("private promptForTitle", renameStart);
+		const renameBody = conversation.slice(renameStart, renameEnd);
+		expect(renameBody).not.toContain(".prompt(");
+		expect(renameBody).toContain("this.promptForTitle(");
+		expect(conversation).toContain("new Modal(");
+		expect(conversation).toContain("modal-button-container");
 	});
 
 	it("projects retired tab ids through the read-only import manifest", () => {
