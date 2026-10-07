@@ -3586,13 +3586,20 @@ body[data-talos-vault-theme] .talos-console
 	}
 }
 
-/* 助手页（AI 对话 / 语音）现在带二级页签：页签占位后，内容区按剩余高度伸展，
-   不再以 100% 高度叠在页签下方造成溢出。 */
-.talos-console:is([data-talos-page="chat"], [data-talos-page="jarvis"]) .main > .talos-page-tabs:not(.is-hidden) {
+/* 助手页（AI 对话 / 语音）现在带二级页签。对话页的 .main 原本只有 height: 100%、
+   不是 flex 容器，内容区的 flex 伸展不生效会塌成内容高度（0.4.8 实机截图）。
+   两页统一改为纵向 flex：页签按自身高度，内容区占满剩余高度。 */
+.talos-console:is(.section-chat, [data-talos-page="chat"], [data-talos-page="jarvis"]) .main {
+	display: flex !important;
+	flex-direction: column !important;
+	min-height: 0 !important;
+}
+
+.talos-console:is(.section-chat, [data-talos-page="chat"], [data-talos-page="jarvis"]) .main > .talos-page-tabs:not(.is-hidden) {
 	flex: 0 0 auto;
 }
 
-.talos-console:is([data-talos-page="chat"], [data-talos-page="jarvis"]) .main > .talos-page-tabs:not(.is-hidden) ~ .page-content {
+.talos-console:is(.section-chat, [data-talos-page="chat"], [data-talos-page="jarvis"]) .main > .talos-page-tabs:not(.is-hidden) ~ .page-content {
 	flex: 1 1 auto !important;
 	height: auto !important;
 	min-height: 0 !important;

@@ -59,4 +59,11 @@ describe("UI polish v1", () => {
 	it("keeps dashed empty states but at a compact height", () => {
 		expect(rule(".talos-console[data-talos-archetype] .empty {")).toContain("min-height: 44px");
 	});
+
+	it("lays out assistant pages as a flex column so the chat surface fills below the tabs", () => {
+		const main = rule('.talos-console:is(.section-chat, [data-talos-page="chat"], [data-talos-page="jarvis"]) .main {');
+		expect(main).toContain("display: flex !important");
+		expect(main).toContain("flex-direction: column !important");
+		expect(rule(".talos-page-tabs:not(.is-hidden) ~ .page-content")).toContain("flex: 1 1 auto !important");
+	});
 });
