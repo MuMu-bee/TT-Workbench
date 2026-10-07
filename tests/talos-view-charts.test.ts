@@ -19,6 +19,7 @@ import {
 	fillSignalList,
 	fillTalosModules,
 	fillTrend,
+	trendScale,
 } from "../src/ui/charts/talos-view-charts";
 import type { CapabilityGroup } from "../src/data/capabilities";
 import type { InboxDigest, OutputPlatform, ProjectScene } from "../src/types";
@@ -56,6 +57,14 @@ describe("signal and gate lists", () => {
 		expect(meta?.dataset.folder).toBe("web");
 		row.click();
 		expect(opened).toHaveBeenCalledWith(app, "00-收件箱/web/a.md");
+	});
+
+	it("does not repeat the file name as a folder chip for files at the inbox root", () => {
+		const { el, dom } = host();
+		fillSignalList(view, el, [{ title: "报告", meta: "24d · 00-收件箱/报告.md", path: "00-收件箱/报告.md" }], "暂无");
+		const meta = dom.one("detail-row").querySelector<ObsidianTestElement>("span");
+		expect(meta?.textContent).toBe("24d");
+		expect(meta?.dataset.folder).toBeUndefined();
 	});
 
 	it("renders gate chips by state and only links gates with a path", () => {
@@ -186,16 +195,24 @@ describe("distribution charts", () => {
 });
 
 describe("trend, banner and cards", () => {
-	it("reports health deltas and scales bars to at least 100", () => {
+	it("reports health deltas on a labelled, truncated axis so small changes stay visible", () => {
 		const { el, dom } = host();
 		fillTrend(view, el, [
 			{ label: "周一", score: 80 },
 			{ label: "周二", score: 70 },
 		]);
+		expect(dom.one("score").textContent).toBe("最新 70");
 		expect(dom.one("delta").className).toBe("delta down");
 		expect(dom.one("delta").textContent).toBe("▼ 10");
-		expect(dom.all("spark-bar").map((bar) => bar.style.props["--talos-h"])).toEqual(["80%", "70%"]);
+		expect(dom.one("trend-head").querySelector<ObsidianTestElement>("small")?.textContent).toBe("区间 60–100");
+		expect(dom.all("spark-bar").map((bar) => bar.style.props["--talos-h"])).toEqual(["50%", "25%"]);
 		expect(dom.all("spark-bar")[1].getAttribute("title")).toBe("周二: 70");
+	});
+
+	it("chooses an axis floor below the lowest score and keeps the full-score ceiling", () => {
+		expect(trendScale([87, 90, 85])).toEqual({ floor: 80, ceil: 100 });
+		expect(trendScale([100])).toEqual({ floor: 90, ceil: 100 });
+		expect(trendScale([3, 40])).toEqual({ floor: 0, ceil: 100 });
 	});
 
 	it("shows flat and empty health trends", () => {

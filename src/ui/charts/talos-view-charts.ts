@@ -19,7 +19,9 @@ export function fillSignalList(view: TalosView, parent: HTMLElement, items: Sign
 		// 现拆为结构化 data 属性供 CSS 渲染 chip（[web] 3d），不再裸露完整路径。
 		const metaParts = (it.meta || "—").split(" · ");
 		const daysPart = metaParts[0] || "";
-		const folderPart = it.path?.split("/")[1] || "";
+		// 只有位于收件箱子文件夹时才显示来源文件夹；根目录文件的第二段就是文件名本身
+		const pathParts = it.path?.split("/") ?? [];
+		const folderPart = pathParts.length > 2 ? pathParts[1] : "";
 		const span = text.createEl("span");
 		span.textContent = daysPart;
 		if (folderPart) span.dataset.folder = folderPart;
@@ -428,21 +430,33 @@ export function fillDist(view: TalosView, el: HTMLElement, dist: DistBar[]): voi
 	}
 }
 
+/**
+ * 健康分纵轴从「最低分 − 5 向下取整到 10」画到满分，让 80–90 分之间的波动看得出来；
+ * 截断的起点写在图头，避免误读成从 0 开始。
+ */
+export function trendScale(scores: number[]): { floor: number; ceil: number } {
+	const ceil = Math.max(100, ...scores);
+	const lowest = Math.min(...scores);
+	const floor = Math.max(0, Math.min(ceil - 10, Math.floor((lowest - 5) / 10) * 10));
+	return { floor, ceil };
+}
+
 export function fillTrend(view: TalosView, panel: HTMLElement, points: HealthPoint[]): void {
 	if (points.length === 0) { panel.createDiv({ cls: "empty", text: "无健康分数据" }); return; }
 	const last = points[points.length - 1];
 	const prev = points.length > 1 ? points[points.length - 2] : undefined;
 	const delta = last && prev ? last.score - prev.score : 0;
+	const { floor, ceil } = trendScale(points.map((p) => p.score));
 	const head = panel.createDiv({ cls: "trend-head" });
-	head.createSpan({ cls: "score", text: last ? String(last.score) : "—" });
+	head.createSpan({ cls: "score", text: last ? `最新 ${last.score}` : "—" });
 	head.createSpan({ cls: `delta ${delta < 0 ? "down" : "up"}`, text: delta === 0 ? "持平" : delta > 0 ? `▲ ${delta}` : `▼ ${Math.abs(delta)}` });
-	head.createEl("small", { text: "满分 100" });
+	head.createEl("small", { text: floor > 0 ? `区间 ${floor}–${ceil}` : `满分 ${ceil}` });
 	const chart = panel.createDiv({ cls: "spark" });
-	const max = Math.max(...points.map((p) => p.score), 100);
 	for (const p of points) {
 		const col = chart.createDiv({ cls: "spark-col" });
 		const bar = col.createDiv({ cls: "spark-bar" });
-		bar.setCssProps({ "--talos-h": `${Math.round((p.score / max) * 100)}%` });
+		const share = (Math.min(ceil, Math.max(floor, p.score)) - floor) / (ceil - floor);
+		bar.setCssProps({ "--talos-h": `${Math.max(4, Math.round(share * 100))}%` });
 		bar.setAttribute("title", `${p.label}: ${p.score}`);
 		col.createSpan({ cls: "spark-lab", text: p.label });
 	}
