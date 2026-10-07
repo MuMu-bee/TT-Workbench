@@ -146,8 +146,8 @@ function noteInput(input: unknown): { targetPath: string; content: string } {
 describe("WP7 deterministic mock acceptance", () => {
 	it("composes the unified console without network calls or customer data", async () => {
 		const router = new TalosPageRouter("overview");
-		expect(router.current()).toEqual({ primary: "workbench" });
-		expect(router.renderKey()).toBe("overview");
+		expect(router.current()).toEqual({ primary: "today", secondary: "today" });
+		expect(router.renderKey()).toBe("today");
 
 		const vault = new MemoryVault(loadFixture(fixtureRoot));
 		const canonicalProjectionBefore = await vault.read(
