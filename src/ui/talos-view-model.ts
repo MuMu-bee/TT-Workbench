@@ -13,7 +13,7 @@ export const SVG_NS = "http://www.w3.org/2000/svg";
 export type TalosPageArchetype = "dashboard" | "execution" | "knowledge" | "workspace" | "settings";
 
 export const PAGE_ARCHETYPES: Record<string, TalosPageArchetype> = {
-	overview: "dashboard",
+	today: "dashboard",
 	health: "dashboard",
 	vault: "dashboard",
 	daily: "execution",

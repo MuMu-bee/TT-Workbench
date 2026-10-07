@@ -130,7 +130,7 @@ export function renderNav(view: TalosView): void {
 	for (const page of PRIMARY_NAVIGATION) {
 		const active = page.key === route.primary;
 		const item = groupEl.createDiv({
-			cls: `command${page.key === "settings" ? " talos-settings-nav-command" : ""}${active ? " active" : ""}`,
+			cls: `command${page.key === "system" ? " talos-settings-nav-command" : ""}${active ? " active" : ""}`,
 		});
 		const mark = item.createDiv({ cls: "mark" });
 		setIcon(mark, page.icon);
@@ -165,8 +165,8 @@ export function navMeta(view: TalosView, key: string): { value: string; alert?: 
 	const d = view.data;
 	if (!d) return null;
 	switch (key) {
-		case "overview": {
-			const count = collectOverviewAttention(view, d).length;
+		case "today": {
+			const count = collectOverviewAttention(view, d).length + d.approvals.length + d.candidates.length;
 			return { value: count > 0 ? `${count} 待处理` : "正常", alert: count > 0 };
 		}
 		case "daily": return { value: `${d.focus.length} 焦点` };

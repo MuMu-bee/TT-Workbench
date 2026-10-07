@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -25,18 +25,23 @@ describe("workbench dashboard and approval layout", () => {
 		expect(stats).not.toContain("stripMd(s.slice(2)).slice(0, 70)");
 	});
 
-	it("uses a real 6/6 data-and-attention first screen", () => {
-		expect(view).toContain('cls: "overview-v2-primary"');
-		expect(view).toContain('"data-workbench-section", "core-data"');
-		expect(view).toContain('"attention-and-approvals"');
+	it("uses a two-column now / attention / decisions first screen on the today page", () => {
+		const today = functionSource(view, "renderTodayPage");
+		expect(today).toContain('cls: "today-v1-grid"');
+		expect(today).toContain('"data-today-section", "now"');
+		expect(today).toContain('"data-today-section", "attention"');
+		expect(today).toContain('"data-today-section", "decisions"');
 		expect(uiCss).toMatch(
-			/\.overview-v2-primary[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/
+			/\.today-v1-grid \{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/
 		);
 	});
 
-	it("reuses real trend and distribution data instead of decorative percentages", () => {
-		expect(view).toContain("fillTrend(view, trendPanel, d.healthTrend)");
-		expect(view).toContain("fillDist(view, ");
+	it("keeps trend and distribution charts only on their home pages", () => {
+		const today = functionSource(view, "renderTodayPage");
+		expect(today).not.toContain("fillTrend(");
+		expect(today).not.toContain("fillDist(");
+		expect(functionSource(view, "renderHealthPage")).toContain("fillTrend(view, ");
+		expect(functionSource(view, "renderVaultPage")).toContain("fillDist(view, ");
 		expect(view).not.toContain("fillOverviewStatBar");
 		expect(view).not.toContain("overview-stat-bar");
 		expect(view).not.toContain("d.total / 2000");
@@ -45,8 +50,8 @@ describe("workbench dashboard and approval layout", () => {
 
 	it("keeps the task kanban and adds a recoverable quick note", () => {
 		expect(view).toContain('cls: "overview-kanban"');
-		expect(view).toContain('"data-workbench-section", "task-kanban"');
-		expect(view).toContain("任务进度看板");
+		expect(view).toContain('"data-today-section", "task-kanban"');
+		expect(view).toContain('"任务进度"');
 		expect(view).toContain("fillOverviewKanban");
 		expect(view).toContain("new QuickNote({");
 		expect(view).toContain('"data-workbench-section", "quick-note"');

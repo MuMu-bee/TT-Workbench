@@ -11,7 +11,7 @@ export function updateCosmosHeader(view: TalosView): void {
 	const secondary = primary.children.find(
 		(child) => child.key === route.secondary
 	);
-	const isWorkbench = route.primary === "workbench";
+	const isWorkbench = route.secondary === "today";
 	view.cosmosTitleEl.setText(
 		isWorkbench
 			? view.plugin.talosSettings.mainTitle

@@ -61,7 +61,8 @@ import {
 } from "./peer-status/talos-peer-status";
 import { WEEKDAYS, PAGE_ARCHETYPES, dailyRota, dailyTimeline, type QuyuanVoicePanelLike, type Collected, type OverviewAttention, type ApprovalDecisionFeedback, type CandidateDecisionFeedback } from "./ui/talos-view-model";
 import { fillCapabilityDistribution, fillGateStateChart, fillKnowledgeTreemap, fillOutputClosureChart, fillProjectPortfolioChart } from "./ui/charts/talos-view-charts";
-import { renderOverviewAttentionRows, renderOverviewPage } from "./ui/pages/overview-page";
+import { renderOverviewAttentionRows } from "./ui/pages/overview-page";
+import { renderTodayPage } from "./ui/pages/today-page";
 import { renderDailyPage } from "./ui/pages/daily-page";
 import { renderHealthPage, renderOutputPage, renderProjectsPage } from "./ui/pages/project-pages";
 import { renderCapabilityPage, renderIdentityPage, renderKnowledgePage, renderVaultPage } from "./ui/pages/knowledge-pages";
@@ -98,7 +99,7 @@ export class TalosView extends ItemView {
 
 	data: Collected | null = null;
 	private peerStatus: TalosPeerStatusState | null = null;
-	readonly pageRouter = new TalosPageRouter("overview");
+	readonly pageRouter = new TalosPageRouter();
 	activeCap = "commands";
 	selectedModuleByScope = new Map<string, string>();
 	lastApprovalFeedback: ApprovalDecisionFeedback | null = null;
@@ -565,7 +566,7 @@ export class TalosView extends ItemView {
 		const d = this.data;
 		if (!d) { page.createDiv({ cls: "empty", text: "加载中…" }); return; }
 		switch (this.activePage) {
-			case "overview": this.pageOverview(page, d); break;
+			case "today": this.pageToday(page, d); break;
 			case "chat": void this.pageChat(page); break;
 			case "jarvis": void this.pageJarvis(page); break;
 			case "daily": this.pageDaily(page, d); break;
@@ -646,8 +647,8 @@ export class TalosView extends ItemView {
 		}
 	}
 
-	private pageOverview(page: HTMLElement, d: Collected): void {
-		return renderOverviewPage(this, page, d);
+	private pageToday(page: HTMLElement, d: Collected): void {
+		return renderTodayPage(this, page, d);
 	}
 
 

@@ -1,23 +1,25 @@
 export type TalosPrimaryPageKey =
-	| "workbench"
-	| "chat"
-	| "voice"
-	| "workflow"
-	| "knowledge"
-	| "system"
-	| "settings";
+	| "today"
+	| "flow"
+	| "projects"
+	| "assistant"
+	| "system";
 
 export type TalosSecondaryPageKey =
+	| "today"
 	| "daily"
 	| "inbox"
+	| "knowledge"
 	| "output"
 	| "projects"
-	| "knowledge"
-	| "identity"
 	| "talos"
+	| "chat"
+	| "jarvis"
 	| "health"
+	| "vault"
 	| "capability"
-	| "vault";
+	| "identity"
+	| "settings";
 
 export interface TalosSecondaryPage {
 	key: TalosSecondaryPageKey;
@@ -38,73 +40,69 @@ export interface TalosPageRoute {
 	secondary?: TalosSecondaryPageKey;
 }
 
+// 2026-10-07 导航重构：按「今天做什么 → 内容怎么流转 → 项目推进 → 助手 → 系统」组织，
+// 每项数据只有一个主场页面，其他页面只放带跳转的提醒。二级页 key 沿用原页面 key，
+// 页面实现与样式不受分组变化影响。
 export const PRIMARY_NAVIGATION: readonly TalosPrimaryPage[] = [
 	{
-		key: "workbench",
-		label: "工作台",
-		icon: "layout-dashboard",
-		subtitle: "核心数据、重要事项、审批与任务进度",
-		children: [],
-	},
-	{
-		key: "chat",
-		label: "AI 对话",
-		icon: "messages-square",
-		subtitle: "多模型对话与全库操作",
-		children: [],
-	},
-	{
-		key: "voice",
-		label: "语音助手",
-		icon: "audio-lines",
-		subtitle: "持续语音、字幕与任务审批",
-		children: [],
-	},
-	{
-		key: "workflow",
-		label: "工作流",
-		icon: "workflow",
-		subtitle: "每日执行、收件、输出与项目",
+		key: "today",
+		label: "今日",
+		icon: "sun",
+		subtitle: "现在最该做什么：焦点、待决策与今日节奏",
 		children: [
-			{ key: "daily", label: "每日执行", icon: "calendar-check" },
-			{ key: "inbox", label: "收件箱", icon: "inbox" },
-			{ key: "output", label: "输出作战室", icon: "send" },
-			{ key: "projects", label: "项目场景", icon: "folder-kanban" },
+			{ key: "today", label: "今日", icon: "sun" },
+			{ key: "daily", label: "执行节奏", icon: "calendar-check" },
 		],
 	},
 	{
-		key: "knowledge",
-		label: "知识资产",
-		icon: "library",
-		subtitle: "知识、身份与 TALOS 产品资产",
+		key: "flow",
+		label: "内容流",
+		icon: "waypoints",
+		subtitle: "素材从收件到发布的每一站",
 		children: [
-			{ key: "knowledge", label: "知识枢纽", icon: "brain" },
-			{ key: "identity", label: "身份上下文", icon: "fingerprint" },
+			{ key: "inbox", label: "收件箱", icon: "inbox" },
+			{ key: "knowledge", label: "知识库", icon: "brain" },
+			{ key: "output", label: "输出", icon: "send" },
+		],
+	},
+	{
+		key: "projects",
+		label: "项目",
+		icon: "folder-kanban",
+		subtitle: "项目组合、重点项目与 TALOS 发布闸门",
+		children: [
+			{ key: "projects", label: "项目场景", icon: "folder-kanban" },
 			{ key: "talos", label: "TALOS 产品", icon: "filter" },
 		],
 	},
 	{
-		key: "system",
-		label: "系统中心",
-		icon: "settings-2",
-		subtitle: "健康、能力与全库视图",
+		key: "assistant",
+		label: "助手",
+		icon: "messages-square",
+		subtitle: "AI 对话与屈原语音",
 		children: [
-			{ key: "health", label: "系统健康", icon: "activity" },
-			{ key: "capability", label: "能力中心", icon: "blocks" },
-			{ key: "vault", label: "全库视图", icon: "database" },
+			{ key: "chat", label: "AI 对话", icon: "messages-square" },
+			{ key: "jarvis", label: "语音", icon: "audio-lines" },
 		],
 	},
 	{
-		key: "settings",
-		label: "设置",
-		icon: "settings",
-		subtitle: "插件界面、目录、数据源与 AI 配置",
-		children: [],
+		key: "system",
+		label: "系统",
+		icon: "settings-2",
+		subtitle: "健康、全库、能力、身份与设置",
+		children: [
+			{ key: "health", label: "系统健康", icon: "activity" },
+			{ key: "vault", label: "全库视图", icon: "database" },
+			{ key: "capability", label: "能力中心", icon: "blocks" },
+			{ key: "identity", label: "身份上下文", icon: "fingerprint" },
+			{ key: "settings", label: "设置", icon: "settings" },
+		],
 	},
 ] as const;
 
 export const LEGACY_PAGE_KEYS = [
 	"overview",
+	"today",
 	"daily",
 	"jarvis",
 	"inbox",
@@ -118,26 +116,30 @@ export const LEGACY_PAGE_KEYS = [
 	"vault",
 ] as const;
 
+// 旧页面 key（含已保存的视图状态与命令入口）统一映射到新分组。
 const PAGE_ROUTES: Readonly<Record<string, TalosPageRoute>> = {
-	overview: { primary: "workbench" },
-	workbench: { primary: "workbench" },
-	chat: { primary: "chat" },
-	"talos-quyuan-view": { primary: "chat" },
-	jarvis: { primary: "voice" },
-	voice: { primary: "voice" },
-	workflow: { primary: "workflow", secondary: "daily" },
-	daily: { primary: "workflow", secondary: "daily" },
-	inbox: { primary: "workflow", secondary: "inbox" },
-	output: { primary: "workflow", secondary: "output" },
-	projects: { primary: "workflow", secondary: "projects" },
-	knowledge: { primary: "knowledge", secondary: "knowledge" },
-	identity: { primary: "knowledge", secondary: "identity" },
-	talos: { primary: "knowledge", secondary: "talos" },
+	today: { primary: "today", secondary: "today" },
+	overview: { primary: "today", secondary: "today" },
+	workbench: { primary: "today", secondary: "today" },
+	daily: { primary: "today", secondary: "daily" },
+	flow: { primary: "flow", secondary: "inbox" },
+	workflow: { primary: "flow", secondary: "inbox" },
+	inbox: { primary: "flow", secondary: "inbox" },
+	knowledge: { primary: "flow", secondary: "knowledge" },
+	output: { primary: "flow", secondary: "output" },
+	projects: { primary: "projects", secondary: "projects" },
+	talos: { primary: "projects", secondary: "talos" },
+	assistant: { primary: "assistant", secondary: "chat" },
+	chat: { primary: "assistant", secondary: "chat" },
+	"talos-quyuan-view": { primary: "assistant", secondary: "chat" },
+	voice: { primary: "assistant", secondary: "jarvis" },
+	jarvis: { primary: "assistant", secondary: "jarvis" },
 	system: { primary: "system", secondary: "health" },
 	health: { primary: "system", secondary: "health" },
-	capability: { primary: "system", secondary: "capability" },
 	vault: { primary: "system", secondary: "vault" },
-	settings: { primary: "settings" },
+	capability: { primary: "system", secondary: "capability" },
+	identity: { primary: "system", secondary: "identity" },
+	settings: { primary: "system", secondary: "settings" },
 };
 
 export interface WorkbenchModuleEntry {

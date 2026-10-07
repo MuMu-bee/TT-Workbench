@@ -404,21 +404,21 @@
 	container: overview-v2 / inline-size;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-primary,
-.talos-console[data-talos-page="overview"] .overview-v2-utility-grid {
+.talos-console[data-talos-page="today"] .overview-v2-primary,
+.talos-console[data-talos-page="today"] .overview-v2-utility-grid {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--talos-space-4);
 	align-items: start;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-primary,
-.talos-console[data-talos-page="overview"] .overview-v2-kanban-panel,
-.talos-console[data-talos-page="overview"] .overview-v2-utility-grid {
+.talos-console[data-talos-page="today"] .overview-v2-primary,
+.talos-console[data-talos-page="today"] .overview-v2-kanban-panel,
+.talos-console[data-talos-page="today"] .overview-v2-utility-grid {
 	margin-top: var(--talos-space-4);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-column {
+.talos-console[data-talos-page="today"] .overview-v2-column {
 	display: grid;
 	gap: var(--talos-space-4);
 	min-width: 0;
@@ -443,7 +443,7 @@
 	gap: var(--talos-space-2);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority {
+.talos-console[data-talos-page="today"] .overview-v2-priority {
 	--priority-ac: var(--blue);
 	display: grid;
 	gap: var(--talos-space-2);
@@ -458,22 +458,22 @@
 	);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority.tone-hot {
+.talos-console[data-talos-page="today"] .overview-v2-priority.tone-hot {
 	--priority-ac: var(--talos-ui-danger);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority.tone-warn {
+.talos-console[data-talos-page="today"] .overview-v2-priority.tone-warn {
 	--priority-ac: var(--talos-ui-warning);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority__head {
+.talos-console[data-talos-page="today"] .overview-v2-priority__head {
 	display: grid;
 	grid-template-columns: 32px minmax(0, 1fr);
 	align-items: center;
 	gap: var(--talos-space-2);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority__icon {
+.talos-console[data-talos-page="today"] .overview-v2-priority__icon {
 	display: grid;
 	width: 32px;
 	height: 32px;
@@ -481,39 +481,39 @@
 	color: var(--priority-ac);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority__copy small,
-.talos-console[data-talos-page="overview"] .overview-v2-priority > span {
+.talos-console[data-talos-page="today"] .overview-v2-priority__copy small,
+.talos-console[data-talos-page="today"] .overview-v2-priority > span {
 	font-size: var(--talos-type-meta);
 	color: var(--talos-ui-muted);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority__copy h3,
-.talos-console[data-talos-page="overview"] .overview-v2-priority p {
+.talos-console[data-talos-page="today"] .overview-v2-priority__copy h3,
+.talos-console[data-talos-page="today"] .overview-v2-priority p {
 	margin: 0;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority__copy h3 {
+.talos-console[data-talos-page="today"] .overview-v2-priority__copy h3 {
 	font-size: var(--talos-type-module);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority p {
+.talos-console[data-talos-page="today"] .overview-v2-priority p {
 	font-size: var(--talos-type-supporting);
 	line-height: 1.5;
 	color: var(--talos-ui-muted);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-priority__action {
+.talos-console[data-talos-page="today"] .overview-v2-priority__action {
 	justify-self: start;
 	margin-top: var(--talos-space-1);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-list {
+.talos-console[data-talos-page="today"] .overview-v2-attention-list {
 	display: grid;
 	gap: var(--talos-space-2);
 	margin-top: var(--talos-space-3);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row {
 	--attention-ac: var(--talos-ui-info);
 	display: grid;
 	grid-template-columns: 24px minmax(0, 1fr) 18px;
@@ -530,16 +530,16 @@
 		transform var(--talos-motion-fast) ease;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row.tone-hot {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row.tone-hot {
 	--attention-ac: var(--talos-ui-danger);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row.tone-warn {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row.tone-warn {
 	--attention-ac: var(--talos-ui-warning);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row:hover,
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row:focus-visible {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row:hover,
+.talos-console[data-talos-page="today"] .overview-v2-attention-row:focus-visible {
 	border-color: var(--attention-ac);
 	background: color-mix(
 		in srgb,
@@ -551,30 +551,30 @@
 	transform: translateY(-1px);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row__icon,
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row__arrow {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row__icon,
+.talos-console[data-talos-page="today"] .overview-v2-attention-row__arrow {
 	display: grid;
 	place-items: center;
 	color: var(--attention-ac);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row__copy {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row__copy {
 	min-width: 0;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row__copy strong,
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row__copy span {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row__copy strong,
+.talos-console[data-talos-page="today"] .overview-v2-attention-row__copy span {
 	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row__copy strong {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row__copy strong {
 	font-size: var(--talos-type-body);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-attention-row__copy span {
+.talos-console[data-talos-page="today"] .overview-v2-attention-row__copy span {
 	margin-top: 2px;
 	font-size: var(--talos-type-meta);
 	color: var(--talos-ui-muted);
@@ -627,7 +627,7 @@
 	min-width: 0;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-utility-grid > * {
+.talos-console[data-talos-page="today"] .overview-v2-utility-grid > * {
 	min-width: 0;
 }
 
@@ -687,16 +687,16 @@
 }
 
 @container overview-v2 (max-width: 760px) {
-	.talos-console[data-talos-page="overview"] .overview-v2-primary,
-	.talos-console[data-talos-page="overview"] .overview-v2-utility-grid {
+	.talos-console[data-talos-page="today"] .overview-v2-primary,
+	.talos-console[data-talos-page="today"] .overview-v2-utility-grid {
 		grid-template-columns: 1fr;
 	}
 
-	.talos-console[data-talos-page="overview"] .overview-v2-attention-column {
+	.talos-console[data-talos-page="today"] .overview-v2-attention-column {
 		grid-row: 1;
 	}
 
-	.talos-console[data-talos-page="overview"] .overview-kanban {
+	.talos-console[data-talos-page="today"] .overview-kanban {
 		grid-template-columns: 1fr;
 	}
 }
@@ -721,7 +721,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.talos-console[data-talos-page="overview"] .overview-v2-attention-row {
+	.talos-console[data-talos-page="today"] .overview-v2-attention-row {
 		transition: none;
 		transform: none;
 	}
@@ -3488,4 +3488,112 @@ body[data-talos-vault-theme] .talos-console
 
 .talos-console[data-talos-archetype] .talos-ui-empty-state {
 	padding: var(--talos-space-2) var(--talos-space-3);
+}
+
+/* ============================================================
+   导航重构第一期 · 2026-10-07 · 「今日」页
+   两列首屏：现在做什么 / 需要你处理 / 待决策 / TALOS 状态，
+   任务进度与工具区随后。窄于 820px 时改为单列。
+   ============================================================ */
+.talos-console[data-talos-page="today"] .today-v1-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--talos-space-4);
+	align-items: start;
+	margin-top: var(--talos-space-4);
+}
+
+.talos-console[data-talos-page="today"] .today-v1-grid > * {
+	min-width: 0;
+	margin: 0;
+}
+
+.talos-console[data-talos-page="today"] .today-v1-slot {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: center;
+	gap: var(--talos-space-3);
+	padding: var(--talos-space-2) var(--talos-space-3);
+	margin-bottom: var(--talos-space-2);
+	border: 1px solid var(--talos-ui-line);
+	cursor: pointer;
+}
+
+.talos-console[data-talos-page="today"] .today-v1-slot__tag {
+	padding: 2px 8px;
+	border: 1px solid var(--talos-ui-line);
+	font-size: var(--talos-type-meta);
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.talos-console[data-talos-page="today"] .today-v1-slot:first-child .today-v1-slot__tag {
+	background: color-mix(in srgb, var(--ac, var(--talos-ui-accent)) 22%, var(--talos-ui-surface));
+}
+
+.talos-console[data-talos-page="today"] .today-v1-slot__body,
+.talos-console[data-talos-page="today"] .today-v1-focus {
+	display: grid;
+	gap: 2px;
+	min-width: 0;
+}
+
+.talos-console[data-talos-page="today"] .today-v1-slot__body b,
+.talos-console[data-talos-page="today"] .today-v1-focus b {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-console[data-talos-page="today"] .today-v1-slot__body small,
+.talos-console[data-talos-page="today"] .today-v1-focus small,
+.talos-console[data-talos-page="today"] .today-v1-label {
+	overflow: hidden;
+	color: var(--talos-ui-muted);
+	font-size: var(--talos-type-meta);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-console[data-talos-page="today"] .today-v1-focus-list {
+	display: grid;
+	gap: var(--talos-space-2);
+	margin-top: var(--talos-space-3);
+}
+
+.talos-console[data-talos-page="today"] .today-v1-focus {
+	padding: var(--talos-space-2) var(--talos-space-3);
+	border-left: 4px solid var(--talos-ui-line);
+	cursor: pointer;
+}
+
+.talos-console[data-talos-page="today"] .today-v1-focus.tone-hot {
+	border-left-color: var(--talos-status-danger, #d6402e);
+}
+
+.talos-console[data-talos-page="today"] .today-v1-focus.tone-warn {
+	border-left-color: var(--talos-status-warning, #e0a100);
+}
+
+.talos-console[data-talos-page="today"] .overview-v2-kanban-panel,
+.talos-console[data-talos-page="today"] .overview-v2-utility-grid {
+	margin-top: var(--talos-space-4);
+}
+
+@container system-v2 (max-width: 820px) {
+	.talos-console[data-talos-page="today"] .today-v1-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* 助手页（AI 对话 / 语音）现在带二级页签：页签占位后，内容区按剩余高度伸展，
+   不再以 100% 高度叠在页签下方造成溢出。 */
+.talos-console:is([data-talos-page="chat"], [data-talos-page="jarvis"]) .main > .talos-page-tabs:not(.is-hidden) {
+	flex: 0 0 auto;
+}
+
+.talos-console:is([data-talos-page="chat"], [data-talos-page="jarvis"]) .main > .talos-page-tabs:not(.is-hidden) ~ .page-content {
+	flex: 1 1 auto !important;
+	height: auto !important;
+	min-height: 0 !important;
 }

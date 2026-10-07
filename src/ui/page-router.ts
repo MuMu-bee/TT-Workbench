@@ -16,15 +16,18 @@ export interface TalosViewState {
 	page: string;
 }
 
+export const DEFAULT_PAGE_KEY = "today";
+
 function renderKeyForRoute(route: TalosPageRoute): string {
-	if (route.secondary) return route.secondary;
-	if (route.primary === "workbench") return "overview";
-	if (route.primary === "voice") return "jarvis";
-	return route.primary;
+	return route.secondary ?? defaultRouteForPrimary(route.primary).secondary ?? DEFAULT_PAGE_KEY;
+}
+
+function defaultRoute(): TalosPageRoute {
+	return resolvePageRoute(DEFAULT_PAGE_KEY) ?? { primary: "today", secondary: "today" };
 }
 
 export function encodeTalosViewState(pageKey: string): TalosViewState {
-	const route = resolvePageRoute(pageKey) ?? { primary: "workbench" };
+	const route = resolvePageRoute(pageKey) ?? defaultRoute();
 	return {
 		schemaVersion: TALOS_VIEW_STATE_SCHEMA_VERSION,
 		page: renderKeyForRoute(route),
@@ -32,24 +35,24 @@ export function encodeTalosViewState(pageKey: string): TalosViewState {
 }
 
 export function decodeTalosViewState(state: unknown): string {
-	if (!state || typeof state !== "object" || Array.isArray(state)) return "overview";
+	if (!state || typeof state !== "object" || Array.isArray(state)) return DEFAULT_PAGE_KEY;
 	const record = state as Record<string, unknown>;
 	if (
 		record.schemaVersion !== TALOS_VIEW_STATE_SCHEMA_VERSION
 		|| typeof record.page !== "string"
 	) {
-		return "overview";
+		return DEFAULT_PAGE_KEY;
 	}
 	const route = resolvePageRoute(record.page);
-	return route ? renderKeyForRoute(route) : "overview";
+	return route ? renderKeyForRoute(route) : DEFAULT_PAGE_KEY;
 }
 
 export class TalosPageRouter {
 	private route: TalosPageRoute;
 	private readonly subscribers = new Set<RouteSubscriber>();
 
-	constructor(initialPageKey = "overview") {
-		this.route = resolvePageRoute(initialPageKey) ?? { primary: "workbench" };
+	constructor(initialPageKey = DEFAULT_PAGE_KEY) {
+		this.route = resolvePageRoute(initialPageKey) ?? defaultRoute();
 	}
 
 	current(): TalosPageRoute {
