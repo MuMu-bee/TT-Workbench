@@ -3374,3 +3374,118 @@ body[data-talos-vault-theme] .talos-console
 		transition: none;
 	}
 }
+
+/* ============================================================
+   UI polish v1 · 2026-10-07 · ① 业务页页头整体收紧
+   所有者确认推翻 2026-07-20「大标题主卡为绝对主角」的设定：
+   标题统一回到 --talos-type-page（24–32px），只改字号、保留各主题字体与颜色；
+   主卡按内容高度，说明压成一行；像素小人保留为 56px 身份带。
+   ============================================================ */
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero .module-hero-copy h1.module-hero-title {
+	max-width: none;
+	margin: 2px 0 2px;
+	font-size: var(--talos-type-page);
+	line-height: 1.1;
+}
+
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero .module-hero-main {
+	min-height: 0;
+}
+
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero .talos-ui-page-header__description {
+	margin-top: 2px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero .talos-pixel-patrol.talos-ui-page-header__scene.in-module-hero {
+	--talos-pixel-safe-stage-height: 56px;
+	--talos-pixel-safe-bot-top: 4px;
+	--talos-pixel-safe-track-bottom: 2px;
+	--pixel-scale: 0.9;
+}
+
+/* ============================================================
+   UI polish v1 · ②③ 健康趋势：大号分数只在页头指标里出现一次，
+   图头降为「最新 N」一行，并去掉跑出主题色板的粉紫渐变。
+   纵轴截断区间由 fillTrend 写在图头右侧。
+   ============================================================ */
+.talos-console[data-talos-archetype] .trend-head {
+	align-items: baseline;
+}
+
+.talos-console[data-talos-archetype] .trend-head .score {
+	background: none;
+	-webkit-background-clip: border-box;
+	background-clip: border-box;
+	-webkit-text-fill-color: currentColor;
+	color: var(--talos-ui-ink);
+	font-size: var(--talos-type-body);
+	font-weight: 700;
+	line-height: 1.3;
+	animation: none;
+}
+
+/* ============================================================
+   UI polish v1 · ⑤ 去掉「影子套影子」
+   页头本身已带面板投影，内部标题卡与指标卡不再叠加 6px 硬投影；
+   可点击的指标卡在悬停 / 聚焦时保留 3px 轻抬起作为交互反馈。
+   各主题的边框粗细与配色（2026-07 实机反馈确定）保持不变。
+   ============================================================ */
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero :is(.module-hero-main, .module-hero-main:hover, .module-hero-stat) {
+	box-shadow: none;
+}
+
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero .module-hero-stat.is-interactive:is(:hover, :focus-visible) {
+	box-shadow: 3px 3px 0 color-mix(in srgb, var(--talos-ui-ink) 70%, transparent);
+}
+
+/* ============================================================
+   UI polish v1 · ⑥ 页头指标回到主题色板
+   2026-07-08 起指标统一取 --rose，在 Bauhaus 等主题里是色板外的粉色。
+   强调色改为跟随本页 --ac，数字本身用主题墨色。
+   ============================================================ */
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero {
+	--module-unified-ac: var(--ac);
+}
+
+.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+	.talos-ui-page-header.module-hero .module-hero-stat {
+	--stat-ac: var(--talos-ui-ink);
+}
+
+/* ============================================================
+   UI polish v1 · ⑦ 长文本不再撑破面板
+   detail-list 作为网格时，默认列宽取内容最小宽度，长且不换行的
+   错误模式文本会把列撑出面板（系统健康页实测溢出窗口右缘）。
+   列宽改为 minmax(0, 1fr)，文本按既有规则省略。
+   ============================================================ */
+.talos-console[data-talos-archetype] .detail-list {
+	min-width: 0;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.talos-console[data-talos-archetype] .detail-list > .detail-row {
+	min-width: 0;
+}
+
+/* ============================================================
+   UI polish v1 · ⑦ 空状态收紧
+   保留虚线占位卡的风格，高度从 76px 降到 44px，不再占掉一整块面板。
+   ============================================================ */
+.talos-console[data-talos-archetype] .empty {
+	min-height: 44px;
+	padding: 8px 12px;
+}
+
+.talos-console[data-talos-archetype] .talos-ui-empty-state {
+	padding: var(--talos-space-2) var(--talos-space-3);
+}
