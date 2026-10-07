@@ -87,6 +87,17 @@
   color: var(--text-normal);
 }
 
+/* 尚未开放的入口（如图片外发未纳入出库审计）：置灰并保留说明提示 */
+.claudian-input-nav-btn:disabled,
+.claudian-input-nav-btn.is-unavailable {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.claudian-input-nav-btn:disabled:hover {
+  color: var(--text-faint);
+}
+
 .claudian-input-nav-btn svg {
   width: 16px;
   height: 16px;
