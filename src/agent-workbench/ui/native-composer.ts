@@ -6,6 +6,13 @@ import type {
 import { LocalFilePreviewPicker } from "./file-preview/local-preview-modal";
 import { ContextMeter, type ContextUsage } from "./context-usage";
 
+/**
+ * 图片外发尚未纳入出库审计：发送前审计对任何图片都会拦截（image-egress-not-audited）。
+ * 在取得图片出库授权之前，入口直接置灰并说明原因，而不是让用户发送时才失败。
+ * 授权落地后把它改为 null 即恢复按钮、粘贴与拖入。
+ */
+export const IMAGE_INPUT_BLOCKED_REASON: string | null = "图片外发尚未纳入出库审计，暂不能发送图片";
+
 export interface NativeComposerDraft {
 	input: RuntimeInputBlock[];
 	context?: RuntimeExecutionContext;
@@ -107,7 +114,7 @@ export class NativeComposer {
 		left.append(
 			this.iconButton("paperclip", "添加 Vault 文件", () => this.openFilePicker()),
 			this.iconButton("file-search", "本地安全预览", () => new LocalFilePreviewPicker(this.options.app).open()),
-			this.iconButton("image", "添加图片", () => this.fileInput.click()),
+			this.imageButton(),
 			this.iconButton("server", "MCP 服务器", () => this.openMcpMenu()),
 			this.iconButton("wand-sparkles", "行内编辑当前选区", () => void this.submitInlineEdit()),
 		);
@@ -144,7 +151,7 @@ export class NativeComposer {
 		});
 		textarea.addEventListener("paste", (event) => {
 			const images = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
-			if (images.length) { event.preventDefault(); void this.addImages(images); }
+			if (images.length) { event.preventDefault(); this.acceptImages(images); }
 		});
 		root.addEventListener("dragover", (event) => { event.preventDefault(); root.classList.add("is-dragging"); });
 		root.addEventListener("dragleave", () => root.classList.remove("is-dragging"));
@@ -152,11 +159,27 @@ export class NativeComposer {
 			event.preventDefault();
 			root.classList.remove("is-dragging");
 			const images = Array.from(event.dataTransfer?.files ?? []).filter((file) => file.type.startsWith("image/"));
-			if (images.length) void this.addImages(images);
+			if (images.length) this.acceptImages(images);
 		});
 		container.appendChild(root);
 		this.root = root;
 		void this.discoverMcpServers();
+	}
+
+	private imageButton(): HTMLButtonElement {
+		if (!IMAGE_INPUT_BLOCKED_REASON) return this.iconButton("image", "添加图片", () => this.fileInput.click());
+		const button = this.iconButton("image", `添加图片（不可用：${IMAGE_INPUT_BLOCKED_REASON}）`, () => undefined);
+		button.disabled = true;
+		button.classList.add("is-unavailable");
+		return button;
+	}
+
+	private acceptImages(images: File[]): void {
+		if (IMAGE_INPUT_BLOCKED_REASON) {
+			new Notice(IMAGE_INPUT_BLOCKED_REASON);
+			return;
+		}
+		void this.addImages(images);
 	}
 
 	/** 上下文用量读数；null 时隐藏用量表。 */
