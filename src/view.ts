@@ -9,7 +9,6 @@ import type TalosPlugin from "./main";
 import { TalosSettingTab } from "./settings";
 import type {
 	GateItem,
-	MetricTile,
 	OutputCenter,
 	ProjectScene,
 	SignalItem,
@@ -60,7 +59,7 @@ import {
 	type TalosPeerStatusState,
 } from "./peer-status/talos-peer-status";
 import { WEEKDAYS, PAGE_ARCHETYPES, dailyRota, dailyTimeline, type QuyuanVoicePanelLike, type Collected, type OverviewAttention, type ApprovalDecisionFeedback, type CandidateDecisionFeedback } from "./ui/talos-view-model";
-import { fillCapabilityDistribution, fillGateStateChart, fillKnowledgeTreemap, fillOutputClosureChart, fillProjectPortfolioChart } from "./ui/charts/talos-view-charts";
+import { fillCapabilityDistribution, fillGateStateChart, fillOutputClosureChart, fillProjectPortfolioChart } from "./ui/charts/talos-view-charts";
 import { renderOverviewAttentionRows } from "./ui/pages/overview-page";
 import { renderTodayPage } from "./ui/pages/today-page";
 import { renderDailyPage } from "./ui/pages/daily-page";
@@ -735,10 +734,6 @@ export class TalosView extends ItemView {
 		return fillGateStateChart(this, parent, gates);
 	}
 
-	private fillKnowledgeTreemap(parent: HTMLElement,
-		metrics: MetricTile[]): void {
-		return fillKnowledgeTreemap(this, parent, metrics);
-	}
 
 	private fillOutputClosureChart(parent: HTMLElement,
 		platforms: OutputCenter["platforms"]): void {
