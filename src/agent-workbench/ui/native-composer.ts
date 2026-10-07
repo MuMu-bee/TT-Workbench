@@ -4,6 +4,7 @@ import type {
 	RuntimeInputBlock,
 } from "../contracts/runtime-adapter";
 import { LocalFilePreviewPicker } from "./file-preview/local-preview-modal";
+import { ContextMeter, type ContextUsage } from "./context-usage";
 
 export interface NativeComposerDraft {
 	input: RuntimeInputBlock[];
@@ -66,6 +67,7 @@ export class NativeComposer {
 	private fileInput: HTMLInputElement;
 	private selectedFiles: TFile[] = [];
 	private images: ImageDraft[] = [];
+	private contextMeter: ContextMeter | null = null;
 	private enabledMcpServers = new Set<string>();
 	private mcpServers: string[] = [];
 	private busy = false;
@@ -112,7 +114,8 @@ export class NativeComposer {
 		const submit = this.iconButton("arrow-up", "发送", () => void this.handleSubmitButton());
 		submit.classList.add("claudian-submit-btn");
 		this.submitButton = submit;
-		toolbar.append(left, submit);
+		this.contextMeter = new ContextMeter(doc);
+		toolbar.append(left, this.contextMeter.el, submit);
 		wrapper.appendChild(toolbar);
 		root.appendChild(wrapper);
 
@@ -154,6 +157,11 @@ export class NativeComposer {
 		container.appendChild(root);
 		this.root = root;
 		void this.discoverMcpServers();
+	}
+
+	/** 上下文用量读数；null 时隐藏用量表。 */
+	setContextUsage(usage: ContextUsage | null): void {
+		this.contextMeter?.update(usage);
 	}
 
 	private iconButton(icon: string, label: string, action: () => void): HTMLButtonElement {

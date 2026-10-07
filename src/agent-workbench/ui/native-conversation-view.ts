@@ -11,6 +11,7 @@ import { projectMessages } from "../storage/conversation-projection";
 import { conversationPreview } from "./conversation-display";
 import { NativeComposer, type NativeComposerDraft } from "./native-composer";
 import { NativeEventRenderer } from "./native-event-renderer";
+import { contextUsageFromEvent, type ContextUsage } from "./context-usage";
 
 export interface NativeConversationViewOptions {
 	leaf: WorkspaceLeaf;
@@ -54,6 +55,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 	private approvalRegion: HTMLElement | null = null;
 	private composerHost: HTMLElement | null = null;
 	private composer: NativeComposer | null = null;
+	private readonly contextUsage = new Map<string, ContextUsage>();
 	private renderer: NativeEventRenderer | null = null;
 	private activeConversationId: string | null = null;
 	private openConversationIds: string[] = [];
@@ -75,6 +77,12 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 
 	private isRunning(conversationId = this.activeConversationId): boolean {
 		return Boolean(conversationId && this.runningConversationIds.has(conversationId));
+	}
+
+	/** 用量事件不入会话存储（transient），按会话记住本次运行中最近一次读数。 */
+	private syncContextMeter(): void {
+		const id = this.activeConversationId;
+		this.composer?.setContextUsage(id ? this.contextUsage.get(id) ?? null : null);
 	}
 
 	private visibleEvents(events: AgentEvent[], manifest: ConversationManifest): AgentEvent[] {
@@ -249,6 +257,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 			this.activeConversationId = null;
 			this.renderTabs();
 			await this.renderer?.render([]);
+			this.syncContextMeter();
 			return;
 		}
 		const selected = saved?.activeConversationId && this.openConversationIds.includes(saved.activeConversationId)
@@ -321,6 +330,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		);
 		this.renderTabs();
 		await this.renderer?.render(this.visibleEvents(projection.events, projection.manifest));
+		this.syncContextMeter();
 		if (this.destroyed || requestVersion !== this.openRequestVersion) return;
 		const pendingUser = this.pendingUserEvents.get(id);
 		if (pendingUser) this.renderer?.appendPendingUser(pendingUser);
@@ -341,6 +351,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		if (!this.openConversationIds.length) {
 			this.renderTabs();
 			await this.renderer?.render([]);
+			this.syncContextMeter();
 			await this.persistUiState();
 			this.syncComposerState();
 			this.composer?.focus();
@@ -397,6 +408,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 			this.manifests.set(conversationId, projection.manifest);
 			this.renderTabs();
 			await this.renderer?.render(this.visibleEvents(projection.events, projection.manifest));
+			this.syncContextMeter();
 			await this.persistUiState();
 			return false;
 		}
@@ -419,6 +431,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		this.options.onSelectionChanged?.(projection.manifest.selection.runtimeId, projection.manifest.selection.model);
 		this.renderTabs();
 		await this.renderer?.render(this.visibleEvents(projection.events, projection.manifest));
+		this.syncContextMeter();
 		await this.persistUiState();
 		return handoffCreated;
 	}
@@ -503,7 +516,16 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 					events.push(event);
 					this.liveEvents.set(conversationId, events);
 				}
-				if (this.activeConversationId === conversationId) await this.renderer?.append(event);
+				if (this.activeConversationId === conversationId) {
+					await this.renderer?.append(event);
+					if (event.type === "usage.updated") {
+						const usage = contextUsageFromEvent(event);
+						if (usage) {
+							this.contextUsage.set(conversationId, usage);
+							this.syncContextMeter();
+						}
+					}
+				}
 			}
 			await this.refreshManifests();
 			this.renderTabs();
