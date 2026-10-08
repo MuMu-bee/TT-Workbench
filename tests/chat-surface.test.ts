@@ -102,9 +102,9 @@ describe("TalosChatSurface", () => {
 		expect(suspendSource).not.toContain("destroy()");
 	});
 
-	it("keeps the old command id while routing it into the TALOS chat page", () => {
+	it("keeps the old command id while routing it into the right sidebar chat", () => {
 		expect(mainSource).toContain('id: "open-quyuan-v2"');
-		expect(mainSource).toContain('leaf.view.navigateToPage("chat")');
+		expect(mainSource).toContain("await revealChatSidebar(this.app.workspace)");
 		expect(mainSource).toContain('id: "open-quyuan-v2-recovery"');
 	});
 });

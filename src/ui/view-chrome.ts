@@ -147,7 +147,13 @@ export function renderNav(view: TalosView): void {
 		item.setAttribute("tabindex", "0");
 		if (active) item.setAttribute("aria-current", "page");
 		const activate = () => {
-			view.pageRouter.selectPrimary(page.key);
+			// 助手：文字对话在右侧边栏打开（同 Claudian），主区切到同组的语音页。
+			if (page.key === "assistant") {
+				view.activePage = "jarvis";
+				void view.plugin.activateChatSidebar();
+			} else {
+				view.pageRouter.selectPrimary(page.key);
+			}
 			renderNav(view);
 			view.renderPage();
 		};

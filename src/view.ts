@@ -48,6 +48,7 @@ import {
 import {
 	decodeTalosViewState,
 	encodeTalosViewState,
+	DEFAULT_PAGE_KEY,
 	TalosPageRouter,
 } from "./ui/page-router";
 import { TalosChatSurface } from "./quyuan/chat-surface";
@@ -559,6 +560,15 @@ export class TalosView extends ItemView {
 	}
 
 	renderPage(): void {
+		// AI 对话改为常驻右侧边栏：任何入口切到 chat 都转去右栏，主区留在当前页。
+		if (this.activePage === "chat") {
+			const opened = this.renderedPage !== null;
+			this.activePage = this.renderedPage && this.renderedPage !== "chat" ? this.renderedPage : DEFAULT_PAGE_KEY;
+			if (this.pageNavEl) this.renderNav();
+			this.renderSecondaryTabs();
+			if (opened) void this.plugin.activateChatSidebar();
+			if (this.renderedPage === this.activePage) return;
+		}
 		const page = this.pageEl;
 		// 与 Lens 一致：离开页面时记下滚动位置，切回时恢复；同页刷新保持原位。
 		const leaving = this.renderedPage;

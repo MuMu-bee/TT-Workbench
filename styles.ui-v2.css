@@ -3709,3 +3709,28 @@ body[data-talos-vault-theme] .talos-console
 	flex-wrap: wrap;
 	gap: 8px;
 }
+
+/* 右侧边栏 AI 对话（2026-10-08）：与 Claudian 一样常驻右栏，工作台占满整栏高度。 */
+.workspace-leaf-content[data-type="talos-agent-chat"] .view-content.talos-chat-sidebar {
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	overflow: hidden;
+}
+
+.talos-chat-sidebar__surface {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.talos-chat-sidebar__surface > * {
+	flex: 1 1 0;
+	min-height: 0;
+}
+
+.talos-chat-sidebar__error {
+	padding: 16px;
+	color: var(--text-muted);
+}

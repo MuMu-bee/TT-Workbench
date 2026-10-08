@@ -1,6 +1,7 @@
 import { FileSystemAdapter, Notice, Plugin, TFile, WorkspaceLeaf, addIcon, debounce } from "obsidian";
 import { DEFAULT_SETTINGS, TalosSettingTab, TalosSettings, normalizeVisualTheme } from "./settings";
 import { TalosView, VIEW_TYPE_TALOS } from "./view";
+import { TalosChatSidebarView, VIEW_TYPE_TALOS_CHAT, revealChatSidebar } from "./plugin/chat-sidebar-view";
 import { AgentWorkbenchService } from "./agent-workbench/core/agent-workbench-service";
 import { CLAUDE_SDK_BUNDLE_FILE, configureClaudeSdkBundle } from "./agent-workbench/transports/claude-sdk-port";
 import { ObsidianWorkbenchStorage } from "./agent-workbench/storage/obsidian-workbench-storage";
@@ -121,6 +122,19 @@ export default class TalosPlugin extends Plugin {
 				async () => (await this.waitForAgentWorkbench()).service,
 			)
 		);
+
+		this.registerView(
+			VIEW_TYPE_TALOS_CHAT,
+			(leaf: WorkspaceLeaf) => new TalosChatSidebarView(leaf, {
+				icon: TALOS_ICON,
+				waitForAgentWorkbench: () => this.waitForAgentWorkbench(),
+			})
+		);
+		this.addCommand({
+			id: "open-chat-sidebar",
+			name: "在右侧边栏打开 AI 对话",
+			callback: () => void this.activateChatSidebar(),
+		});
 
 		this.addRibbonIcon(TALOS_ICON, "打开 TALOS 控制台", () => {
 			void this.activateTalosView();
@@ -348,12 +362,8 @@ export default class TalosPlugin extends Plugin {
 	// 旧版右侧栏 JarvisView 已随 C-3b 移除；语音统一走控制台内屈原语音页。
 	async activateQuyuanV2View(): Promise<void> {
 		try {
-			const leaf = await this.openOrReviveTalosLeaf(false);
-			if (!leaf) throw new Error("无法创建 TALOS 主视图");
-			if (leaf.view instanceof TalosView) {
-				leaf.view.navigateToPage("chat");
-			}
-			void this.app.workspace.revealLeaf(leaf);
+			const leaf = await revealChatSidebar(this.app.workspace);
+			if (!leaf) throw new Error("无法在右侧边栏打开 AI 对话");
 		} catch (error) {
 			this.recordQuyuanRuntimeError("activateQuyuanV2View", error);
 			console.error("TALOS AI chat failed to open", error);
@@ -396,6 +406,11 @@ export default class TalosPlugin extends Plugin {
 	async activateTalosView(): Promise<void> {
 		const leaf = await this.openOrReviveTalosLeaf(false);
 		if (leaf) void this.app.workspace.revealLeaf(leaf);
+	}
+
+	/** AI 对话常驻右侧边栏（与 Claudian 一致），主区页面保持不动。 */
+	async activateChatSidebar(): Promise<void> {
+		await this.activateQuyuanV2View();
 	}
 
 	/** 打开 TALOS 控制台并切到指定页面（命令面板入口）。 */
