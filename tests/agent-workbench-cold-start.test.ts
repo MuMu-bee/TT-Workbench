@@ -95,12 +95,13 @@ describe("agent workbench cold-start lifecycle", () => {
 		expect(
 			mainSource.match(/await leaf\.setViewState\(\{ type: VIEW_TYPE_TALOS, active: true \}\);/g),
 		).toHaveLength(1);
-		expect(viewSource).toContain("new DeferredChatWorkbench");
-		expect(viewSource).toContain("await view.plugin.waitForAgentWorkbench()");
-		expect(viewSource).toMatch(
-			/const \{ service \}\s*=\s*await view\.plugin\.waitForAgentWorkbench\(\)/,
+		// TALOS 智能体在右侧边栏视图里懒加载，仍共用同一个初始化 promise。
+		expect(mainSource).toContain("new DeferredChatWorkbench");
+		expect(mainSource).toMatch(
+			/const \{ service \}\s*=\s*await this\.host\.waitForAgentWorkbench\(\)/,
 		);
-		expect(viewSource).toContain('view.activePage !== "chat" || !page.isConnected');
+		expect(mainSource).toContain("waitForAgentWorkbench: () => this.waitForAgentWorkbench()");
+		expect(viewSource).toContain('view.activePage !== "harness" || !page.isConnected');
 		expect(viewSource).toContain("...encodeTalosViewState(this.activePage)");
 		expect(viewSource).toContain("this.pageRouter.navigate(decodeTalosViewState(state))");
 		expect(viewSource).toContain("this.app.workspace.requestSaveLayout()");

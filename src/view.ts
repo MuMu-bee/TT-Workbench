@@ -310,7 +310,7 @@ export class TalosView extends ItemView {
 			"data-talos-archetype",
 			PAGE_ARCHETYPES[this.activePage] || "workspace"
 		);
-		for (const pageKey of [...LEGACY_PAGE_KEYS, "chat", "settings"]) {
+		for (const pageKey of [...LEGACY_PAGE_KEYS, "chat", "harness", "settings"]) {
 			this.contentEl.classList.remove(`page-${pageKey}`);
 		}
 		for (const page of PRIMARY_NAVIGATION) {
@@ -328,6 +328,8 @@ export class TalosView extends ItemView {
 		if ((LEGACY_SECTION_PAGES as readonly string[]).includes(this.activePage)) {
 			this.contentEl.classList.add(`section-${this.activePage}`);
 		}
+		// Harness 沿用原对话页的整屏布局（.section-chat）。
+		if (this.activePage === "harness") this.contentEl.classList.add("section-chat");
 		this.updateCosmosHeader();
 	}
 
@@ -581,7 +583,7 @@ export class TalosView extends ItemView {
 		this.renderSecondaryTabs();
 		// 已在屈原页且已挂载：保持不动（不打断朗读/不闪跳）
 		if (this.activePage === "jarvis" && this.jarvisMounted) return;
-		if (this.activePage === "chat" && this.chatMounted) return;
+		if (this.activePage === "harness" && this.chatMounted) return;
 		// 离开屈原或换页：先卸载屈原
 		if (this.jarvisMounted) this.unmountJarvisSafely();
 		if (this.chatMounted) {
@@ -595,7 +597,7 @@ export class TalosView extends ItemView {
 		if (!d) { page.createDiv({ cls: "empty", text: "加载中…" }); return; }
 		switch (this.activePage) {
 			case "today": this.pageToday(page, d); break;
-			case "chat": void this.pageChat(page); break;
+			case "harness": void this.pageChat(page); break;
 			case "jarvis": void this.pageJarvis(page); break;
 			case "daily": this.pageDaily(page, d); break;
 			case "output": this.pageOutput(page, d); break;
@@ -611,7 +613,7 @@ export class TalosView extends ItemView {
 		}
 		this.wireModuleSelection(page, this.activePage);
 		this.syncPixelScene(d);
-		if (this.activePage !== "chat" && this.activePage !== "jarvis") {
+		if (this.activePage !== "harness" && this.activePage !== "jarvis") {
 			this.contentEl.scrollTop = scrollTarget;
 		}
 	}

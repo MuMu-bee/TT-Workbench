@@ -29,7 +29,7 @@ describe("TALOS navigation model", () => {
 			["today", "daily"],
 			["inbox", "knowledge", "output"],
 			["projects", "talos"],
-			["chat", "jarvis"],
+			["chat", "jarvis", "harness"],
 			["health", "vault", "capability", "identity"],
 			["settings"],
 		]);
@@ -39,9 +39,12 @@ describe("TALOS navigation model", () => {
 	it("renders every secondary page that the navigation can open", () => {
 		for (const page of PRIMARY_NAVIGATION) {
 			for (const child of page.children) {
+				// AI 对话在右侧边栏打开，主区不渲染 chat 页
+				if (child.key === "chat") continue;
 				expect(viewSource, `missing renderer for ${child.key}`).toContain(`case "${child.key}": `);
 			}
 		}
+		expect(viewSource).toContain('if (this.activePage === "chat") {');
 		expect(viewSource).not.toContain('case "overview": ');
 	});
 

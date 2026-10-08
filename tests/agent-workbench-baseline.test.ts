@@ -15,10 +15,11 @@ describe("D-TLP-034 ownership baseline", () => {
 		expect(main).not.toContain("await super.onload()");
 	});
 
-	it("keeps the serialized codex slot while exposing TALOS Agent", () => {
-		expect(view).toContain('id: "codex"');
-		expect(view).toContain('label: "TALOS 智能体"');
-		expect(view).toContain("TalosAgentWorkbench");
+	// 2026-10-08：TALOS 智能体改为常驻右侧边栏，主区助手组只保留 Harness 页。
+	it("hosts TALOS Agent in the right sidebar view and keeps Harness in the console", () => {
+		expect(main).toContain("new TalosAgentWorkbench({ leaf: this.leaf, service })");
+		expect(view).not.toContain("TalosAgentWorkbench");
+		expect(view).toContain("new HarnessWorkbench({");
 	});
 
 	it("never rewrites legacy Claudian sessions during startup", () => {

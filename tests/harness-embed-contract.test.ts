@@ -83,12 +83,14 @@ describe("harness embed contract (D-TLP-014)", () => {
 		).toThrow();
 	});
 
-	it("wires the chat page to the dual-channel harness switcher", () => {
+	it("gives DeepSeek Harness its own assistant page while TALOS Agent lives in the sidebar", () => {
 		const view = readViewSource();
-		expect(view).toContain("HarnessSwitcherWorkbench");
-		expect(view).toContain("HarnessWorkbench");
-		expect(view).toContain("TalosAgentWorkbench");
+		// 2026-10-08：双通道拆分——Harness 为「助手 · Harness」主区页，TALOS 智能体常驻右侧边栏。
+		expect(view).not.toContain("HarnessSwitcherWorkbench");
+		expect(view).toContain("new HarnessWorkbench({");
+		expect(view).toContain('case "harness": void this.pageChat(page); break;');
 		expect(view).toContain("getHarnessManager");
+		expect(readPluginSource()).toContain("TalosAgentWorkbench");
 		// D-TLP-034（2026-08-26 改写）：对话页为 DeepSeek Harness｜TALOS 智能体双通道，
 		// 恢复地址由 TALOS 原生 renderer 接管，
 		// 构造隔离代理不直接出现在 view.ts。

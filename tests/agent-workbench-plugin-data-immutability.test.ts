@@ -20,7 +20,8 @@ describe("agent workbench plugin data immutability", () => {
 		expect(mainSource).not.toContain("stored.agentWorkbenchPermissionRules");
 		expect(mainSource).not.toContain("stored.agentWorkbenchBindings");
 		expect(mainSource).toContain("chat-surface.json");
-		expect(viewSource).toContain("view.plugin.setAgentWorkbenchSurface(id)");
+		// 双通道切换已拆分（对话进右栏、Harness 独立页），控制台不再写通道选择。
+		expect(viewSource).not.toContain("setAgentWorkbenchSurface");
 		expect(viewSource).not.toContain("this.plugin.talosSettings.harnessSurface = id");
 		expect(viewSource).not.toContain("view.plugin.talosSettings.harnessSurface = id");
 	});

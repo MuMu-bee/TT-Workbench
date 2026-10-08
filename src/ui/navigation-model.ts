@@ -16,6 +16,7 @@ export type TalosSecondaryPageKey =
 	| "talos"
 	| "chat"
 	| "jarvis"
+	| "harness"
 	| "health"
 	| "vault"
 	| "capability"
@@ -80,10 +81,11 @@ export const PRIMARY_NAVIGATION: readonly TalosPrimaryPage[] = [
 		key: "assistant",
 		label: "助手",
 		icon: "messages-square",
-		subtitle: "AI 对话与屈原语音",
+		subtitle: "AI 对话（右侧边栏）、屈原语音与 DeepSeek Harness",
 		children: [
 			{ key: "chat", label: "AI 对话", icon: "messages-square" },
 			{ key: "jarvis", label: "语音", icon: "audio-lines" },
+			{ key: "harness", label: "Harness", icon: "square-terminal" },
 		],
 	},
 	{
@@ -142,6 +144,8 @@ const PAGE_ROUTES: Readonly<Record<string, TalosPageRoute>> = {
 	"talos-quyuan-view": { primary: "assistant", secondary: "chat" },
 	voice: { primary: "assistant", secondary: "jarvis" },
 	jarvis: { primary: "assistant", secondary: "jarvis" },
+	harness: { primary: "assistant", secondary: "harness" },
+	dsh: { primary: "assistant", secondary: "harness" },
 	system: { primary: "system", secondary: "health" },
 	health: { primary: "system", secondary: "health" },
 	vault: { primary: "system", secondary: "vault" },

@@ -1,6 +1,5 @@
 // TALOS 控制台TALOS、收件箱、对话、语音与设置页渲染；由 TalosView 委托调用。
 import type { Collected } from "../talos-view-model";
-import { DeferredChatWorkbench } from "../../quyuan/deferred-chat-workbench";
 import type { GateItem } from "../../types";
 import { Notice, setIcon } from "obsidian";
 import { TalosChatSurface } from "../../quyuan/chat-surface";
@@ -15,65 +14,27 @@ import { mountFlowPipeline } from "../flow-pipeline";
 export async function renderChatPage(view: TalosView, page: HTMLElement): Promise<void> {
 	try {
 		if (!view.chatSurface) {
-			// D-TLP-014/D-TLP-015：对话页为双通道滑动切换器——
-			// DeepSeek Harness（iframe 嵌入 dsh web 桌面界面）｜
-			// TALOS 智能体（序列化仍使用 codex 别名以支持二进制回滚）。
-			// TALOS 原生工作台另保留独立恢复视图（命令 open-quyuan-v2-recovery）。
+			// 2026-10-08：TALOS 智能体改为常驻右侧边栏（plugin/chat-sidebar-view.ts），
+			// 主区「助手 · Harness」页只承载 DeepSeek Harness（iframe 嵌入 dsh web 桌面界面）。
 			const { HarnessWorkbench } = await import(
 				"../../harness/harness-workbench"
 			);
-			const { TalosAgentWorkbench } = await import(
-				"../../agent-workbench/ui/talos-agent-workbench"
-			);
-			const { HarnessSwitcherWorkbench, normalizeHarnessSurface } =
-				await import("../../harness/harness-switcher");
 			view.chatSurface = new TalosChatSurface(
-				new HarnessSwitcherWorkbench({
-					channels: [
-						{
-							id: "dsh",
-							label: "DeepSeek Harness",
-							workbench: new HarnessWorkbench({
-								manager: view.plugin.getHarnessManager(),
-							}),
-						},
-						{
-							id: "codex",
-							label: "TALOS 智能体",
-							workbench: new DeferredChatWorkbench(async () => {
-								const { service } =
-									await view.plugin.waitForAgentWorkbench();
-								return new TalosAgentWorkbench({
-									leaf: view.leaf,
-									service,
-								});
-							}),
-						},
-					],
-					getActiveId: () =>
-						normalizeHarnessSurface(
-							view.plugin.getAgentWorkbenchSurface()
-						),
-					setActiveId: (id) => {
-						view.plugin.setAgentWorkbenchSurface(id);
-					},
-					getSwitchHost: () => view.chatSwitchHostEl,
-					onSwitchError: (_id, error) => {
-						new Notice(`AI 工作区切换失败：${error instanceof Error ? error.message : String(error)}`);
-					},
+				new HarnessWorkbench({
+					manager: view.plugin.getHarnessManager(),
 				})
 			);
 		}
-		if (!view.chatSurface) throw new Error("AI 对话 surface 未创建");
+		if (!view.chatSurface) throw new Error("Harness surface 未创建");
 		await view.chatSurface.mount(page, "chat");
-		if (view.activePage !== "chat") {
+		if (view.activePage !== "harness") {
 			await view.chatSurface.unmount();
 			return;
 		}
 		view.chatMounted = true;
 	} catch (error) {
-		if (view.activePage !== "chat" || !page.isConnected) return;
-		console.error("TALOS AI chat surface failed to mount", error);
+		if (view.activePage !== "harness" || !page.isConnected) return;
+		console.error("TALOS harness surface failed to mount", error);
 		view.chatMounted = false;
 		page.empty();
 		const panel = page.createDiv({
@@ -83,7 +44,7 @@ export async function renderChatPage(view: TalosView, page: HTMLElement): Promis
 		const icon = panel.createDiv({ cls: "talos-chat-migration-icon" });
 		setIcon(icon, "triangle-alert");
 		const copy = panel.createDiv({ cls: "talos-chat-migration-copy" });
-		copy.createEl("h2", { text: "AI 对话加载失败" });
+		copy.createEl("h2", { text: "DeepSeek Harness 加载失败" });
 		copy.createEl("p", {
 			text: error instanceof Error ? error.message : String(error),
 		});

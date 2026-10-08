@@ -29,9 +29,8 @@ describe("AI chat workspace v2", () => {
 		);
 		expect(drawerMount).toBeGreaterThan(-1);
 		expect(hostMount).toBeGreaterThan(drawerMount);
-		expect(view).toContain(
-			"getSwitchHost: () => view.chatSwitchHostEl"
-		);
+		// 2026-10-08：主区不再挂双通道切换，宿主保留为空并由 :empty 隐藏。
+		expect(view).not.toContain("getSwitchHost: () => view.chatSwitchHostEl");
 		expect(switcher).toContain("this.attachSwitchControl()");
 		expect(css).toMatch(
 			/\.talos-console\s+\.talos-chat-nav-switch-host\s*\{[^}]*display:\s*none;/s

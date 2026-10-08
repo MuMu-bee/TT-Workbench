@@ -26,6 +26,7 @@ export const PAGE_ARCHETYPES: Record<string, TalosPageArchetype> = {
 	capability: "knowledge",
 	chat: "workspace",
 	jarvis: "workspace",
+	harness: "workspace",
 	settings: "settings",
 };
 export const dailyRota = (P: VaultPaths, tasksPath: string) => [
