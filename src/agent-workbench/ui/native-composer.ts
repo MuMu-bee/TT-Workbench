@@ -223,7 +223,7 @@ export class NativeComposer {
 
 	private openMcpMenu(): void {
 		this.dropdown.replaceChildren();
-		this.dropdown.hidden = false;
+		this.setDropdownVisible(true);
 		if (!this.mcpServers.length) {
 			const empty = this.dropdown.ownerDocument.createElement("div");
 			empty.className = "claudian-mention-empty";
@@ -267,7 +267,7 @@ export class NativeComposer {
 
 	private renderCommandSuggestions(commands: readonly { value: string; label: string }[]): void {
 		this.dropdown.replaceChildren();
-		this.dropdown.hidden = commands.length === 0;
+		this.setDropdownVisible(commands.length > 0);
 		for (const command of commands) {
 			const button = this.dropdown.ownerDocument.createElement("button");
 			button.type = "button";
@@ -284,7 +284,7 @@ export class NativeComposer {
 
 	private renderFileSuggestions(files: TFile[], start: number, end: number): void {
 		this.dropdown.replaceChildren();
-		this.dropdown.hidden = false;
+		this.setDropdownVisible(true);
 		if (!files.length) {
 			const empty = this.dropdown.ownerDocument.createElement("div");
 			empty.className = "claudian-mention-empty";
@@ -319,8 +319,17 @@ export class NativeComposer {
 		this.renderFileSuggestions(files, this.textarea.selectionStart, this.textarea.selectionStart);
 	}
 
+	/**
+	 * 共用下拉（@ 文件、/ 命令、MCP 菜单）。Claudian 视觉 ABI 默认 display:none，
+	 * 只认 .visible；只切 hidden 属性会让下拉永远不出现，因此两者同步维护。
+	 */
+	private setDropdownVisible(visible: boolean): void {
+		this.dropdown.hidden = !visible;
+		this.dropdown.classList.toggle("visible", visible);
+	}
+
 	private closeDropdown(): void {
-		this.dropdown.hidden = true;
+		this.setDropdownVisible(false);
 		this.dropdown.replaceChildren();
 	}
 
