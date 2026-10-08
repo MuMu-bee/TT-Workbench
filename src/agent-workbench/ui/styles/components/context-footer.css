@@ -9,6 +9,11 @@
   cursor: default;
 }
 
+/* 没有用量读数时隐藏：上面的 display:flex 会盖过浏览器默认的 [hidden] 规则 */
+.claudian-context-meter[hidden] {
+  display: none;
+}
+
 /* Custom tooltip */
 .claudian-context-meter::after {
   content: attr(data-tooltip);

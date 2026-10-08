@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createAgentEvent, type AgentEvent } from "../src/agent-workbench/contracts/agent-events";
 import { contextUsageFromEvent, describeContextUsage, formatTokens } from "../src/agent-workbench/ui/context-usage";
@@ -48,5 +50,10 @@ describe("context usage meter", () => {
 
 	it("formats token counts compactly", () => {
 		expect([formatTokens(950), formatTokens(12_340), formatTokens(1_250_000)]).toEqual(["950", "12.3k", "1.3M"]);
+	});
+
+	it("really hides the meter when there is no reading", () => {
+		const css = readFileSync(fileURLToPath(new URL("../src/agent-workbench/ui/styles/components/context-footer.css", import.meta.url)), "utf8");
+		expect(css).toMatch(/\.claudian-context-meter\[hidden\] \{\s*display: none;/);
 	});
 });
