@@ -12,6 +12,7 @@ import { conversationPreview } from "./conversation-display";
 import { NativeComposer, type NativeComposerDraft } from "./native-composer";
 import { NativeEventRenderer } from "./native-event-renderer";
 import { contextUsageFromEvent, type ContextUsage } from "./context-usage";
+import { renderInlineDiff, requestInlineReplacement } from "./inline-edit";
 
 export interface NativeConversationViewOptions {
 	leaf: WorkspaceLeaf;
@@ -573,25 +574,14 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		if (!markdown) return;
 		const original = markdown.editor.getSelection();
 		if (!original.trim()) return;
-		const instruction = draft.input.flatMap((block) => block.type === "text" ? [block.text] : []).join("\n").trim() || "请改写选区，保持原意，只返回替换文本。";
-		const request: NativeComposerDraft = {
-			...draft,
-			input: [{ type: "text", text: `${instruction}\n\n<selection>\n${original}\n</selection>` }],
-		};
-		const before = await this.options.service.createConversation("行内编辑预览");
-		let replacement = "";
-		try {
-			for await (const event of this.options.service.executeConversationTurn(before.conversationId, request)) {
-				if (event.type === "assistant.final") replacement = textValue(event.payload.text, replacement);
-				else if (event.type === "assistant.delta") replacement += textValue(event.payload.text);
-			}
-			if (!replacement.trim()) throw new Error("智能体没有返回替换文本");
-			const accepted = await this.confirmInlineEdit(original, replacement.trim());
-			if (accepted && markdown.editor.getSelection() === original) markdown.editor.replaceSelection(replacement.trim());
-			else if (accepted) new Notice("编辑器选区已变化，未应用替换");
-		} finally {
-			await this.options.service.setConversationLifecycle(before.conversationId, "deleted");
-		}
+		const instruction = draft.input.flatMap((block) => block.type === "text" ? [block.text] : []).join("\n");
+		const replacement = await requestInlineReplacement(this.options.service, original, instruction, {
+			context: draft.context,
+			toolPolicy: draft.toolPolicy,
+		});
+		const accepted = await this.confirmInlineEdit(original, replacement);
+		if (accepted && markdown.editor.getSelection() === original) markdown.editor.replaceSelection(replacement);
+		else if (accepted) new Notice("编辑器选区已变化，未应用替换");
 	}
 
 	private async refineInstruction(source: string): Promise<string> {
@@ -617,9 +607,9 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 			if (!this.approvalRegion) { resolve(false); return; }
 			const card = this.approvalRegion.ownerDocument.createElement("div");
 			card.className = "claudian-inline-diff-preview";
-			const body = card.ownerDocument.createElement("pre");
+			const body = card.ownerDocument.createElement("div");
 			body.className = "claudian-inline-diff-preview-body";
-			body.textContent = `- ${original}\n+ ${replacement}`;
+			renderInlineDiff(body, original, replacement);
 			const actions = card.ownerDocument.createElement("div");
 			actions.className = "claudian-inline-preview-actions";
 			const finish = (value: boolean) => { card.remove(); resolve(value); };

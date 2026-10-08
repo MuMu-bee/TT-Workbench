@@ -62,6 +62,7 @@ import { executeTalosAskCommand, getTalosProviderFacade, syncAgentWorkbenchProvi
 import { createTalosActionRuntime } from "./plugin/action-runtime";
 import { initializeFirstRunContext } from "./plugin/first-run";
 import { registerPageCommands } from "./plugin/page-commands";
+import { registerInlineEditCommand } from "./plugin/inline-edit-command";
 
 // 统一的 TALOS 品牌图标：TalosBall 0.3.0 的固定 blob 静态姿态。Ribbon 与视图标签共用。
 export const TALOS_ICON = "talos-logo";
@@ -158,6 +159,7 @@ export default class TalosPlugin extends Plugin {
 			callback: () => void this.executeTalosAskCommand(),
 		});
 		registerPageCommands(this, (pageKey) => this.openTalosPage(pageKey));
+		registerInlineEditCommand(this);
 		this.addCommand({
 			id: "refresh-peer-status",
 			name: "刷新状态桥快照（只读）",
