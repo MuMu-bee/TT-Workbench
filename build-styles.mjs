@@ -14,6 +14,8 @@ const workbenchStyleIndex = resolve(workbenchStyleRoot, "index.css");
 const quyuanShellSource = resolve(root, "styles.quyuan-shell.css");
 const layoutOverridesSource = resolve(root, "styles.layout-overrides.css");
 const uiV2Source = resolve(root, "styles.ui-v2.css");
+const lensHostSource = resolve(root, "styles.lens-host.css");
+const lensSource = resolve(root, "styles.lens.css");
 const output = resolve(root, "styles.css");
 const importPattern = /^\s*@import\s+(?:url\()?['"]([^'"]+)['"]\)?\s*;/gm;
 
@@ -22,6 +24,8 @@ if (!existsSync(workbenchStyleIndex)) throw new Error("Missing TALOS agent workb
 if (!existsSync(quyuanShellSource)) throw new Error("Missing styles.quyuan-shell.css");
 if (!existsSync(layoutOverridesSource)) throw new Error("Missing styles.layout-overrides.css");
 if (!existsSync(uiV2Source)) throw new Error("Missing styles.ui-v2.css");
+if (!existsSync(lensHostSource)) throw new Error("Missing styles.lens-host.css");
+if (!existsSync(lensSource)) throw new Error("Missing styles.lens.css (run scripts/sync-lens-css.mjs)");
 
 const index = readFileSync(workbenchStyleIndex, "utf8");
 const imports = [...index.matchAll(importPattern)].map((match) => match[1]);
@@ -51,7 +55,11 @@ parts.push(
 	"\n/* TALOS 2.0 validated console and chat layout overrides */\n",
 	readFileSync(layoutOverridesSource, "utf8"),
 	"\n/* TALOS unified interface language v2 · D-TLP-019 */\n",
-	readFileSync(uiV2Source, "utf8")
+	readFileSync(uiV2Source, "utf8"),
+	"\n/* TALOS Lens interface language · host reset (must precede styles.lens.css) */\n",
+	readFileSync(lensHostSource, "utf8"),
+	"\n/* TALOS Lens interface language · synced from TALOS Lens source */\n",
+	readFileSync(lensSource, "utf8")
 );
 
 /**

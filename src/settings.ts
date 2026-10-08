@@ -40,6 +40,12 @@ export type TalosVisualTheme =
 	| "executive-brief"
 	| "paper-ink";
 
+export type TalosUiLanguage = "classic" | "lens";
+
+export function normalizeUiLanguage(value: unknown): TalosUiLanguage {
+	return value === "lens" ? "lens" : "classic";
+}
+
 export const TALOS_SETTINGS_SCHEMA_VERSION = 1;
 
 /** 屈原语音舞台背景效果（独立于全局 visualTheme） */
@@ -68,6 +74,10 @@ export interface TalosSettings {
 	eyebrow: string;
 	mainTitle: string;
 	visualTheme: TalosVisualTheme;
+	/** 界面语言：TALOS 经典控制台，或按 TALOS Lens 布局与视觉语言重排的版本。 */
+	uiLanguage: TalosUiLanguage;
+	/** Lens 界面语言的深浅外观（经典界面使用 visualTheme）。 */
+	lensAppearance: "light" | "dark";
 	syncVaultTheme: boolean;
 	inboxFolder: string;
 	dailyFolder: string;
@@ -172,6 +182,8 @@ export const DEFAULT_SETTINGS: TalosSettings = {
 	eyebrow: "超级大脑 · CONTEXT OS",
 	mainTitle: "TALOS 系统控制台",
 	visualTheme: "geometric-modern",
+	uiLanguage: "classic",
+	lensAppearance: "light",
 	syncVaultTheme: true,
 	inboxFolder: "00-收件箱",
 	dailyFolder: "01-日志",
@@ -257,6 +269,8 @@ type TextSettingKey = {
 type FreeTextSettingKey = Exclude<
 	TextSettingKey,
 	| "visualTheme"
+	| "uiLanguage"
+	| "lensAppearance"
 	| "quyuanBackground"
 	| "quyuanVoiceInputMode"
 	| "quyuanVoiceSessionJson"
@@ -509,10 +523,41 @@ export class TalosSettingTab extends PluginSettingTab {
 
 	// ---------- Tab：界面 ----------
 	private renderUi(c: HTMLElement): void {
-		this.textIn(c, "主标题", "今日页与控制台标题", "mainTitle");
+		new Setting(c)
+			.setName("界面语言")
+			.setDesc("TALOS 经典控制台，或按 TALOS Lens 的布局与视觉语言重排的版本；两者共用同一份数据，切换立即生效。")
+			.addDropdown((d) =>
+				d
+					.addOption("classic", "TALOS 经典")
+					.addOption("lens", "Lens")
+					.setValue(this.plugin.talosSettings.uiLanguage)
+					.onChange(async (v) => {
+						this.plugin.talosSettings.uiLanguage = normalizeUiLanguage(v);
+						await this.plugin.saveTalosSettings();
+						this.plugin.applyViewSettings();
+						this.rerender();
+					})
+			);
+		if (this.plugin.talosSettings.uiLanguage === "lens") {
+			new Setting(c)
+				.setName("Lens 外观")
+				.setDesc("Lens 界面语言的浅色或深色外观。")
+				.addDropdown((d) =>
+					d
+						.addOption("light", "浅色")
+						.addOption("dark", "深色")
+						.setValue(this.plugin.talosSettings.lensAppearance)
+						.onChange(async (v) => {
+							this.plugin.talosSettings.lensAppearance = v === "dark" ? "dark" : "light";
+							await this.plugin.saveTalosSettings();
+							this.plugin.applyViewSettings();
+						})
+				);
+		}
+		this.textIn(c, "主标题", "今日页标题；Lens 界面用作问候语里的名字", "mainTitle");
 		new Setting(c)
 			.setName("视觉风格")
-			.setDesc("八套 TALOS 视觉风格。")
+			.setDesc("八套 TALOS 视觉风格（经典界面）。")
 			.addDropdown((d) =>
 				d
 					.addOption("aurora", "Aurora 原版")

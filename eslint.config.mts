@@ -20,6 +20,8 @@ export default tseslint.config(
 		// Node .mjs 合同由 Vitest 执行（bundle 守卫有专项测试）
 		'scripts/check-peer-status-bundle.mjs',
 		'scripts/check-claude-sdk-split.mjs',
+		// Lens 样式同步脚本：开发期手动运行的 Node 工具，产物 styles.lens.css 由测试校验
+		'scripts/sync-lens-css.mjs',
 		'esbuild.config.mjs',
 		'third-party-licenses.mjs',
 		// Node 安装脚本由 SDK 补丁回归测试执行；不适用 Obsidian 类型规则。

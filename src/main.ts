@@ -1,5 +1,5 @@
 import { FileSystemAdapter, Notice, Plugin, TFile, WorkspaceLeaf, addIcon, debounce } from "obsidian";
-import { DEFAULT_SETTINGS, TalosSettingTab, TalosSettings, normalizeVisualTheme } from "./settings";
+import { DEFAULT_SETTINGS, TalosSettingTab, TalosSettings, normalizeUiLanguage, normalizeVisualTheme } from "./settings";
 import { TalosView, VIEW_TYPE_TALOS } from "./view";
 import { TalosChatSidebarView, VIEW_TYPE_TALOS_CHAT, revealChatSidebar } from "./plugin/chat-sidebar-view";
 import { createCustomApiHost } from "./plugin/custom-api-modal";
@@ -273,7 +273,8 @@ export default class TalosPlugin extends Plugin {
 	}
 
 	private applyVaultTheme(): void {
-		if (!this.talosSettings.syncVaultTheme) {
+		// Lens 界面语言自带完整视觉规范；全库主题同步只服务经典界面，避免全局按钮规则覆盖 Lens。
+		if (!this.talosSettings.syncVaultTheme || this.talosSettings.uiLanguage === "lens") {
 			activeDocument.body.removeAttribute("data-talos-vault-theme");
 			return;
 		}
@@ -475,6 +476,8 @@ export default class TalosPlugin extends Plugin {
 		settings.quyuanVadCdn = "";
 		settings.quyuanVadModel = "";
 		settings.visualTheme = normalizeVisualTheme(settings.visualTheme);
+		settings.uiLanguage = normalizeUiLanguage(settings.uiLanguage);
+		if (settings.lensAppearance !== "dark") settings.lensAppearance = "light";
 		// 屈原背景效果容错：只接受合法值，否则回退默认
 		if (settings.quyuanBackground !== "letter-glitch" && settings.quyuanBackground !== "grid-scan") {
 			settings.quyuanBackground = "letter-glitch";

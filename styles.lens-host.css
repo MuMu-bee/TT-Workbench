@@ -1,0 +1,38 @@
+/* ============================================================
+   Lens 界面语言宿主（2026-10-08）
+   TALOS Lens 原生运行在只有浏览器默认样式的 WebView 里；插件里它挂在 Obsidian
+   视图中，Obsidian 的全局 button / input / h1 等元素样式会渗进来。这里在 Lens 根内
+   把元素回退到浏览器默认（不含 svg 图标与内嵌的原生设置区），再由随后加载的
+   styles.lens.css 按 Lens 的真实层叠逐条覆盖，得到与 Lens 一致的像素结果。
+   本文件必须排在 styles.lens.css 之前。
+   ============================================================ */
+.workspace-leaf-content[data-type="talos-console-view"]:has(> .view-content.talos-lens-host) {
+	background: transparent !important;
+	color-scheme: normal;
+}
+
+.view-content.talos-lens-host {
+	position: relative;
+	padding: 0 !important;
+	overflow: hidden !important;
+}
+
+.view-content.talos-lens-host > #talos-data-app-preview {
+	height: 100%;
+}
+
+#talos-data-app-preview :where(:not(svg, svg *, .talos-lens-native, .talos-lens-native *)) {
+	all: revert;
+}
+
+/* 内嵌的插件设置沿用 Obsidian 原生设置样式，只约束宽度与间距 */
+#talos-data-app-preview .talos-lens-settings {
+	max-width: 880px;
+}
+
+/* 图标栏头像与侧栏品牌位使用 TALOS 标识（Lens 原为位图 logo） */
+#talos-data-app-preview .lens-profile-button svg,
+#talos-data-app-preview .lens-sidebar-brand .ta-approved-logo svg {
+	width: 22px;
+	height: 22px;
+}

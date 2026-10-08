@@ -7,6 +7,8 @@ import {
 } from "obsidian";
 import type TalosPlugin from "./main";
 import { TalosSettingTab } from "./settings";
+import { LensConsole, LENS_ROOT_ID } from "./ui/lens/lens-console";
+import type { LensModuleId } from "./ui/lens/lens-pages";
 import type {
 	GateItem,
 	OutputCenter,
@@ -72,6 +74,15 @@ import { buildShell, renderNav, renderSecondaryTabs } from "./ui/view-chrome";
 import { addActionButtonContent, wireModuleSelection } from "./ui/view-modules";
 // 屈原语音面板按需动态加载，避免完整工作台运行时影响 TALOS 主控制台启动。
 
+/** 经典页面键 → Lens 模块（命令面板等经典入口在 Lens 界面下的落点）。 */
+const LENS_PAGE_FOR_CLASSIC: Readonly<Record<string, LensModuleId>> = {
+	today: "overview", overview: "overview", daily: "overview",
+	inbox: "collect", knowledge: "knowledge", output: "output",
+	projects: "projects", talos: "projects",
+	health: "system", vault: "system", capability: "system", identity: "identity",
+	chat: "assistant", jarvis: "assistant", settings: "preferences",
+};
+
 export const VIEW_TYPE_TALOS = "talos-console-view";
 
 const LEGACY_SECTION_PAGES = ["chat", "settings"] as const;
@@ -114,6 +125,8 @@ export class TalosView extends ItemView {
 	private clockTimer: number | null = null;
 	actionPanel: ConsoleActionPanel | null = null;
 	embeddedSettingsTab: TalosSettingTab | null = null;
+	/** Lens 界面语言外壳；经典界面时为 null。 */
+	lens: LensConsole | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: TalosPlugin) {
 		super(leaf);
@@ -206,6 +219,8 @@ export class TalosView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.lens?.dispose();
+		this.lens = null;
 		this.unmountJarvisSafely();
 		await this.chatSurface?.dispose();
 		this.chatSurface = null;
@@ -221,15 +236,70 @@ export class TalosView extends ItemView {
 	}
 
 	hasRenderedShell(): boolean {
-		return !!this.contentEl.querySelector(".app, .talos-view-error-panel");
+		return !!this.contentEl.querySelector(`.app, .talos-view-error-panel, #${LENS_ROOT_ID}`);
 	}
 
 	async recoverFromBlankView(): Promise<void> {
 		await this.onOpen();
 	}
 
+	private get usesLens(): boolean {
+		return this.plugin.talosSettings.uiLanguage === "lens";
+	}
+
 	private buildShell(): void {
+		this.lens?.dispose();
+		this.lens = null;
+		this.contentEl.removeClass("talos-lens-host");
+		if (this.usesLens) {
+			this.buildLensShell();
+			return;
+		}
 		return buildShell(this);
+	}
+
+	/** Lens 界面语言：拆掉经典外壳的挂载物，换成 Lens 外壳；数据、刷新与操作沿用同一套。 */
+	private buildLensShell(): void {
+		const root = this.contentEl;
+		this.unmountJarvisSafely();
+		if (this.chatMounted) {
+			this.chatMounted = false;
+			void this.chatSurface?.unmount();
+		}
+		this.actionPanel?.unmount();
+		this.actionPanel = null;
+		this.embeddedSettingsTab = null;
+		root.empty();
+		root.removeClass("talos-console");
+		for (const cls of Array.from(root.classList)) {
+			if (cls.startsWith("theme-") || cls.startsWith("page-") || cls.startsWith("section-")) root.removeClass(cls);
+		}
+		root.removeAttribute("data-talos-theme");
+		root.removeAttribute("data-talos-page");
+		root.removeAttribute("data-talos-archetype");
+		root.addClass("talos-lens-host");
+		this.lens = new LensConsole({
+			app: this.app,
+			paths: () => this.paths,
+			profileName: () => this.plugin.talosSettings.mainTitle.trim() || "本地用户",
+			appearance: () => this.plugin.talosSettings.lensAppearance,
+			openNote: (path, newTab) => {
+				if (newTab) void this.app.workspace.openLinkText(path, "", "tab");
+				else void openFile(this.app, path);
+			},
+			openChat: () => void this.plugin.activateChatSidebar(),
+			renderSettings: (host) => {
+				this.embeddedSettingsTab ??= new TalosSettingTab(this.app, this.plugin);
+				this.embeddedSettingsTab.renderInto(host);
+			},
+			refresh: () => void this.refresh(),
+		}, root);
+	}
+
+	/** 切换界面语言时重建外壳并重新填充数据（不重放开屏彩蛋）。 */
+	private async rebuildShell(): Promise<void> {
+		this.buildShell();
+		await this.refresh();
 	}
 
 	private renderViewError(error: unknown): void {
@@ -278,6 +348,14 @@ export class TalosView extends ItemView {
 	}
 
 	applySettings(): void {
+		if (this.usesLens !== (this.lens !== null)) {
+			void this.rebuildShell();
+			return;
+		}
+		if (this.lens) {
+			this.lens.applyAppearance();
+			return;
+		}
 		const theme = this.plugin.talosSettings.visualTheme || "aurora";
 		this.contentEl.classList.remove(
 			"theme-aurora",
@@ -333,6 +411,7 @@ export class TalosView extends ItemView {
 
 
 	renderNav(): void {
+		if (this.lens) return;
 		return renderNav(this);
 	}
 
@@ -422,6 +501,11 @@ export class TalosView extends ItemView {
 			knowledge,
 			talosProduct,
 		};
+
+		if (this.lens) {
+			this.lens.setData(this.data, this.peerStatus);
+			return;
+		}
 
 		const now = new Date();
 		this.stampEl.setText(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
@@ -556,6 +640,7 @@ export class TalosView extends ItemView {
 	}
 
 	renderPage(): void {
+		if (this.lens) return;
 		// AI 对话改为常驻右侧边栏：任何入口切到 chat 都转去右栏，主区留在当前页。
 		if (this.activePage === "chat") {
 			const opened = this.renderedPage !== null;
@@ -782,6 +867,10 @@ export class TalosView extends ItemView {
 	}
 
 	navigateToPage(pageKey: string): void {
+		if (this.lens) {
+			this.lens.navigate(LENS_PAGE_FOR_CLASSIC[pageKey] ?? "overview");
+			return;
+		}
 		this.activePage = pageKey;
 		if (this.pageNavEl) this.renderNav();
 		if (this.pageEl) this.renderPage();
