@@ -40,6 +40,18 @@ function savedDraft(port: CustomApiSettingsPort, kind: CustomApiKind): CustomApi
 	};
 }
 
+export interface CustomApiSummary {
+	configured: boolean;
+	baseUrl: string;
+	models: string[];
+}
+
+/** 设置页摘要：是否已保存密钥、端点与模型（不读取密钥内容）。 */
+export function customApiSummary(port: CustomApiSettingsPort, kind: CustomApiKind): CustomApiSummary {
+	const draft = savedDraft(port, kind);
+	return { configured: hasSavedKey(port, kind), baseUrl: draft.baseUrl, models: draft.models };
+}
+
 /** 写入设置与密钥并同步 profile；返回工作台要切换到的目标。 */
 export async function saveCustomApi(port: CustomApiSettingsPort, draft: CustomApiDraft): Promise<CustomApiResult> {
 	const error = validateCustomApi(draft, hasSavedKey(port, draft.kind));
@@ -56,11 +68,14 @@ export async function saveCustomApi(port: CustomApiSettingsPort, draft: CustomAp
 }
 
 class CustomApiModal extends Modal {
-	private kind: CustomApiKind = "anthropic";
 	private result: CustomApiResult | null = null;
 	private body!: HTMLElement;
 
-	constructor(private readonly port: CustomApiSettingsPort, private readonly done: (result: CustomApiResult | null) => void) {
+	constructor(
+		private readonly port: CustomApiSettingsPort,
+		private readonly done: (result: CustomApiResult | null) => void,
+		private kind: CustomApiKind = "anthropic",
+	) {
 		super(port.app);
 	}
 
@@ -169,6 +184,6 @@ class CustomApiModal extends Modal {
 
 export function createCustomApiHost(port: CustomApiSettingsPort): CustomApiHost {
 	return {
-		open: () => new Promise((resolve) => new CustomApiModal(port, resolve).open()),
+		open: (kind) => new Promise((resolve) => new CustomApiModal(port, resolve, kind).open()),
 	};
 }

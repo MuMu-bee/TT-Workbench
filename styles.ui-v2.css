@@ -2082,8 +2082,7 @@
    Existing Obsidian Setting components and save handlers remain authoritative.
    This layer improves navigation hierarchy and wide-screen density only. */
 .talos-settings:not(.talos-settings--console) .talos-settab-icon,
-.talos-settings:not(.talos-settings--console) .talos-settab-copy small,
-.talos-settings:not(.talos-settings--console) .talos-settings-section-intro {
+.talos-settings:not(.talos-settings--console) .talos-settab-copy small {
 	display: none;
 }
 
@@ -2166,84 +2165,6 @@
 	);
 }
 
-.talos-console[data-talos-page="settings"] .talos-settings-section-intro {
-	display: grid;
-	grid-template-columns: 42px minmax(0, 1fr);
-	align-items: center;
-	gap: var(--talos-space-3);
-	min-width: 0;
-	padding: var(--talos-space-3) var(--talos-space-4);
-	border: 1px solid var(--talos-ui-line);
-	border-radius: var(--talos-ui-radius-panel);
-	background:
-		linear-gradient(
-			135deg,
-			color-mix(in srgb, var(--talos-ui-accent) 9%, transparent),
-			transparent 56%
-		),
-		var(--talos-ui-surface);
-	box-shadow: var(--talos-ui-shadow-panel);
-}
-
-.talos-console[data-talos-page="settings"] .talos-settings-section-intro__mark {
-	display: grid;
-	width: 42px;
-	height: 42px;
-	place-items: center;
-	border: 1px solid color-mix(
-		in srgb,
-		var(--talos-ui-accent) 42%,
-		var(--talos-ui-line)
-	);
-	border-radius: var(--talos-ui-radius-control);
-	color: var(--talos-ui-accent);
-	background: color-mix(
-		in srgb,
-		var(--talos-ui-accent) 10%,
-		var(--talos-ui-surface-raised)
-	);
-}
-
-.talos-console[data-talos-page="settings"] .talos-settings-section-intro__mark svg {
-	width: 20px;
-	height: 20px;
-}
-
-.talos-console[data-talos-page="settings"] .talos-settings-section-intro__copy {
-	min-width: 0;
-}
-
-.talos-console[data-talos-page="settings"]
-	.talos-settings-section-intro__copy
-	:is(small, .talos-settings-section-intro__title, p) {
-	display: block;
-	margin: 0;
-}
-
-.talos-console[data-talos-page="settings"] .talos-settings-section-intro__copy small {
-	font-size: var(--talos-type-meta);
-	font-weight: 700;
-	letter-spacing: 0.1em;
-	color: var(--talos-ui-muted);
-}
-
-.talos-console[data-talos-page="settings"]
-	.talos-settings-section-intro__copy
-	.talos-settings-section-intro__title {
-	margin-top: 2px;
-	background: none;
-	color: var(--talos-ui-ink);
-	-webkit-text-fill-color: currentColor;
-	font-size: var(--talos-type-module);
-	line-height: 1.2;
-}
-
-.talos-console[data-talos-page="settings"] .talos-settings-section-intro__copy p {
-	margin-top: 3px;
-	font-size: var(--talos-type-supporting);
-	color: var(--talos-ui-muted);
-}
-
 @container talos-app (min-width: 1240px) {
 	.talos-console[data-talos-page="settings"]
 		.talos-setcontent {
@@ -2254,7 +2175,6 @@
 	.talos-console[data-talos-page="settings"]
 		.talos-setcontent
 		> :is(
-			.talos-settings-section-intro,
 			.setting-item-heading,
 			.talos-schema-report
 		) {
@@ -4281,4 +4201,23 @@ body .talos-custom-api__kinds button.is-active {
 .talos-chat-sidebar .claudian-message-assistant .claudian-message-content {
 	padding-left: 2px;
 	color: var(--text-normal);
+}
+
+/* 设置页简化（2026-10-08）：去掉每个分类的大标题，版权说明收进底部一行。 */
+.talos-settings .talos-settings-footer {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 8px;
+	margin-top: 16px;
+	padding: 10px 2px 0;
+	border-top: 1px solid var(--background-modifier-border);
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+}
+
+.talos-settings .talos-settings-footer strong {
+	color: var(--text-muted);
+	font-weight: 600;
 }

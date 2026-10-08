@@ -67,7 +67,7 @@ export function renderSettingsPage(view: TalosView, page: HTMLElement): void {
 	const title = identity.createDiv({ cls: "talos-inline-settings__title" });
 	title.createEl("h1", { text: "TALOS 设置" });
 	title.createEl("p", {
-		text: "界面、目录映射、数据源、AI Provider 与屈原工作台配置",
+		text: "界面、库与数据、对话模型与屈原语音",
 	});
 	const status = header.createDiv({
 		cls: "talos-inline-settings__status",

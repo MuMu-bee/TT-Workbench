@@ -15,9 +15,8 @@ describe("settings configuration workspace v2", () => {
 		expect(settings).toContain("const TALOS_SETTING_TABS");
 		for (const label of [
 			"界面",
-			"目录映射",
-			"数据源",
-			"智能体与模型",
+			"库与数据",
+			"对话与模型",
 			"屈原 · 语音",
 		]) {
 			expect(settings).toContain(`label: "${label}"`);
@@ -30,18 +29,19 @@ describe("settings configuration workspace v2", () => {
 	});
 
 	it("adds current-category context without creating a second settings renderer", () => {
-		expect(settings).toContain("talos-settings-section-intro");
-		expect(settings).toContain("CONFIGURATION WORKSPACE");
+		// 2026-10-08：分类大标题与标签栏重复，已移除；版权说明统一在底部。
+		expect(settings).not.toContain("CONFIGURATION WORKSPACE");
+		expect(settings).toContain('cls: "talos-settings-footer"');
 		expect(settings).toContain("content.dataset.settingsTab = active.id");
 		expect(settings).toContain("renderInto(containerEl: HTMLElement)");
 		expect(settings).toContain("this.renderInto(target)");
 		expect(settings).toContain("new Setting(c)");
 		expect(settings).not.toContain("renderWorkbench");
 		expect(settings).not.toContain("ClaudianSettingTab");
-		expect(settings).toContain("Anthropic API Key");
-		expect(settings).toContain("OpenAI API Key");
-		expect(settings).toContain("agentWorkbenchClaudeModels");
-		expect(settings).toContain("agentWorkbenchCodexModels");
+		// API 配置与对话侧栏共用「自定义 API」窗口，设置页只显示摘要与编辑入口。
+		expect(settings).toContain("customApiSummary(port, kind)");
+		expect(settings).toContain("await createCustomApiHost(port).open(kind);");
+		expect(settings).not.toContain("Anthropic API Key");
 		for (const obsoleteLabel of [
 			"旧串行语音设置（存档）",
 			"旧语音识别引擎",

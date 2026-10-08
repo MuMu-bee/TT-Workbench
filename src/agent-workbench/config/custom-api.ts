@@ -126,5 +126,5 @@ export interface CustomApiResult {
 
 /** 由插件层实现：打开配置窗口，保存后返回切换目标；取消时返回 null。 */
 export interface CustomApiHost {
-	open(): Promise<CustomApiResult | null>;
+	open(kind?: CustomApiKind): Promise<CustomApiResult | null>;
 }
