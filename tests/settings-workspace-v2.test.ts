@@ -73,13 +73,11 @@ describe("settings configuration workspace v2", () => {
 			"aurora",
 			"cosmos-dark",
 			"animal-island",
-			"system-classic",
 			"data-stream",
 			"soft-relief",
 			"geometric-modern",
 			"executive-brief",
 			"paper-ink",
-			"swiss-modern",
 		]) {
 			expect(settings).toContain(`.addOption("${theme}"`);
 		}

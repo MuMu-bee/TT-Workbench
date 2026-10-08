@@ -1156,25 +1156,6 @@ body[data-talos-vault-theme] .talos-quyuan-shell
   color-scheme: dark;
 }
 
-.talos-console.theme-system-classic .tq-voice {
-  --tq-theme-key: system-classic;
-  --tq-surface: #080808;
-  --tq-surface-soft: #111111;
-  --tq-panel: rgba(18, 18, 18, 0.94);
-  --tq-panel-strong: rgba(24, 24, 24, 0.98);
-  --tq-border: rgba(255, 255, 255, 0.24);
-  --tq-text: #ffffff;
-  --tq-muted: #b9b9b9;
-  --tq-faint: #777777;
-  --tq-brand: #ffffff;
-  --tq-on-brand: #080808;
-  --tq-particle-a: #ffffff;
-  --tq-particle-b: #a8a8a8;
-  --tq-particle-c: #606060;
-  --tq-copy-shield: rgba(8, 8, 8, 0.62);
-  color-scheme: dark;
-}
-
 .talos-console.theme-data-stream .tq-voice {
   --tq-theme-key: data-stream;
   --tq-surface: #01090b;
@@ -1295,7 +1276,7 @@ body.theme-light .tq-voice {
 /* 浅色且未选择内建深色 TALOS 主题时，jarvis 导航翻为白底；深色 TALOS
    主题继续使用基础深色导航，避免 Data Stream 舞台旁出现白色孤岛。 */
 :where(body.theme-light)
-  .talos-console[data-talos-page="jarvis"]:where(:not(.theme-cosmos-dark):not(.theme-animal-island):not(.theme-system-classic):not(.theme-data-stream))
+  .talos-console[data-talos-page="jarvis"]:where(:not(.theme-cosmos-dark):not(.theme-animal-island):not(.theme-data-stream))
   .sidebar {
   background: #ffffff;
   border-right-color: rgba(15, 23, 42, 0.1);

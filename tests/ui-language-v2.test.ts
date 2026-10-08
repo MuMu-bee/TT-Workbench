@@ -106,13 +106,11 @@ describe("TALOS unified interface language v2 foundation", () => {
 			"theme-aurora",
 			"theme-cosmos-dark",
 			"theme-animal-island",
-			"theme-system-classic",
 			"theme-data-stream",
 			"theme-soft-relief",
 			"theme-geometric-modern",
 			"theme-executive-brief",
 			"theme-paper-ink",
-			"theme-swiss-modern",
 		]) {
 			expect(view).toContain(`"${theme}"`);
 		}

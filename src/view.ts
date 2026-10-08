@@ -283,13 +283,11 @@ export class TalosView extends ItemView {
 			"theme-aurora",
 			"theme-cosmos-dark",
 			"theme-animal-island",
-			"theme-system-classic",
 			"theme-data-stream",
 			"theme-soft-relief",
 			"theme-geometric-modern",
 			"theme-executive-brief",
-			"theme-paper-ink",
-			"theme-swiss-modern"
+			"theme-paper-ink"
 		);
 		this.contentEl.classList.add(`theme-${theme}`);
 		this.contentEl.setAttribute("data-talos-theme", theme);

@@ -34,13 +34,11 @@ export type TalosVisualTheme =
 	| "aurora"
 	| "cosmos-dark"
 	| "animal-island"
-	| "system-classic"
 	| "data-stream"
 	| "soft-relief"
 	| "geometric-modern"
 	| "executive-brief"
-	| "paper-ink"
-	| "swiss-modern";
+	| "paper-ink";
 
 export const TALOS_SETTINGS_SCHEMA_VERSION = 1;
 
@@ -50,13 +48,18 @@ export type QuyuanBackgroundType = "letter-glitch" | "grid-scan";
 export function normalizeVisualTheme(value: unknown): TalosVisualTheme {
 	if (value === "cosmos-dark") return "cosmos-dark";
 	if (value === "animal-island") return "animal-island";
-	if (value === "system-classic" || value === "macintosh-workstation") return "system-classic";
 	if (value === "data-stream" || value === "matrix-rain") return "data-stream";
 	if (value === "soft-relief" || value === "neumorphism") return "soft-relief";
-	if (value === "geometric-modern" || value === "bauhaus") return "geometric-modern";
+	// 2026-10-08 移除 Macintosh 与 Swiss 主题：旧设置并入同为直角硬边框的包豪斯
+	if (
+		value === "geometric-modern"
+		|| value === "bauhaus"
+		|| value === "swiss-modern"
+		|| value === "system-classic"
+		|| value === "macintosh-workstation"
+	) return "geometric-modern";
 	if (value === "executive-brief") return "executive-brief";
 	if (value === "paper-ink") return "paper-ink";
-	if (value === "swiss-modern") return "swiss-modern";
 	return "aurora";
 }
 
@@ -509,19 +512,17 @@ export class TalosSettingTab extends PluginSettingTab {
 		this.textIn(c, "主标题", "今日页与控制台标题", "mainTitle");
 		new Setting(c)
 			.setName("视觉风格")
-			.setDesc("十套 TALOS 视觉风格。")
+			.setDesc("八套 TALOS 视觉风格。")
 			.addDropdown((d) =>
 				d
 					.addOption("aurora", "Aurora 原版")
 					.addOption("cosmos-dark", "Nebula 深色宇宙稿")
 					.addOption("animal-island", "Animal Island 小岛主题")
-					.addOption("system-classic", "Macintosh 知识工作站")
 					.addOption("data-stream", "数据流 · 动态终端")
 					.addOption("soft-relief", "柔光浮雕 · Neumorphism")
 					.addOption("geometric-modern", "几何现代主义 · Bauhaus（默认）")
 					.addOption("executive-brief", "Executive Brief 商务简约（浅色）")
 					.addOption("paper-ink", "Paper 纸感墨水（浅色）")
-					.addOption("swiss-modern", "Swiss Modernism 瑞士现代主义（浅色）")
 					.setValue(this.plugin.talosSettings.visualTheme)
 					.onChange(async (v) => {
 						this.plugin.talosSettings.visualTheme = normalizeVisualTheme(v);
