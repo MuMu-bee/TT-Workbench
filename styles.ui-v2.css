@@ -3678,3 +3678,34 @@ body[data-talos-vault-theme] .talos-console
 	outline: 2px solid var(--talos-ui-focus);
 	outline-offset: 1px;
 }
+
+/* 审批卡布局（2026-10-08 真机发现）：审批区夹在消息区与输入框之间，原先可被压缩，
+   卡片下半部分（含批准/拒绝按钮）被输入框盖住。改为不压缩、限高滚动，参数块单独限高，
+   保证按钮始终可见。 */
+.talos-native-chat .talos-native-approval-region {
+	flex: 0 0 auto;
+	max-height: 55%;
+	overflow-y: auto;
+	padding: 0 12px;
+}
+
+.talos-native-chat .talos-native-approval-region > :not([hidden]) {
+	margin: 8px 0 0;
+	padding: 10px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-secondary);
+}
+
+.talos-native-chat .talos-native-approval-region .claudian-ask-approval-desc {
+	max-height: 10em;
+	margin: 6px 0 8px;
+	overflow: auto;
+	white-space: pre-wrap;
+}
+
+.talos-native-chat .talos-native-approval-region .claudian-input-nav-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
