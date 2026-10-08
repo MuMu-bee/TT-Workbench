@@ -53,7 +53,7 @@ describe("synced Lens stylesheet", () => {
 
 	it("loads the host reset before the Lens rules and never reverts icons or native settings", () => {
 		expect(build.indexOf("readFileSync(lensHostSource")).toBeLessThan(build.indexOf("readFileSync(lensSource"));
-		expect(host).toContain("#talos-data-app-preview :where(:not(svg, svg *, .talos-lens-native, .talos-lens-native *))");
+		expect(host).toContain("#talos-data-app-preview :where(:not(svg, svg *, .talos-lens-native, .talos-lens-native *,");
 		expect(host).toContain("all: revert;");
 	});
 });

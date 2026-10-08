@@ -16,6 +16,7 @@ const layoutOverridesSource = resolve(root, "styles.layout-overrides.css");
 const uiV2Source = resolve(root, "styles.ui-v2.css");
 const lensHostSource = resolve(root, "styles.lens-host.css");
 const lensSource = resolve(root, "styles.lens.css");
+const lensVoiceSource = resolve(root, "styles.lens-voice.css");
 const output = resolve(root, "styles.css");
 const importPattern = /^\s*@import\s+(?:url\()?['"]([^'"]+)['"]\)?\s*;/gm;
 
@@ -26,6 +27,7 @@ if (!existsSync(layoutOverridesSource)) throw new Error("Missing styles.layout-o
 if (!existsSync(uiV2Source)) throw new Error("Missing styles.ui-v2.css");
 if (!existsSync(lensHostSource)) throw new Error("Missing styles.lens-host.css");
 if (!existsSync(lensSource)) throw new Error("Missing styles.lens.css (run scripts/sync-lens-css.mjs)");
+if (!existsSync(lensVoiceSource)) throw new Error("Missing styles.lens-voice.css");
 
 const index = readFileSync(workbenchStyleIndex, "utf8");
 const imports = [...index.matchAll(importPattern)].map((match) => match[1]);
@@ -59,7 +61,9 @@ parts.push(
 	"\n/* TALOS Lens interface language · host reset (must precede styles.lens.css) */\n",
 	readFileSync(lensHostSource, "utf8"),
 	"\n/* TALOS Lens interface language · synced from TALOS Lens source */\n",
-	readFileSync(lensSource, "utf8")
+	readFileSync(lensSource, "utf8"),
+	"\n/* TALOS Lens interface language · Quyuan voice panel in Lens composition */\n",
+	readFileSync(lensVoiceSource, "utf8")
 );
 
 /**

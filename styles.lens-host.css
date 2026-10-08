@@ -21,7 +21,8 @@
 	height: 100%;
 }
 
-#talos-data-app-preview :where(:not(svg, svg *, .talos-lens-native, .talos-lens-native *)) {
+/* TalosBall 与粒子舞台内部依赖自身结构样式（画布尺寸、图层），不参与复位 */
+#talos-data-app-preview :where(:not(svg, svg *, .talos-lens-native, .talos-lens-native *, .tq-talos-stage, .tq-talos-stage *, .tq-pixel-head-scene, .tq-pixel-head-scene *)) {
 	all: revert;
 }
 

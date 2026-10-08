@@ -1,0 +1,559 @@
+/* ============================================================
+   Lens 界面语言 · 屈原语音（2026-10-08）
+   插件的屈原语音面板（.tq-*，千问 Realtime 引擎）在 Lens 界面里按 TALOS Lens
+   quyuan-voice.css（.lq-*）的视觉重排：左侧舞台（标识栏 / TalosBall / 回复），
+   右侧控制栏（状态 / 实时转写 / 控制按钮 / 文字提问 / 安全说明）。
+   数值逐条取自 Lens 的 quyuan-voice.css 与 .ta-button；面板的引擎与逻辑不变。
+   面板元素经 styles.lens-host.css 回退到浏览器默认，再由本文件着色；
+   TalosBall 与粒子舞台内部结构保留原样（宿主复位已排除这两棵子树）。
+   本文件排在 styles.lens.css 之后。
+   ============================================================ */
+#talos-data-app-preview .lens-quyuan-voice {
+	margin-bottom: 24px;
+	min-width: 0;
+	container-type: inline-size;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice {
+	--lq-accent: var(--ta-blue);
+	display: block;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice:is([data-voice-state="listen"], [data-voice-state="reco"], [data-voice-state="speak"]) {
+	--lq-accent: var(--ta-green);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice[data-voice-state="think"] {
+	--lq-accent: var(--ta-yellow);
+}
+
+/* lq-workspace：舞台 | 控制栏 */
+#talos-data-app-preview .lens-quyuan-voice .tq-body {
+	display: grid;
+	grid-template-columns: minmax(0, 1.32fr) minmax(270px, 0.88fr);
+	min-height: 510px;
+	overflow: hidden;
+	border: 1px solid var(--ta-line);
+	border-radius: 12px;
+	background: var(--ta-bg);
+	color: var(--ta-ink);
+}
+
+/* lq-stage */
+#talos-data-app-preview .lens-quyuan-voice .tq-stage {
+	position: relative;
+	display: grid;
+	grid-template-rows: auto minmax(280px, 1fr) auto;
+	min-width: 0;
+	isolation: isolate;
+	padding: 18px 22px 24px;
+	background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--lq-accent) 6%, transparent), transparent 64%), var(--ta-bg);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-bar {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-identity {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-mark {
+	display: grid;
+	place-items: center;
+	width: 36px;
+	height: 36px;
+	flex-shrink: 0;
+	border: 1px solid var(--ta-line);
+	border-radius: 7px;
+	background: var(--ta-side);
+	color: var(--ta-ink);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-mark svg {
+	width: 19px;
+	height: 19px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-copy small {
+	display: block;
+	font-size: 9px;
+	line-height: 1.4;
+	letter-spacing: 0.14em;
+	color: var(--ta-muted);
+	font-weight: 650;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-copy strong {
+	display: block;
+	margin-top: 3px;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-meta {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+/* 状态在右侧控制栏显示（与 Lens 一致），标识栏不重复 */
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-state {
+	display: none;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-boundary {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	white-space: nowrap;
+	color: var(--ta-muted);
+	font-size: 10px;
+	padding: 5px 7px;
+	border: 1px solid var(--ta-line);
+	border-radius: 5px;
+	background: var(--ta-side);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-workspace-boundary svg {
+	width: 12px;
+	height: 12px;
+}
+
+/* 粒子舞台作弱氛围层（对应 Lens 的 lq-mesh） */
+#talos-data-app-preview .lens-quyuan-voice .tq-pixel-head-scene {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	opacity: 0.1;
+}
+
+/* lq-visual / lq-ball-host */
+#talos-data-app-preview .lens-quyuan-voice .tq-talos-stage {
+	position: relative;
+	display: grid;
+	min-height: 300px;
+	min-width: 0;
+	place-items: center;
+	padding: 8px 0;
+	container-type: normal;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-talos-ball-host {
+	position: relative;
+	width: min(100%, 370px);
+	height: auto;
+	/* 经典版的 max-height:100% 在 Lens 构图里会按不定高度收缩，连带宽度被比例压小 */
+	max-width: 100%;
+	max-height: none;
+	aspect-ratio: 1;
+	isolation: isolate;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-talos-ball-host::before {
+	inset: 22%;
+	z-index: -1;
+	background: color-mix(in srgb, var(--lq-accent) 5%, transparent);
+	box-shadow: 0 20px 65px color-mix(in srgb, var(--lq-accent) 12%, transparent);
+}
+
+/* Lens 的全局图标规则 svg:not(.ta-git-edges){17px} 会命中球体 SVG（Lens 的 TalosBall 在 shadow DOM 里不受影响） */
+#talos-data-app-preview .lens-quyuan-voice .tq-talos-ball-runtime > svg {
+	width: 100%;
+	height: 100%;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-talos-ball-host > * {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+/* lq-reply */
+#talos-data-app-preview .lens-quyuan-voice .tq-overlay-text {
+	display: block;
+	min-width: 0;
+	width: 100%;
+	max-width: 600px;
+	max-height: none;
+	margin: 0 auto;
+	overflow: visible;
+	text-align: center;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-overlay-text::before {
+	content: "屈原";
+	display: block;
+	color: var(--ta-muted);
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	margin-bottom: 8px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-overlay-reply {
+	margin: 0;
+	min-height: 44px;
+	max-height: 140px;
+	overflow: auto;
+	scrollbar-width: thin;
+	color: var(--ta-ink);
+	font-size: 14px;
+	line-height: 1.8;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-overlay-line {
+	display: block;
+}
+
+/* lq-dock */
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-dock {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+	min-width: 0;
+	padding: 22px;
+	border-left: 1px solid var(--ta-line);
+	background: var(--ta-side);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-dock-status {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 8px;
+	min-width: 0;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-dock-live {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 7px;
+	width: 100%;
+	min-width: 0;
+	color: var(--ta-ink);
+	font-size: 12px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-dock-live::before {
+	content: "";
+	width: 6px;
+	height: 6px;
+	flex-shrink: 0;
+	border-radius: 50%;
+	background: var(--lq-accent);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-dock-live > span {
+	font-weight: 550;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-dock-live > small {
+	width: 100%;
+	font-size: 11px;
+	line-height: 1.5;
+	color: var(--ta-muted);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-dock-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-dock-badges > span {
+	font-size: 9px;
+	letter-spacing: 0.025em;
+	color: var(--ta-muted);
+	border: 1px solid var(--ta-line);
+	border-radius: 5px;
+	padding: 4px 6px;
+	white-space: nowrap;
+}
+
+/* lq-transcript */
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-editor {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	justify-content: center;
+	min-width: 0;
+	min-height: 210px;
+	max-height: 330px;
+	padding: 16px;
+	border: 1px solid var(--ta-line);
+	border-radius: 8px;
+	background: var(--ta-bg);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	color: var(--ta-muted);
+	font-size: 10px;
+	line-height: 1.5;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-head span {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	color: var(--ta-ink);
+	font-weight: 600;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-head span::before {
+	content: "";
+	width: 5px;
+	height: 5px;
+	border-radius: 50%;
+	background: var(--lq-accent);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-head small {
+	font-size: 10px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-lines {
+	display: grid;
+	flex: 1;
+	place-items: center;
+	min-height: 0;
+	overflow: auto;
+	scrollbar-width: thin;
+	padding: 18px 0;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-line {
+	width: 100%;
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.9;
+	color: var(--ta-ink);
+	text-align: center;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-transcript-line--partial {
+	color: var(--ta-muted);
+}
+
+/* lq-controls：两列按钮；「云端实时」只是引擎说明、「设置」在 Lens 设置页，按 Lens 不显示 */
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-controls {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-controls > .tq-control-btn:nth-child(n + 5) {
+	display: none;
+}
+
+/* 经典语音面板的按钮规则带 !important（且不限作用域），这里同样声明为 !important 才能按 Lens 着色 */
+#talos-data-app-preview .lens-quyuan-voice :is(.tq-control-btn, .tq-send-btn, .tq-btn) {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	min-width: 0;
+	border: 1px solid var(--ta-line) !important;
+	border-radius: 7px !important;
+	background: var(--ta-bg) !important;
+	color: var(--ta-ink) !important;
+	box-shadow: none !important;
+	transform: none !important;
+	cursor: pointer;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-go-chat {
+	min-height: 32px;
+	padding: 6px 11px;
+	font-size: 12px;
+	white-space: nowrap;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-control-btn {
+	min-height: 41px;
+	padding: 9px 7px;
+	font-size: 11px;
+	white-space: nowrap;
+}
+
+#talos-data-app-preview .lens-quyuan-voice :is(.tq-control-btn, .tq-send-btn, .tq-btn):hover:not(:disabled) {
+	border-color: var(--ta-line) !important;
+	background: var(--ta-blue-bg) !important;
+	box-shadow: none !important;
+}
+
+#talos-data-app-preview .lens-quyuan-voice :is(.tq-control-btn, .tq-send-btn, .tq-btn):disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-controls .tq-control-btn[aria-pressed="true"] {
+	background: var(--ta-blue-bg) !important;
+	color: var(--ta-ink) !important;
+}
+
+/* 开启语音 = lq-start（墨色实心）；语音进行中 = lq-stop（红字） */
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-controls .tq-control-btn--mic {
+	background: var(--ta-ink) !important;
+	border-color: var(--ta-ink) !important;
+	color: var(--ta-bg) !important;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-controls .tq-control-btn--mic.is-active {
+	background: var(--ta-bg) !important;
+	border-color: var(--ta-line) !important;
+	color: var(--ta-red) !important;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-controls .tq-control-btn--danger svg {
+	color: currentColor !important;
+}
+
+#talos-data-app-preview .lens-quyuan-voice :is(.tq-control-btn, .tq-send-btn, .tq-btn) svg {
+	width: 14px;
+	height: 14px;
+	flex-shrink: 0;
+}
+
+/* lq-text-question */
+#talos-data-app-preview .lens-quyuan-voice .tq-readonly-query {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 6px;
+	margin: 0;
+	min-width: 0;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-readonly-query__copy {
+	grid-column: 1 / -1;
+	font-size: 10px;
+	color: var(--ta-muted);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-readonly-query__copy b {
+	font-weight: 400;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-readonly-query__copy small {
+	display: none;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-readonly-query textarea {
+	resize: vertical;
+	min-width: 0;
+	min-height: 56px;
+	max-height: 120px;
+	border: 1px solid var(--ta-line) !important;
+	border-radius: 6px !important;
+	background: var(--ta-bg) !important;
+	color: var(--ta-ink) !important;
+	box-shadow: none !important;
+	padding: 8px;
+	font: inherit;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-readonly-query textarea:disabled {
+	opacity: 0.55;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-send-btn {
+	align-self: stretch;
+	padding: 8px;
+	font-size: 11px;
+}
+
+/* lq-safety */
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-safety {
+	position: relative;
+	margin: 0;
+	padding-left: 18px;
+	font-size: 10px;
+	line-height: 1.8;
+	color: var(--ta-muted);
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-safety > span:first-child {
+	position: absolute;
+	left: 0;
+	top: 3px;
+	display: block;
+	width: 12px;
+	height: 12px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-voice-safety svg {
+	width: 12px;
+	height: 12px;
+}
+
+/* 工具确认卡（Lens 的 lq-config 规格） */
+#talos-data-app-preview .lens-quyuan-voice .tq-confirm-host:empty {
+	display: none;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-approval-card {
+	display: grid;
+	gap: 8px;
+	padding: 10px;
+	border: 1px solid var(--ta-line);
+	border-radius: 8px;
+	background: var(--ta-bg);
+	color: var(--ta-ink);
+	font-size: 12px;
+	line-height: 1.65;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-confirm {
+	display: flex;
+	gap: 6px;
+}
+
+#talos-data-app-preview .lens-quyuan-voice .tq-confirm .tq-btn {
+	min-height: 32px;
+	padding: 6px 11px;
+	font-size: 12px;
+}
+
+/* 容器断点（取自 Lens quyuan-voice.css） */
+@container (max-width: 760px) {
+	#talos-data-app-preview .lens-quyuan-voice .tq-body { grid-template-columns: minmax(0, 1fr) minmax(240px, 0.9fr); }
+	#talos-data-app-preview .lens-quyuan-voice .tq-stage { padding: 16px 14px 22px; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-voice-dock { padding: 18px 14px; gap: 16px; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-workspace-boundary { display: none; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-talos-stage { min-height: 270px; }
+}
+
+@container (max-width: 560px) {
+	#talos-data-app-preview .lens-quyuan-voice .tq-body { grid-template-columns: minmax(0, 1fr) minmax(200px, 1fr); min-height: 460px; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-stage { padding-inline: 10px; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-voice-dock { padding-inline: 10px; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-workspace-mark { display: none; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-dock-badges { display: none; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-talos-stage { min-height: 220px; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-voice-controls { grid-template-columns: 1fr; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-transcript-editor { padding: 10px; }
+	#talos-data-app-preview .lens-quyuan-voice .tq-transcript-head small { display: none; }
+}
