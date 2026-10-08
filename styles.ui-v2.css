@@ -4198,3 +4198,87 @@ body .talos-custom-api__kinds button.is-active {
 	justify-content: flex-end;
 	gap: 8px;
 }
+
+/* 对话内容区分用户与回复（2026-10-08）
+   用户：右侧品牌色浅底气泡，上方小字「你」；回复：左侧 TALOS 标识 + 运行时，正文通栏。 */
+.talos-chat-sidebar .claudian-messages {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.talos-chat-sidebar .talos-message-role {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 6px;
+	color: var(--text-faint);
+	font-size: 11px;
+	line-height: 1.2;
+	letter-spacing: 0.02em;
+}
+
+.talos-chat-sidebar .claudian-message-user {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	align-self: flex-end;
+	max-width: 85%;
+	padding: 0;
+	background: transparent;
+}
+
+.talos-chat-sidebar .claudian-message-user .talos-message-role {
+	margin-right: 4px;
+}
+
+.talos-chat-sidebar .claudian-message-user .claudian-message-content {
+	padding: 8px 12px;
+	border: 1px solid color-mix(in srgb, var(--talos-sb-brand) 28%, transparent);
+	border-radius: 12px 12px 4px 12px;
+	background: color-mix(in srgb, var(--talos-sb-brand) 12%, var(--background-primary));
+	color: var(--text-normal);
+	white-space: pre-wrap;
+}
+
+.talos-chat-sidebar .claudian-message-user.talos-native-user-pending .claudian-message-content {
+	opacity: 0.7;
+}
+
+.talos-chat-sidebar .claudian-message-assistant {
+	padding: 0;
+	background: transparent;
+}
+
+.talos-chat-sidebar .claudian-message-assistant .talos-message-role {
+	color: var(--text-muted);
+}
+
+.talos-chat-sidebar .talos-message-role__logo {
+	display: inline-grid;
+	place-items: center;
+	color: var(--talos-sb-brand);
+}
+
+.talos-chat-sidebar .talos-message-role__logo svg {
+	width: 14px;
+	height: 14px;
+}
+
+.talos-chat-sidebar .talos-message-role__name {
+	color: var(--text-normal);
+	font-weight: 600;
+}
+
+.talos-chat-sidebar .talos-message-role__meta {
+	padding: 0 6px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	color: var(--text-faint);
+	font-size: 10px;
+}
+
+.talos-chat-sidebar .claudian-message-assistant .claudian-message-content {
+	padding-left: 2px;
+	color: var(--text-normal);
+}

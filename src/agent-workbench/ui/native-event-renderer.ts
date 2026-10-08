@@ -3,6 +3,8 @@ import type { AgentEvent } from "../contracts/agent-events";
 import { hasMeaningfulHandoffContext } from "../storage/conversation-projection";
 import { StreamRenderScheduler } from "./stream-render-scheduler";
 
+const RUNTIME_LABELS: Readonly<Record<string, string>> = { claude: "Claude", codex: "Codex", ohmypi: "OhMyPi" };
+
 interface TurnRenderState {
 	message: HTMLElement;
 	content: HTMLElement;
@@ -89,13 +91,41 @@ export class NativeEventRenderer {
 		this.container.appendChild(welcome);
 	}
 
-	private ensureAssistant(turnId: string): TurnRenderState {
+	/** 消息角色标签：用户为「你」，回复为 TALOS 标识 + 本回合运行时，用于一眼区分双方。 */
+	private roleLabel(doc: Document, role: "user" | "assistant", runtimeId?: string): HTMLElement {
+		const label = doc.createElement("div");
+		label.className = `talos-message-role talos-message-role--${role}`;
+		label.setAttribute("aria-hidden", "true");
+		if (role === "assistant") {
+			const logo = doc.createElement("span");
+			logo.className = "talos-message-role__logo";
+			setIcon(logo, "talos-logo");
+			const name = doc.createElement("span");
+			name.className = "talos-message-role__name";
+			name.textContent = "TALOS";
+			label.append(logo, name);
+			const runtime = runtimeId ? RUNTIME_LABELS[runtimeId] ?? runtimeId : "";
+			if (runtime) {
+				const meta = doc.createElement("span");
+				meta.className = "talos-message-role__meta";
+				meta.textContent = runtime;
+				label.appendChild(meta);
+			}
+		} else {
+			label.textContent = "你";
+		}
+		return label;
+	}
+
+	private ensureAssistant(turnId: string, runtimeId?: string): TurnRenderState {
 		let state = this.assistantTurns.get(turnId);
 		if (state) return state;
 		this.container.querySelector(".claudian-welcome")?.remove();
 		const message = this.container.ownerDocument.createElement("article");
 		message.className = "claudian-message claudian-message-assistant";
 		message.dataset.turnId = turnId;
+		message.setAttribute("aria-label", "TALOS 回复");
+		message.appendChild(this.roleLabel(message.ownerDocument, "assistant", runtimeId));
 		const content = message.ownerDocument.createElement("div");
 		content.className = "claudian-message-content claudian-text-block";
 		message.appendChild(content);
@@ -122,7 +152,8 @@ export class NativeEventRenderer {
 		message.className = "claudian-message claudian-message-user";
 		message.dataset.turnId = event.turnId;
 		message.dataset.eventId = event.eventId;
-		message.replaceChildren();
+		message.setAttribute("aria-label", "你的消息");
+		message.replaceChildren(this.roleLabel(message.ownerDocument, "user"));
 		const content = message.ownerDocument.createElement("div");
 		content.className = "claudian-message-content";
 		content.textContent = eventText(event);
@@ -280,12 +311,12 @@ export class NativeEventRenderer {
 		}
 		else if (event.type === "assistant.start") this.container.querySelector(".claudian-welcome")?.remove();
 		else if (event.type === "assistant.delta") {
-			const state = this.ensureAssistant(event.turnId);
+			const state = this.ensureAssistant(event.turnId, event.runtimeId);
 			state.text += eventText(event);
 			void state.scheduler.schedule();
 		}
 		else if (event.type === "assistant.final") {
-			const state = this.ensureAssistant(event.turnId);
+			const state = this.ensureAssistant(event.turnId, event.runtimeId);
 			const finalText = eventText(event);
 			if (finalText) state.text = finalText;
 			void state.scheduler.schedule();
