@@ -13,6 +13,7 @@ export type LensModuleId =
 	| "identity"
 	| "system"
 	| "assistant"
+	| "voice"
 	| "preferences";
 
 export interface LensModule {
@@ -34,10 +35,12 @@ export const LENS_MODULES: readonly LensModule[] = [
 	{ id: "identity", title: "身份", icon: "fingerprint", tabs: [["context", "身份上下文"], ["soul", "人格"]] },
 	{ id: "system", title: "系统", icon: "shield-check", tabs: [["health", "健康"], ["approvals", "审批"], ["capability", "能力"], ["vault", "全库"]] },
 	{ id: "assistant", title: "助手", icon: "message-square", external: true },
+	{ id: "voice", title: "屈原语音", icon: "audio-lines" },
 	{ id: "preferences", title: "设置", icon: "settings", bottom: true },
 ];
 
-export const LENS_RAIL_SHORTCUTS: readonly LensModuleId[] = ["overview", "collect", "knowledge", "projects", "assistant"];
+// 与 Lens 图标栏一致：总览、资料（知识）、项目、对话、屈原语音
+export const LENS_RAIL_SHORTCUTS: readonly LensModuleId[] = ["overview", "knowledge", "projects", "assistant", "voice"];
 
 export function lensModule(id: LensModuleId): LensModule {
 	const found = LENS_MODULES.find((module) => module.id === id);
@@ -72,5 +75,6 @@ export interface LensContext {
 	drawerPath(): string | null;
 	openChat(): void;
 	renderSettings(host: HTMLElement): void;
+	mountVoice(host: HTMLElement): void;
 	refresh(): void;
 }

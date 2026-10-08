@@ -80,7 +80,7 @@ const LENS_PAGE_FOR_CLASSIC: Readonly<Record<string, LensModuleId>> = {
 	inbox: "collect", knowledge: "knowledge", output: "output",
 	projects: "projects", talos: "projects",
 	health: "system", vault: "system", capability: "system", identity: "identity",
-	chat: "assistant", jarvis: "assistant", settings: "preferences",
+	chat: "assistant", jarvis: "voice", voice: "voice", settings: "preferences",
 };
 
 export const VIEW_TYPE_TALOS = "talos-console-view";
@@ -292,8 +292,36 @@ export class TalosView extends ItemView {
 				this.embeddedSettingsTab ??= new TalosSettingTab(this.app, this.plugin);
 				this.embeddedSettingsTab.renderInto(host);
 			},
+			mountVoice: (host) => void this.mountLensVoice(host),
+			unmountVoice: () => this.unmountJarvisSafely(),
 			refresh: () => void this.refresh(),
 		}, root);
+	}
+
+	/** Lens「屈原语音」模块：复用经典语音页的同一个面板实例与引擎。 */
+	private async mountLensVoice(host: HTMLElement): Promise<void> {
+		host.createDiv({ cls: "empty", text: "屈原模块加载中…" });
+		try {
+			const { QuyuanVoicePanel } = await import("./quyuan/voice-panel");
+			await this.plugin.waitForAgentWorkbench();
+			if (!host.isConnected) return;
+			host.empty();
+			this.jarvis ??= new QuyuanVoicePanel(
+				this.app,
+				this.plugin,
+				this.plugin.talosSettings,
+				() => this.plugin.saveTalosSettings(),
+				(pageKey) => this.navigateToPage(pageKey)
+			);
+			this.jarvis.mount(host);
+			this.jarvisMounted = true;
+		} catch (error) {
+			console.error("TALOS Quyuan voice panel failed to mount in Lens", error);
+			this.unmountJarvisSafely();
+			this.jarvis = null;
+			host.empty();
+			host.createDiv({ cls: "empty", text: `屈原模块加载失败：${error instanceof Error ? error.message : String(error)}` });
+		}
 	}
 
 	/** 切换界面语言时重建外壳并重新填充数据（不重放开屏彩蛋）。 */

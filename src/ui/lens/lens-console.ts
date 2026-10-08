@@ -13,6 +13,7 @@ import { renderOverviewRhythm, renderOverviewToday } from "./lens-overview";
 import { renderCollect, renderIdentity, renderKnowledge, renderOutput } from "./lens-library";
 import { renderProjects } from "./lens-projects";
 import { renderPreferences, renderSystem } from "./lens-system";
+import { renderVoice } from "./lens-voice";
 
 export const LENS_ROOT_ID = "talos-data-app-preview";
 
@@ -24,6 +25,9 @@ export interface LensHost {
 	openNote(path: string, newTab: boolean): void;
 	openChat(): void;
 	renderSettings(host: HTMLElement): void;
+	/** 屈原语音面板挂载 / 卸载（离开语音模块即释放麦克风）。 */
+	mountVoice(host: HTMLElement): void;
+	unmountVoice(): void;
 	refresh(): void;
 }
 
@@ -76,8 +80,11 @@ export class LensConsole {
 	}
 
 	setData(collected: Collected, peer: TalosPeerStatusState | null): void {
+		const first = this.data === null;
 		this.data = buildLensData(this.host.app, collected, peer);
 		this.renderChrome();
+		// 语音进行中不因库变动重绘（否则会打断对话、释放麦克风）
+		if (this.location.module === "voice" && !first) return;
 		this.renderPage({ keepScroll: true });
 	}
 
@@ -96,6 +103,7 @@ export class LensConsole {
 			this.forward = [];
 		}
 		this.scroll.set(this.locationKey(this.location), this.page.scrollTop);
+		if (this.location.module === "voice" && module !== "voice") this.host.unmountVoice();
 		this.location = next;
 		if (nextTab) this.tabsByModule.set(module, nextTab);
 		if (!this.openModules.includes(module)) this.openModules.push(module);
@@ -256,6 +264,7 @@ export class LensConsole {
 			drawerPath: () => this.drawer.selectedPath,
 			openChat: () => this.host.openChat(),
 			renderSettings: (host) => this.host.renderSettings(host),
+			mountVoice: (host) => this.host.mountVoice(host),
 			refresh: () => this.host.refresh(),
 		};
 	}
@@ -269,6 +278,7 @@ export class LensConsole {
 			case "output": return renderOutput(ctx);
 			case "identity": return renderIdentity(ctx);
 			case "system": return renderSystem(ctx);
+			case "voice": return renderVoice(ctx);
 			case "preferences": return renderPreferences(ctx);
 			default: return [];
 		}
@@ -322,6 +332,7 @@ export class LensConsole {
 	};
 
 	dispose(): void {
+		if (this.location.module === "voice") this.host.unmountVoice();
 		this.root.ownerDocument.removeEventListener("pointerdown", this.onOutsidePointer, true);
 		this.drawer.dispose();
 		this.root.remove();

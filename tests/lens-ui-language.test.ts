@@ -33,8 +33,8 @@ describe("Lens interface language", () => {
 	});
 
 	it("organises modules around the vault's own features with Lens's five rail shortcuts", () => {
-		expect(LENS_MODULES.map((m) => m.title)).toEqual(["总览", "收集", "知识", "项目", "输出", "身份", "系统", "助手", "设置"]);
-		expect(LENS_RAIL_SHORTCUTS).toHaveLength(5);
+		expect(LENS_MODULES.map((m) => m.title)).toEqual(["总览", "收集", "知识", "项目", "输出", "身份", "系统", "助手", "屈原语音", "设置"]);
+		expect(LENS_RAIL_SHORTCUTS).toEqual(["overview", "knowledge", "projects", "assistant", "voice"]);
 		expect(LENS_MODULES.find((m) => m.id === "assistant")?.external).toBe(true);
 		expect(defaultTab("overview")).toBe("today");
 		expect(defaultTab("system")).toBe("health");
@@ -89,6 +89,11 @@ describe("Lens interface language", () => {
 		expect(view).toContain("this.lens.setData(this.data, this.peerStatus);");
 		expect(view).toContain('inbox: "collect"');
 		expect(view).toContain('settings: "preferences"');
+		expect(view).toContain('jarvis: "voice"');
+		expect(view).toContain("mountVoice: (host) => void this.mountLensVoice(host),");
+		const shell = read("src/ui/lens/lens-console.ts");
+		expect(shell).toContain('if (this.location.module === "voice" && module !== "voice") this.host.unmountVoice();');
+		expect(shell).toContain('if (this.location.module === "voice" && !first) return;');
 		expect(view).toContain("void this.rebuildShell();");
 		const console = read("src/ui/lens/lens-console.ts");
 		expect(console).toContain('el(doc, "div", { id: LENS_ROOT_ID, "data-motion": "on" }, windowEl)');
