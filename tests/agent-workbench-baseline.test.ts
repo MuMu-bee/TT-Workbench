@@ -17,7 +17,7 @@ describe("D-TLP-034 ownership baseline", () => {
 
 	// 2026-10-08：TALOS 智能体改为常驻右侧边栏，主区助手组只保留 Harness 页。
 	it("hosts TALOS Agent in the right sidebar view and keeps Harness in the console", () => {
-		expect(main).toContain("new TalosAgentWorkbench({ leaf: this.leaf, service })");
+		expect(main).toContain("new TalosAgentWorkbench({ leaf: this.leaf, service, customApi: this.host.customApi })");
 		expect(view).not.toContain("TalosAgentWorkbench");
 		expect(view).toContain("new HarnessWorkbench({");
 	});

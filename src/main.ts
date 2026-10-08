@@ -2,6 +2,7 @@ import { FileSystemAdapter, Notice, Plugin, TFile, WorkspaceLeaf, addIcon, debou
 import { DEFAULT_SETTINGS, TalosSettingTab, TalosSettings, normalizeVisualTheme } from "./settings";
 import { TalosView, VIEW_TYPE_TALOS } from "./view";
 import { TalosChatSidebarView, VIEW_TYPE_TALOS_CHAT, revealChatSidebar } from "./plugin/chat-sidebar-view";
+import { createCustomApiHost } from "./plugin/custom-api-modal";
 import { AgentWorkbenchService } from "./agent-workbench/core/agent-workbench-service";
 import { CLAUDE_SDK_BUNDLE_FILE, configureClaudeSdkBundle } from "./agent-workbench/transports/claude-sdk-port";
 import { ObsidianWorkbenchStorage } from "./agent-workbench/storage/obsidian-workbench-storage";
@@ -128,6 +129,7 @@ export default class TalosPlugin extends Plugin {
 			(leaf: WorkspaceLeaf) => new TalosChatSidebarView(leaf, {
 				icon: TALOS_ICON,
 				waitForAgentWorkbench: () => this.waitForAgentWorkbench(),
+				customApi: createCustomApiHost(this),
 			})
 		);
 		this.addCommand({

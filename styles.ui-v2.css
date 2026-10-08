@@ -4106,3 +4106,95 @@ body .talos-chat-sidebar :is(.claudian-header-btn, .claudian-input-toolbar butto
 body .talos-chat-sidebar :is(.claudian-header-btn, .claudian-input-toolbar button):hover:not(:disabled) {
 	background-color: var(--background-modifier-hover) !important;
 }
+
+/* 自定义 API：模型下拉顶部的入口按钮与配置窗口（2026-10-08） */
+body .talos-chat-sidebar .talos-agent-model-menu-runtime .talos-agent-custom-api-button {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 4px;
+	min-height: 26px;
+	padding: 2px 8px !important;
+	border-radius: 4px;
+	color: var(--talos-sb-brand) !important;
+	font-size: 12px;
+	cursor: pointer;
+}
+
+body .talos-chat-sidebar .talos-agent-model-menu-runtime .talos-agent-custom-api-button:hover {
+	background-color: var(--background-modifier-hover) !important;
+}
+
+.talos-agent-custom-api-button svg {
+	width: 13px;
+	height: 13px;
+}
+
+.talos-custom-api {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.talos-custom-api__kinds {
+	display: flex;
+	gap: 6px;
+}
+
+.talos-custom-api__kinds button {
+	flex: 1 1 0;
+}
+
+body .talos-custom-api__kinds button.is-active {
+	border-color: var(--interactive-accent) !important;
+	color: var(--interactive-accent) !important;
+}
+
+.talos-custom-api__hint {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.talos-custom-api__env {
+	width: 100%;
+	min-height: 84px;
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	resize: vertical;
+}
+
+.talos-custom-api__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.talos-custom-api__field input {
+	width: 100%;
+}
+
+.talos-custom-api__label {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	font-weight: 600;
+}
+
+.talos-custom-api__label small {
+	color: var(--text-faint);
+	font-weight: 400;
+}
+
+.talos-custom-api__error {
+	min-height: 1em;
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.talos-custom-api__actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}

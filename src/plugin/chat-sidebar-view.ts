@@ -4,12 +4,14 @@ import { ItemView, type WorkspaceLeaf } from "obsidian";
 import type { ChatSurfaceWorkbench } from "../quyuan/chat-surface";
 import { DeferredChatWorkbench } from "../quyuan/deferred-chat-workbench";
 import type { AgentWorkbenchService } from "../agent-workbench/core/agent-workbench-service";
+import type { CustomApiHost } from "../agent-workbench/config/custom-api";
 
 export const VIEW_TYPE_TALOS_CHAT = "talos-agent-chat";
 
 export interface ChatSidebarHost {
 	icon: string;
 	waitForAgentWorkbench(): Promise<{ service: AgentWorkbenchService }>;
+	customApi?: CustomApiHost;
 }
 
 export class TalosChatSidebarView extends ItemView {
@@ -39,7 +41,7 @@ export class TalosChatSidebarView extends ItemView {
 		this.workbench = new DeferredChatWorkbench(async () => {
 			const { service } = await this.host.waitForAgentWorkbench();
 			const { TalosAgentWorkbench } = await import("../agent-workbench/ui/talos-agent-workbench");
-			return new TalosAgentWorkbench({ leaf: this.leaf, service });
+			return new TalosAgentWorkbench({ leaf: this.leaf, service, customApi: this.host.customApi });
 		});
 		try {
 			await this.workbench.mount(surface, "chat");

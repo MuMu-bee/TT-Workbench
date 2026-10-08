@@ -2,6 +2,7 @@ import { setIcon, type WorkspaceLeaf } from "obsidian";
 import type { ChatSurfaceWorkbench } from "../../quyuan/chat-surface";
 import type { AgentWorkbenchService } from "../core/agent-workbench-service";
 import type { PermissionMode } from "../contracts/approval";
+import type { CustomApiHost, CustomApiResult } from "../config/custom-api";
 import type { ModelDescriptor, RuntimeHealth, RuntimeId } from "../contracts/runtime-adapter";
 import {
 	CLAUDE_PROVIDER_ICON,
@@ -15,6 +16,8 @@ import { automaticModelPresentation, explicitDefaultModel, presentRuntimeModel, 
 export interface TalosAgentWorkbenchOptions {
 	leaf: WorkspaceLeaf;
 	service: AgentWorkbenchService;
+	/** 「自定义 API」配置入口；未提供时模型下拉里不显示该按钮。 */
+	customApi?: CustomApiHost;
 }
 
 const NATIVE_PROVIDER_LABELS: Record<RuntimeId, string> = {
@@ -124,6 +127,32 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		if (this.root.parentElement !== container) container.appendChild(this.root);
 		await this.native.mount(this.body, namespace);
 		this.placeToolbarControls();
+	}
+
+	private async openCustomApi(): Promise<void> {
+		this.setModelMenuOpen(false);
+		const result = await this.options.customApi?.open();
+		if (!result) return;
+		try {
+			await this.applyCustomApi(result);
+		} catch (error) {
+			if (this.status) {
+				this.status.dataset.state = "error";
+				this.status.textContent = `自定义 API 切换失败 · ${error instanceof Error ? error.message : String(error)}`;
+			}
+		}
+	}
+
+	/** 保存后切到对应运行时、新的 API 认证方式与默认模型。 */
+	private async applyCustomApi(result: CustomApiResult): Promise<void> {
+		if (this.options.service.getSelectedRuntimeId() !== result.runtimeId) {
+			this.updateRuntimeButtons(result.runtimeId);
+			await this.native.selectRuntime(result.runtimeId);
+		}
+		this.options.service.selectProviderProfile(result.profileId);
+		this.options.service.selectModel(result.model);
+		await this.native.persistCurrentSelection();
+		await this.refreshRuntime(result.runtimeId);
 	}
 
 	/** 把模型、思考、服务层放到输入框底栏左侧，工作流与授权放到右侧（Claudian 底栏布局）。 */
@@ -259,6 +288,19 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		const menuRuntime = doc.createElement("div");
 		menuRuntime.className = "talos-agent-model-menu-runtime";
 		menuRuntime.append(runtimeSwitcher, provider);
+		if (this.options.customApi) {
+			const customApi = doc.createElement("button");
+			customApi.type = "button";
+			customApi.className = "talos-agent-custom-api-button";
+			customApi.title = "手动配置 Base URL、模型与 API Key";
+			const customApiIcon = doc.createElement("span");
+			setIcon(customApiIcon, "key-round");
+			const customApiLabel = doc.createElement("span");
+			customApiLabel.textContent = "自定义 API";
+			customApi.append(customApiIcon, customApiLabel);
+			customApi.addEventListener("click", () => void this.openCustomApi());
+			menuRuntime.appendChild(customApi);
+		}
 		const menuOptions = doc.createElement("div");
 		menuOptions.className = "talos-agent-model-menu-options";
 		modelMenu.append(menuRuntime, menuOptions);
