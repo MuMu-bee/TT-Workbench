@@ -37,7 +37,6 @@ import {
 import {
 	openFile,
 } from "./actions";
-import { TaskDrawer } from "./ui/task-drawer";
 import { ConsoleActionPanel } from "./ui/console-action-panel";
 import { taskStateLabel } from "./ui/task-state-label";
 import { showWelcomeEasterEgg } from "./ui/welcome-easter-egg";
@@ -113,7 +112,6 @@ export class TalosView extends ItemView {
 	chatSurface: TalosChatSurface | null = null;
 	chatMounted = false;
 	private clockTimer: number | null = null;
-	taskDrawer: TaskDrawer | null = null;
 	actionPanel: ConsoleActionPanel | null = null;
 	embeddedSettingsTab: TalosSettingTab | null = null;
 
@@ -212,8 +210,6 @@ export class TalosView extends ItemView {
 		await this.chatSurface?.dispose();
 		this.chatSurface = null;
 		this.chatMounted = false;
-		this.taskDrawer?.unmount();
-		this.taskDrawer = null;
 		this.actionPanel?.unmount();
 		this.actionPanel = null;
 		this.embeddedSettingsTab = null;

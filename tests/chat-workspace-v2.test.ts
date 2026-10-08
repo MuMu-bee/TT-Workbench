@@ -23,12 +23,9 @@ describe("AI chat workspace v2", () => {
 	});
 
 	it("mounts the switch at the bottom of navigation and only on chat", () => {
-		const drawerMount = view.indexOf("view.taskDrawer.mount()");
-		const hostMount = view.indexOf(
-			'cls: "talos-chat-nav-switch-host"'
-		);
-		expect(drawerMount).toBeGreaterThan(-1);
-		expect(hostMount).toBeGreaterThan(drawerMount);
+		// 2026-10-08：导航里的任务抽屉已移除，切换宿主紧跟导航列表。
+		const navMount = view.indexOf("renderNav(view);\n\tview.chatSwitchHostEl");
+		expect(navMount).toBeGreaterThan(-1);
 		// 2026-10-08：主区不再挂双通道切换，宿主保留为空并由 :empty 隐藏。
 		expect(view).not.toContain("getSwitchHost: () => view.chatSwitchHostEl");
 		expect(switcher).toContain("this.attachSwitchControl()");

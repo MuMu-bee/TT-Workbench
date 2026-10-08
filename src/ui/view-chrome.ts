@@ -2,7 +2,6 @@
 import { CreateModal, PublishBackfillModal, deepResearch, vaultLint } from "../actions";
 import { PRIMARY_NAVIGATION, primaryPage } from "./navigation-model";
 import { SVG_NS } from "./talos-view-model";
-import { TaskDrawer } from "./task-drawer";
 import { setIcon } from "obsidian";
 import type { TalosView } from "../view";
 import { buildPixelPatrol } from "./view-cosmos";
@@ -15,8 +14,6 @@ export function buildShell(view: TalosView): void {
 		view.chatMounted = false;
 		void view.chatSurface?.unmount();
 	}
-	view.taskDrawer?.unmount();
-	view.taskDrawer = null;
 	view.actionPanel?.unmount();
 	view.actionPanel = null;
 	view.embeddedSettingsTab = null;
@@ -83,12 +80,6 @@ export function buildSidebar(view: TalosView, side: HTMLElement): void {
 	view.secTitle(navCard, "导航", `${PRIMARY_NAVIGATION.length} SECTIONS`);
 	view.pageNavEl = navCard.createEl("nav", { cls: "nav" });
 	renderNav(view);
-	view.taskDrawer = new TaskDrawer({
-		parent: navCard,
-		store: view.plugin.getConsoleActionRuntime().store,
-		controller: view.plugin.getConsoleActionRuntime().runner,
-	});
-	view.taskDrawer.mount();
 	view.chatSwitchHostEl = navCard.createDiv({
 		cls: "talos-chat-nav-switch-host",
 	});
