@@ -3734,3 +3734,375 @@ body[data-talos-vault-theme] .talos-console
 	padding: 16px;
 	color: var(--text-muted);
 }
+
+/* 右侧边栏 · Claudian 同构布局（2026-10-08）
+   顶部只有标识与运行状态；会话标签与新建/历史在输入框上方；模型、思考、上下文、
+   附件与 MCP 在输入框底栏左侧，工作流与授权在右侧；菜单一律向上展开。 */
+.talos-chat-sidebar .talos-agent-workbench {
+	--talos-sb-brand: var(--claudian-brand, #D97757);
+	--talos-sb-gap: 6px;
+	background: var(--background-primary);
+}
+
+.talos-chat-sidebar .talos-agent-header {
+	flex: 0 0 auto;
+	gap: 8px;
+	padding: 10px 12px 8px;
+}
+
+.talos-chat-sidebar .talos-agent-header .claudian-logo {
+	color: var(--talos-sb-brand);
+}
+
+.talos-chat-sidebar .talos-agent-header .claudian-logo svg {
+	width: 18px;
+	height: 18px;
+}
+
+.talos-chat-sidebar .talos-agent-header-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	flex: 0 1 auto;
+}
+
+.talos-chat-sidebar .talos-agent-runtime-status {
+	overflow: hidden;
+	max-width: 220px;
+	color: var(--text-faint);
+	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-chat-sidebar .talos-agent-install-link {
+	font-size: 11px;
+}
+
+/* 消息区直接贴着标题，输入区固定在底部 */
+.talos-chat-sidebar .talos-native-chat .claudian-messages {
+	padding: 8px 12px 12px;
+}
+
+.talos-chat-sidebar .talos-native-chat .claudian-active-input-slot {
+	padding: 0 10px 10px;
+	background: transparent;
+}
+
+/* 导航行：左侧编号标签，右侧新建 / 历史 */
+.talos-chat-sidebar .claudian-input-nav-row {
+	gap: 8px;
+	padding: 0 0 6px;
+}
+
+.talos-chat-sidebar .claudian-input-nav-row .claudian-tab-bar-container {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+}
+
+.talos-chat-sidebar .claudian-input-nav-row .claudian-tab-badges {
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 4px;
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.talos-chat-sidebar .claudian-input-nav-row .claudian-tab-badge {
+	display: inline-flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 4px;
+	min-width: 22px;
+	height: 22px;
+	padding: 0 6px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	color: var(--text-muted);
+	font-size: 11px;
+	cursor: pointer;
+}
+
+.talos-chat-sidebar .claudian-input-nav-row .claudian-tab-badge-active {
+	border-color: var(--talos-sb-brand);
+	color: var(--talos-sb-brand);
+}
+
+/* 非当前标签只显示编号，当前标签显示标题，和 Claudian 的编号徽标一致 */
+.talos-chat-sidebar .claudian-tab-badge-idle :is(.talos-quyuan-tab-title, .talos-quyuan-tab-close) {
+	display: none;
+}
+
+.talos-chat-sidebar .claudian-tab-badge-active .talos-quyuan-tab-title {
+	overflow: hidden;
+	max-width: 96px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-chat-sidebar .claudian-tab-badge .talos-quyuan-tab-close {
+	padding: 0 !important;
+	border: 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
+	color: inherit;
+	font-size: 12px;
+	line-height: 1;
+}
+
+.talos-chat-sidebar .claudian-input-nav-row .claudian-header-actions {
+	display: flex;
+	flex: 0 0 auto;
+	align-items: center;
+	gap: 2px;
+}
+
+.talos-chat-sidebar .claudian-header-btn {
+	display: inline-grid;
+	width: 24px;
+	height: 24px;
+	place-items: center;
+	padding: 0 !important;
+	border: 0 !important;
+	border-radius: 4px;
+	background: transparent !important;
+	box-shadow: none !important;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.talos-chat-sidebar .claudian-header-btn:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover) !important;
+}
+
+.talos-chat-sidebar .claudian-header-btn svg {
+	width: 15px;
+	height: 15px;
+}
+
+/* 历史在窄侧栏里改为覆盖层，不挤压消息区 */
+.talos-chat-sidebar .talos-native-chat-main {
+	position: relative;
+}
+
+.talos-chat-sidebar .talos-native-chat .talos-native-history {
+	position: absolute;
+	z-index: 30;
+	inset: 0;
+	min-width: 0;
+	border: 0;
+	background: var(--background-primary);
+}
+
+/* 底栏：左侧模型 / 思考 / 上下文 / 附件，右侧工作流 / 授权 */
+.talos-chat-sidebar .claudian-input-toolbar {
+	gap: var(--talos-sb-gap);
+	min-width: 0;
+	padding: 2px 6px 6px;
+}
+
+.talos-chat-sidebar :is(.talos-composer-toolbar-leading, .talos-composer-toolbar-trailing) {
+	display: flex;
+	flex: 0 1 auto;
+	align-items: center;
+	gap: 2px;
+	min-width: 0;
+}
+
+.talos-chat-sidebar .talos-composer-toolbar-spacer {
+	flex: 1 1 auto;
+}
+
+.talos-chat-sidebar .claudian-input-toolbar :is(button, select) {
+	border: 0 !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+}
+
+.talos-chat-sidebar .claudian-input-toolbar .claudian-input-nav-actions {
+	gap: 0;
+}
+
+.talos-chat-sidebar .claudian-input-toolbar .claudian-input-nav-btn {
+	width: 24px;
+	height: 24px;
+	padding: 0 !important;
+	color: var(--text-faint);
+}
+
+.talos-chat-sidebar .claudian-input-toolbar .claudian-input-nav-btn:hover:not(:disabled) {
+	color: var(--text-normal);
+}
+
+.talos-chat-sidebar .claudian-input-toolbar .claudian-input-nav-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* 模型：只显示品牌色模型名 + 箭头 */
+.talos-chat-sidebar .talos-agent-model-control {
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 160px;
+}
+
+.talos-chat-sidebar .talos-agent-model-trigger {
+	display: flex;
+	gap: 3px;
+	min-height: 24px;
+	padding: 2px 6px !important;
+	border-radius: 4px !important;
+	color: var(--talos-sb-brand);
+	font-size: 12px;
+}
+
+.talos-chat-sidebar .talos-agent-model-trigger::after,
+.talos-chat-sidebar .talos-agent-model-trigger-icon,
+.talos-chat-sidebar .talos-agent-model-trigger-copy small {
+	display: none;
+}
+
+.talos-chat-sidebar .talos-agent-model-trigger-copy strong {
+	overflow: hidden;
+	font-size: 12px;
+	font-weight: 500;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-chat-sidebar .talos-agent-model-trigger-chevron {
+	color: var(--talos-sb-brand);
+	font-size: 11px;
+}
+
+.talos-chat-sidebar .talos-agent-model-trigger:hover {
+	background-color: var(--background-modifier-hover) !important;
+}
+
+/* 下拉菜单向上展开；运行时与认证方式在菜单顶部 */
+.talos-chat-sidebar :is(.talos-agent-model-menu, .talos-agent-permission-menu) {
+	top: auto;
+	bottom: calc(100% + 6px);
+	width: min(320px, calc(100vw - 32px));
+	max-height: min(420px, 60vh);
+	transform-origin: left bottom;
+}
+
+.talos-chat-sidebar .talos-agent-permission-menu {
+	transform-origin: right bottom;
+}
+
+.talos-chat-sidebar .talos-agent-model-menu-runtime {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 4px 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: 6px;
+}
+
+.talos-chat-sidebar .talos-agent-model-menu-runtime :is(button, select) {
+	border: 0 !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+}
+
+.talos-chat-sidebar .talos-agent-model-menu-runtime .talos-agent-runtime-button {
+	width: 28px;
+	height: 28px;
+}
+
+.talos-chat-sidebar .talos-agent-model-menu-runtime .talos-agent-runtime-button.is-active {
+	color: var(--talos-sb-brand);
+	background-color: var(--background-modifier-hover) !important;
+}
+
+.talos-chat-sidebar .talos-agent-model-menu-runtime .talos-agent-provider-picker {
+	flex: 1 1 auto;
+	min-width: 0;
+	max-width: none;
+	font-size: 12px;
+}
+
+/* 思考：「思考」灰字 + 品牌色档位 */
+.talos-chat-sidebar .talos-agent-reasoning-control {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	font-size: 12px;
+}
+
+.talos-chat-sidebar .talos-agent-reasoning-control[hidden],
+.talos-chat-sidebar .talos-agent-service-tier-control[hidden] {
+	display: none;
+}
+
+.talos-chat-sidebar .talos-agent-reasoning-control .claudian-thinking-label-text {
+	color: var(--text-muted);
+}
+
+.talos-chat-sidebar .talos-agent-reasoning-picker {
+	min-height: 24px;
+	padding: 0 14px 0 2px;
+	color: var(--talos-sb-brand);
+	font-size: 12px;
+}
+
+/* 工作流与授权：右侧小号文字，授权菜单保留三档 */
+.talos-chat-sidebar .talos-agent-workflow button {
+	min-height: 22px;
+	padding: 1px 6px !important;
+	font-size: 11px;
+	font-weight: 500;
+}
+
+.talos-chat-sidebar .talos-agent-workflow button[aria-pressed="true"] {
+	color: var(--talos-sb-brand);
+}
+
+.talos-chat-sidebar .talos-agent-permission-trigger {
+	min-height: 22px;
+	padding: 1px 6px !important;
+	gap: 4px;
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: 500;
+}
+
+.talos-chat-sidebar .talos-agent-permission-trigger-icon svg {
+	width: 13px;
+	height: 13px;
+}
+
+/* 和 Claudian 一样回车发送：空闲时不显示发送键，运行中显示停止键 */
+.talos-chat-sidebar .talos-native-composer:not(.is-streaming) .claudian-submit-btn {
+	display: none;
+}
+
+/* 主题全局规则会给所有 button/select 强制主题文字色与底色（!important），
+   侧栏里品牌色与透明底需同样以 !important 声明才能生效。 */
+body .talos-chat-sidebar .talos-agent-model-trigger,
+body .talos-chat-sidebar .talos-agent-model-trigger :is(strong, .talos-agent-model-trigger-chevron),
+body .talos-chat-sidebar .talos-agent-reasoning-picker,
+body .talos-chat-sidebar .talos-agent-workflow button[aria-pressed="true"],
+body .talos-chat-sidebar .talos-agent-model-menu-runtime .talos-agent-runtime-button.is-active {
+	color: var(--talos-sb-brand) !important;
+}
+
+body .talos-chat-sidebar :is(.talos-agent-workflow button[aria-pressed="false"], .talos-agent-permission-trigger, .claudian-header-btn) {
+	color: var(--text-muted) !important;
+}
+
+body .talos-chat-sidebar :is(.claudian-header-btn, .claudian-input-toolbar button, .claudian-input-toolbar select, .talos-agent-model-menu-runtime button, .talos-agent-model-menu-runtime select) {
+	border-color: transparent !important;
+	background-color: transparent !important;
+	box-shadow: none !important;
+}
+
+body .talos-chat-sidebar :is(.claudian-header-btn, .claudian-input-toolbar button):hover:not(:disabled) {
+	background-color: var(--background-modifier-hover) !important;
+}

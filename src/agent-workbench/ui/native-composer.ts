@@ -72,6 +72,11 @@ export class NativeComposer {
 	private contextRow: HTMLElement;
 	private dropdown: HTMLElement;
 	private queueRow: HTMLElement;
+	/** 输入框上方的导航行（会话标签 + 新建/历史），由对话视图填充。 */
+	readonly navRow: HTMLElement;
+	/** 输入框底栏两侧的插槽：左侧放模型/思考，右侧放工作流/授权（与 Claudian 底栏同位）。 */
+	readonly toolbarLeading: HTMLElement;
+	readonly toolbarTrailing: HTMLElement;
 	private fileInput: HTMLInputElement;
 	private selectedFiles: TFile[] = [];
 	private images: ImageDraft[] = [];
@@ -86,13 +91,22 @@ export class NativeComposer {
 		const doc = container.ownerDocument;
 		const root = doc.createElement("div");
 		root.className = "claudian-input-container talos-native-composer";
-		const contextRow = doc.createElement("div");
-		contextRow.className = "claudian-context-row";
-		root.appendChild(contextRow);
-		this.contextRow = contextRow;
+		const queueRow = doc.createElement("div");
+		queueRow.className = "claudian-input-queue-row";
+		queueRow.hidden = true;
+		root.appendChild(queueRow);
+		this.queueRow = queueRow;
+		const navRow = doc.createElement("div");
+		navRow.className = "claudian-input-nav-row";
+		root.appendChild(navRow);
+		this.navRow = navRow;
 
 		const wrapper = doc.createElement("div");
 		wrapper.className = "claudian-input-wrapper";
+		const contextRow = doc.createElement("div");
+		contextRow.className = "claudian-context-row";
+		wrapper.appendChild(contextRow);
+		this.contextRow = contextRow;
 		const composer = doc.createElement("div");
 		composer.className = "claudian-input-composer";
 		const textarea = doc.createElement("textarea");
@@ -111,6 +125,14 @@ export class NativeComposer {
 
 		const toolbar = doc.createElement("div");
 		toolbar.className = "claudian-input-toolbar";
+		const leading = doc.createElement("div");
+		leading.className = "talos-composer-toolbar-leading";
+		this.toolbarLeading = leading;
+		const trailing = doc.createElement("div");
+		trailing.className = "talos-composer-toolbar-trailing";
+		this.toolbarTrailing = trailing;
+		const spacer = doc.createElement("div");
+		spacer.className = "talos-composer-toolbar-spacer";
 		const left = doc.createElement("div");
 		left.className = "claudian-input-nav-actions";
 		left.append(
@@ -124,15 +146,9 @@ export class NativeComposer {
 		submit.classList.add("claudian-submit-btn");
 		this.submitButton = submit;
 		this.contextMeter = new ContextMeter(doc);
-		toolbar.append(left, this.contextMeter.el, submit);
+		toolbar.append(leading, this.contextMeter.el, left, spacer, trailing, submit);
 		wrapper.appendChild(toolbar);
 		root.appendChild(wrapper);
-
-		const queueRow = doc.createElement("div");
-		queueRow.className = "claudian-input-queue-row";
-		queueRow.hidden = true;
-		root.appendChild(queueRow);
-		this.queueRow = queueRow;
 
 		const fileInput = doc.createElement("input");
 		fileInput.type = "file";

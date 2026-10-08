@@ -78,6 +78,8 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 	private modelTriggerLabel: HTMLElement | null = null;
 	private modelTriggerMeta: HTMLElement | null = null;
 	private modelMenu: HTMLElement | null = null;
+	private modelMenuOptions: HTMLElement | null = null;
+	private toolbarControls: { leading: HTMLElement[]; trailing: HTMLElement[] } = { leading: [], trailing: [] };
 	private modelAnnouncement: HTMLElement | null = null;
 	private modelDescriptors: ModelDescriptor[] = [];
 	private modelRuntimeId: RuntimeId = "codex";
@@ -121,16 +123,41 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		if (!this.root || !this.body) throw new Error("TALOS 智能体展示层未建立");
 		if (this.root.parentElement !== container) container.appendChild(this.root);
 		await this.native.mount(this.body, namespace);
+		this.placeToolbarControls();
+	}
+
+	/** 把模型、思考、服务层放到输入框底栏左侧，工作流与授权放到右侧（Claudian 底栏布局）。 */
+	private placeToolbarControls(): void {
+		const slots = this.native.composerToolbarSlots();
+		if (!slots) return;
+		slots.leading.append(...this.toolbarControls.leading);
+		slots.trailing.append(...this.toolbarControls.trailing);
 	}
 
 	private build(doc: Document): void {
 		const root = doc.createElement("section");
 		root.className = "talos-agent-workbench";
 		root.dataset.talosComponent = "agent-workbench";
-		const controls = doc.createElement("div");
-		controls.className = "talos-agent-controls";
-		controls.setAttribute("role", "group");
-		controls.setAttribute("aria-label", "TALOS 智能体运行时与模型");
+		// 与 Claudian 侧栏同构：顶部只留标识与运行状态，其余控件放进输入框底栏
+		// （placeToolbarControls），运行时与认证方式并入模型下拉。
+		const header = doc.createElement("div");
+		header.className = "claudian-header talos-agent-header";
+		const title = doc.createElement("div");
+		title.className = "claudian-title";
+		const logo = doc.createElement("span");
+		logo.className = "claudian-logo";
+		setIcon(logo, "talos-logo");
+		const titleText = doc.createElement("h4");
+		titleText.className = "claudian-title-text";
+		titleText.textContent = "TALOS";
+		title.append(logo, titleText);
+		const headerStatus = doc.createElement("div");
+		headerStatus.className = "talos-agent-header-status";
+		headerStatus.setAttribute("role", "group");
+		headerStatus.setAttribute("aria-label", "TALOS 智能体运行状态");
+		header.append(title, headerStatus);
+		const leadingControls: HTMLElement[] = [];
+		const trailingControls: HTMLElement[] = [];
 
 		const runtimeSwitcher = doc.createElement("div");
 		runtimeSwitcher.className = "talos-agent-runtime-switcher";
@@ -170,7 +197,6 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 			runtimeSwitcher.appendChild(button);
 		}
 		this.updateRuntimeButtons(this.options.service.getSelectedRuntimeId());
-		controls.appendChild(runtimeSwitcher);
 
 		const provider = doc.createElement("select");
 		provider.className = "talos-agent-provider-picker";
@@ -193,7 +219,6 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 				if (this.status) this.status.textContent = `Provider 切换失败 · ${error instanceof Error ? error.message : String(error)}`;
 			});
 		});
-		controls.appendChild(provider);
 
 		const modelControl = doc.createElement("div");
 		modelControl.className = "talos-agent-model-control";
@@ -231,8 +256,15 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		modelMenu.setAttribute("role", "listbox");
 		modelMenu.setAttribute("aria-label", "可用模型");
 		modelMenu.hidden = true;
+		const menuRuntime = doc.createElement("div");
+		menuRuntime.className = "talos-agent-model-menu-runtime";
+		menuRuntime.append(runtimeSwitcher, provider);
+		const menuOptions = doc.createElement("div");
+		menuOptions.className = "talos-agent-model-menu-options";
+		modelMenu.append(menuRuntime, menuOptions);
 		modelControl.appendChild(modelMenu);
 		this.modelMenu = modelMenu;
+		this.modelMenuOptions = menuOptions;
 
 		const announcement = doc.createElement("span");
 		announcement.className = "talos-agent-model-announcement";
@@ -250,7 +282,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		automatic.textContent = "运行时默认模型";
 		model.appendChild(automatic);
 		modelControl.appendChild(model);
-		controls.appendChild(modelControl);
+		leadingControls.push(modelControl);
 		this.model = model;
 		model.addEventListener("change", () => void this.selectModel(model.value));
 		modelTrigger.addEventListener("click", () => this.setModelMenuOpen(modelMenu.hidden));
@@ -273,7 +305,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		reasoning.addEventListener("change", () => void this.selectReasoning(reasoning.value));
 		reasoningControl.append(reasoningLabel, reasoning);
 		reasoningControl.hidden = true;
-		controls.appendChild(reasoningControl);
+		leadingControls.push(reasoningControl);
 		this.reasoningControl = reasoningControl;
 		this.reasoning = reasoning;
 
@@ -290,7 +322,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		serviceTier.addEventListener("click", () => void this.toggleServiceTier());
 		serviceTierControl.appendChild(serviceTier);
 		serviceTierControl.hidden = true;
-		controls.appendChild(serviceTierControl);
+		leadingControls.push(serviceTierControl);
 		this.serviceTierControl = serviceTierControl;
 		this.serviceTier = serviceTier;
 
@@ -314,7 +346,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 			});
 			workflow.appendChild(button);
 		}
-		controls.appendChild(workflow);
+		trailingControls.push(workflow);
 
 		const permissionControl = doc.createElement("div");
 		permissionControl.className = "talos-agent-permission-control talos-agent-permission-picker";
@@ -354,7 +386,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 				this.setPermissionMenuOpen(true, true);
 			}
 		});
-		controls.appendChild(permissionControl);
+		trailingControls.push(permissionControl);
 
 		const status = doc.createElement("span");
 		status.className = "talos-agent-runtime-status";
@@ -362,7 +394,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		status.setAttribute("aria-live", "polite");
 		status.dataset.state = "checking";
 		status.textContent = "等待无付费运行时探测";
-		controls.appendChild(status);
+		headerStatus.appendChild(status);
 		this.status = status;
 
 		const install = doc.createElement("a");
@@ -371,9 +403,10 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		install.target = "_blank";
 		install.rel = "noreferrer";
 		install.hidden = true;
-		controls.appendChild(install);
+		headerStatus.appendChild(install);
 		this.install = install;
-		root.appendChild(controls);
+		root.appendChild(header);
+		this.toolbarControls = { leading: leadingControls, trailing: trailingControls };
 
 		const approval = doc.createElement("div");
 		approval.className = "talos-agent-approval-region";
@@ -398,7 +431,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		marker.setAttribute("role", "status");
 		marker.setAttribute("aria-live", "polite");
 		marker.textContent = `${from} → ${to} · 下一回合将恢复目标会话`;
-		marker.style.top = `${(root.querySelector<HTMLElement>(".talos-agent-controls")?.offsetHeight ?? 52) + 8}px`;
+		marker.style.top = `${(root.querySelector<HTMLElement>(".talos-agent-header")?.offsetHeight ?? 52) + 8}px`;
 		if (!marker.parentElement) root.appendChild(marker);
 		this.handoffToast = marker;
 		window.requestAnimationFrame(() => marker.classList.add("is-visible"));
@@ -459,9 +492,10 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 	}
 
 	private renderModelMenu(): void {
-		if (!this.modelMenu || !this.model) return;
-		this.modelMenu.replaceChildren();
-		const doc = this.modelMenu.ownerDocument;
+		if (!this.modelMenu || !this.modelMenuOptions || !this.model) return;
+		const list = this.modelMenuOptions;
+		list.replaceChildren();
+		const doc = list.ownerDocument;
 		const heading = doc.createElement("div");
 		heading.className = "talos-agent-model-menu-heading";
 		const title = doc.createElement("strong");
@@ -473,7 +507,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 				? "使用 Claude Code 官方模型别名或当前 API 目录"
 				: "模型来自当前 OhMyPi Provider";
 		heading.append(title, hint);
-		this.modelMenu.appendChild(heading);
+		list.appendChild(heading);
 
 		const options: Array<{ id: string; presentation: ReturnType<typeof presentRuntimeModel> }> = [
 			{ id: "", presentation: automaticModelPresentation(this.modelRuntimeId) },
@@ -512,7 +546,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 			check.textContent = "✓";
 			button.append(copy, check);
 			button.addEventListener("click", () => void this.selectModel(option.id));
-			this.modelMenu.appendChild(button);
+			list.appendChild(button);
 		}
 	}
 
@@ -848,6 +882,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		this.modelTriggerLabel = null;
 		this.modelTriggerMeta = null;
 		this.modelMenu = null;
+		this.modelMenuOptions = null;
 		this.modelAnnouncement = null;
 		this.modelDescriptors = [];
 		this.reasoningControl = null;

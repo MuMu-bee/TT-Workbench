@@ -135,25 +135,19 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		root.className = "claudian-container claudian-embedded-root talos-native-chat";
 		root.dataset.talosImplementation = "native";
 
+		// 与 Claudian 同位：会话标签与「新建 / 历史」放在输入框上方的导航行。
 		const tabRow = doc.createElement("div");
 		tabRow.className = "claudian-tab-bar-container";
-		const historyButton = doc.createElement("button");
-		historyButton.type = "button";
-		historyButton.className = "claudian-nav-btn claudian-nav-btn-top";
-		historyButton.setAttribute("aria-label", "会话历史");
-		setIcon(historyButton, "panel-left");
-		historyButton.addEventListener("click", () => this.toggleHistory());
 		const tabBar = doc.createElement("div");
 		tabBar.className = "claudian-tab-badges";
 		tabBar.setAttribute("role", "tablist");
-		const newButton = doc.createElement("button");
-		newButton.type = "button";
-		newButton.className = "claudian-new-tab-btn";
-		newButton.setAttribute("aria-label", "新建会话");
-		setIcon(newButton, "plus");
-		newButton.addEventListener("click", () => void this.newConversation());
-		tabRow.append(historyButton, tabBar, newButton);
-		root.appendChild(tabRow);
+		tabRow.appendChild(tabBar);
+		const headerActions = doc.createElement("div");
+		headerActions.className = "claudian-header-actions";
+		headerActions.append(
+			this.headerButton(doc, "square-plus", "新建会话", () => void this.newConversation()),
+			this.headerButton(doc, "history", "会话历史", () => this.toggleHistory()),
+		);
 		this.tabBar = tabBar;
 
 		const main = doc.createElement("div");
@@ -184,7 +178,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		this.approvalRegion = approval;
 		this.composerHost = composerHost;
 		this.renderer = new NativeEventRenderer(messages, this.app, () => this.app.workspace.getActiveFile()?.path ?? "");
-		this.composer = new NativeComposer(composerHost, {
+		const composer = new NativeComposer(composerHost, {
 			app: this.app,
 			onSubmit: (draft) => this.submit(draft),
 			onStop: () => this.stop(),
@@ -195,6 +189,24 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 			onRefine: (text) => this.refineInstruction(text),
 			onInlineEdit: (draft) => this.inlineEdit(draft),
 		});
+		composer.navRow.append(tabRow, headerActions);
+		this.composer = composer;
+	}
+
+	private headerButton(doc: Document, icon: string, label: string, action: () => void): HTMLButtonElement {
+		const button = doc.createElement("button");
+		button.type = "button";
+		button.className = "claudian-header-btn";
+		button.setAttribute("aria-label", label);
+		button.title = label;
+		setIcon(button, icon);
+		button.addEventListener("click", action);
+		return button;
+	}
+
+	/** 输入框底栏左右插槽，供工作台放入模型、思考、工作流与授权控件。 */
+	composerToolbarSlots(): { leading: HTMLElement; trailing: HTMLElement } | null {
+		return this.composer ? { leading: this.composer.toolbarLeading, trailing: this.composer.toolbarTrailing } : null;
 	}
 
 	private buildHistory(doc: Document): HTMLElement {
