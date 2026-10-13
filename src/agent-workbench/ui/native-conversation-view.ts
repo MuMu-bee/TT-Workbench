@@ -56,6 +56,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 	private approvalRegion: HTMLElement | null = null;
 	private composerHost: HTMLElement | null = null;
 	private composer: NativeComposer | null = null;
+	private pendingPrefill: string | null = null;
 	private readonly contextUsage = new Map<string, ContextUsage>();
 	private renderer: NativeEventRenderer | null = null;
 	private activeConversationId: string | null = null;
@@ -191,6 +192,11 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		});
 		composer.navRow.append(tabRow, headerActions);
 		this.composer = composer;
+		if (this.pendingPrefill !== null) {
+			const text = this.pendingPrefill;
+			this.pendingPrefill = null;
+			composer.prefill(text);
+		}
 	}
 
 	private headerButton(doc: Document, icon: string, label: string, action: () => void): HTMLButtonElement {
@@ -920,6 +926,10 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 	}
 
 	focusComposer(): void { this.composer?.focus(); }
+	prefillComposer(text: string): void {
+		if (this.composer) this.composer.prefill(text);
+		else this.pendingPrefill = text;
+	}
 	async suspend(): Promise<void> { this.root?.remove(); }
 
 	async destroy(): Promise<void> {

@@ -177,10 +177,10 @@ export function createApprovalExecuteButton(view: TalosView, parent: HTMLElement
 		cls: "approval-action approval-action-execute",
 	});
 	button.type = "button";
-	button.setAttribute("aria-label", `批准并模型执行：${it.title}`);
+	button.setAttribute("aria-label", `批准并交给模型执行：${it.title}`);
 	const icon = button.createSpan({ cls: "approval-action-icon" });
 	setIcon(icon, "bot");
-	button.createSpan({ cls: "approval-action-label", text: "批准+模型" });
+	button.createSpan({ cls: "approval-action-label", text: "批准并交给模型" });
 	button.addEventListener("click", (event) => {
 		void (async () => {
 			event.preventDefault();

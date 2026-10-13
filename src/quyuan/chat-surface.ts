@@ -8,6 +8,8 @@ export interface ChatSurfaceWorkbench {
 	mount(container: HTMLElement, namespace: "chat"): Promise<void>;
 	suspend(): Promise<void>;
 	focusComposer(): void;
+	/** 把文本放进输入框并聚焦；只填不发，由用户自己确认发送。 */
+	prefillComposer?(text: string): void;
 	destroy(): Promise<void>;
 }
 

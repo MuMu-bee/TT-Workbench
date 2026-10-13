@@ -4,7 +4,7 @@ import { openFile } from "../../actions";
 import { renderTalosEmptyState } from "../page-primitives";
 import { setIcon } from "obsidian";
 import type { TalosView } from "../../view";
-import { moduleHero } from "../view-modules";
+import { commandActionHint, moduleHero } from "../view-modules";
 
 export function renderDailyPage(view: TalosView, page: HTMLElement, d: Collected): void {
 	const now = new Date();
@@ -186,7 +186,12 @@ export function renderDailyPage(view: TalosView, page: HTMLElement, d: Collected
 		const copy = button.createSpan({ cls: "daily-command-copy" });
 		copy.createEl("b", { text: action.label });
 		copy.createEl("small", { text: action.desc });
-		button.addEventListener("click", () => void view.copyText(action.command));
+		button.title = commandActionHint(action.command);
+		button.addEventListener("click", () => void view.sendCommandToChat(action.command));
+		button.addEventListener("contextmenu", (event) => {
+			event.preventDefault();
+			void view.copyText(action.command);
+		});
 	}
 
 	const supportGrid = page.createDiv({

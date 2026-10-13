@@ -59,6 +59,13 @@ export class TalosChatSidebarView extends ItemView {
 		if (!this.mountError) this.workbench?.focusComposer();
 	}
 
+	/** 预填输入框；对话加载失败时返回 false，由调用方降级。 */
+	prefillComposer(text: string): boolean {
+		if (this.mountError || !this.workbench?.prefillComposer) return false;
+		this.workbench.prefillComposer(text);
+		return true;
+	}
+
 	async onClose(): Promise<void> {
 		const workbench = this.workbench;
 		this.workbench = null;
@@ -72,8 +79,8 @@ interface SidebarWorkspace {
 	revealLeaf(leaf: WorkspaceLeaf): Promise<void> | void;
 }
 
-/** 打开（或复用）右侧边栏对话视图并聚焦输入框。 */
-export async function revealChatSidebar(workspace: SidebarWorkspace): Promise<WorkspaceLeaf | null> {
+/** 打开（或复用）右侧边栏对话视图并聚焦输入框；给出 prefill 时只填入不发送。 */
+export async function revealChatSidebar(workspace: SidebarWorkspace, prefill?: string): Promise<WorkspaceLeaf | null> {
 	let leaf: WorkspaceLeaf | undefined = workspace.getLeavesOfType(VIEW_TYPE_TALOS_CHAT)[0];
 	if (!leaf) {
 		const created = workspace.getRightLeaf(false);
@@ -82,6 +89,8 @@ export async function revealChatSidebar(workspace: SidebarWorkspace): Promise<Wo
 		leaf = created;
 	}
 	await workspace.revealLeaf(leaf);
-	if (leaf.view instanceof TalosChatSidebarView) leaf.view.focusComposer();
+	if (!(leaf.view instanceof TalosChatSidebarView)) return prefill === undefined ? leaf : null;
+	if (prefill === undefined) leaf.view.focusComposer();
+	else if (!leaf.view.prefillComposer(prefill)) return null;
 	return leaf;
 }

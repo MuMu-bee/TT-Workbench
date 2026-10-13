@@ -4,7 +4,7 @@ import { openFile } from "../../actions";
 import { renderTalosEmptyState } from "../page-primitives";
 import type { TalosView } from "../../view";
 import { fillCapabilityDistribution, fillDist, fillSignalList, fillTrend } from "../charts/talos-view-charts";
-import { moduleHero } from "../view-modules";
+import { commandActionHint, moduleHero } from "../view-modules";
 import { mountFlowPipeline } from "../flow-pipeline";
 
 export function renderKnowledgePage(view: TalosView, page: HTMLElement, d: Collected): void {
@@ -610,9 +610,14 @@ export function renderCapabilityPage(view: TalosView, page: HTMLElement, d: Coll
 				sourceLine.createSpan({ text: item.path });
 				sourceLine.createEl("em", { text: group.label });
 			}
+			card.title = commandActionHint(item.invoke);
 			card.addEventListener("click", () =>
-				void view.copyText(item.invoke)
+				void view.sendCommandToChat(item.invoke)
 			);
+			card.addEventListener("contextmenu", (event) => {
+				event.preventDefault();
+				void view.copyText(item.invoke);
+			});
 		}
 		view.wireModuleSelection(
 			grid,

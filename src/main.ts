@@ -416,6 +416,16 @@ export default class TalosPlugin extends Plugin {
 		await this.activateQuyuanV2View();
 	}
 
+	/** 打开右栏 TALOS 对话并把文本填进输入框；不发送。失败返回 false，由调用方降级。 */
+	async prefillChatSidebar(text: string): Promise<boolean> {
+		try {
+			return (await revealChatSidebar(this.app.workspace, text)) !== null;
+		} catch (error) {
+			this.recordQuyuanRuntimeError("prefillChatSidebar", error);
+			return false;
+		}
+	}
+
 	/** 打开 TALOS 控制台并切到指定页面（命令面板入口）。 */
 	async openTalosPage(pageKey: string): Promise<void> {
 		const leaf = await this.openOrReviveTalosLeaf(false);

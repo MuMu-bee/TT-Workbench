@@ -1,6 +1,7 @@
 // TALOS 插件控制台动作运行时装配；由 TalosPlugin 委托调用。
 import { type ConsoleActionRuntime, createConsoleActionRuntime } from "../console-action-runtime";
-import { Notice, normalizePath } from "obsidian";
+import { Notice, TFile, normalizePath } from "obsidian";
+import { TRIAGE_TARGET_KEYS } from "../inbox-triage";
 import { VaultRecoveryStore } from "../task-core/recovery-store";
 import { createWindowTimerHost, partialTaskResult } from "../task-core/task-runner";
 import type TalosPlugin from "../main";
@@ -100,12 +101,34 @@ export function createTalosActionRuntime(plugin: TalosPlugin): ConsoleActionRunt
 				await plugin.app.vault.create(targetPath, content);
 				return { path: targetPath };
 			},
+			moveInboxNote: async (input) => {
+				const { from, to } = parseInboxMove(input);
+				const inboxRoot = normalizePath(plugin.talosSettings.inboxFolder);
+				const targetRoots = TRIAGE_TARGET_KEYS.map((key) => normalizePath(plugin.paths.dir(key)));
+				if (!from.startsWith(`${inboxRoot}/`)) throw new Error(`分诊来源不在收件箱内：${from}`);
+				if (!targetRoots.some((root) => to.startsWith(`${root}/`))) {
+					throw new Error(`分诊目标超出允许目录：${to}`);
+				}
+				const file = plugin.app.vault.getAbstractFileByPath(from);
+				if (!(file instanceof TFile)) throw new Error(`收件箱笔记已不存在：${from}`);
+				if (plugin.app.vault.getAbstractFileByPath(to)) throw new Error(`目标已有同名笔记：${to}`);
+				const slash = to.lastIndexOf("/");
+				if (slash > 0) await ensureVaultFolder(plugin, to.slice(0, slash));
+				// fileManager.renameFile 会按用户设置同步更新指向该笔记的链接。
+				await plugin.app.fileManager.renameFile(file, to);
+				return { from, to };
+			},
 			publishBackfill: executeCallback,
 			decideApproval: executeCallback,
 			decidePreference: executeCallback,
 		},
 		scopes: {
 			noteWriteScopes: noteRoots.map((path) => `${path}/**`),
+			inboxTriageReadScopes: [`${normalizePath(plugin.talosSettings.inboxFolder)}/**`],
+			inboxTriageWriteScopes: [
+				`${normalizePath(plugin.talosSettings.inboxFolder)}/**`,
+				...TRIAGE_TARGET_KEYS.map((key) => `${normalizePath(plugin.paths.dir(key))}/**`),
+			],
 		},
 		recoveryStore: new VaultRecoveryStore({
 			exists: (path) => plugin.app.vault.adapter.exists(path),
@@ -116,4 +139,12 @@ export function createTalosActionRuntime(plugin: TalosPlugin): ConsoleActionRunt
 		}),
 		timers: actionTimers,
 	});
+}
+
+function parseInboxMove(input: unknown): { from: string; to: string } {
+	const value = input as { from?: unknown; to?: unknown } | null;
+	if (!value || typeof value.from !== "string" || typeof value.to !== "string") {
+		throw new Error("分诊归档缺少来源或目标路径");
+	}
+	return { from: normalizePath(value.from), to: normalizePath(value.to) };
 }

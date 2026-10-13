@@ -14,6 +14,10 @@ export interface TalosUiAction {
 	label: string;
 	icon: string;
 	onActivate: () => void;
+	/** 悬停提示，说明点击后去哪里。 */
+	hint?: string;
+	/** 右键的次要动作（如复制命令）。 */
+	onSecondary?: () => void;
 }
 
 export interface TalosPageHeaderOptions {
@@ -108,9 +112,10 @@ export function renderTalosPageHeader(
 				cls: "module-hero-action talos-ui-page-header__action",
 				attr: {
 					type: "button",
-					"aria-label": option.label,
+					"aria-label": option.hint ? `${option.label}：${option.hint}` : option.label,
 				},
 			});
+			if (option.hint) button.title = option.hint;
 			const actionIcon = button.createSpan({
 				cls: "module-hero-action-icon talos-ui-page-header__action-icon",
 			});
@@ -120,6 +125,13 @@ export function renderTalosPageHeader(
 				event.preventDefault();
 				option.onActivate();
 			});
+			const secondary = option.onSecondary;
+			if (secondary) {
+				button.addEventListener("contextmenu", (event) => {
+					event.preventDefault();
+					secondary();
+				});
+			}
 		}
 	}
 

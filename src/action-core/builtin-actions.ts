@@ -17,10 +17,15 @@ export interface BuiltinActionDependencies {
 	publishBackfill: BuiltinExecutor;
 	decideApproval: BuiltinExecutor;
 	decidePreference: BuiltinExecutor;
+	/** 收件箱分诊「收下」：把一条笔记移到目标目录（经提案批准后才执行）。 */
+	moveInboxNote: BuiltinExecutor;
 }
 
 export interface BuiltinActionScopes {
 	noteWriteScopes: string[];
+	/** 收件箱分诊：读取范围是收件箱，写入范围是收件箱与可选目标目录。 */
+	inboxTriageReadScopes?: string[];
+	inboxTriageWriteScopes?: string[];
 }
 
 const DEFAULT_SCOPES: BuiltinActionScopes = {
@@ -126,6 +131,18 @@ export function createBuiltinActionRegistry(
 			cancelable: false,
 			reversible: true,
 			execute: executor(dependencies.decidePreference),
+		},
+		{
+			id: "triage-inbox-note",
+			label: "收件箱分诊归档",
+			description: "把一条收件箱笔记移到选定目录，Obsidian 同步更新反链",
+			risk: "C",
+			readScope: [...(scopes.inboxTriageReadScopes ?? ["**"])],
+			writeScope: [...(scopes.inboxTriageWriteScopes ?? ["<inbox-triage>"])],
+			timeoutMs: 30_000,
+			cancelable: false,
+			reversible: true,
+			execute: executor(dependencies.moveInboxNote),
 		},
 	]);
 }

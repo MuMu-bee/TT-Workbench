@@ -49,17 +49,17 @@ const PERMISSION_PRESENTATION: Record<PermissionMode, {
 	icon: string;
 }> = {
 	ask: {
-		label: "请求批准",
+		label: "每步先问我",
 		description: "修改文件、运行命令或访问额外网络时先询问",
 		icon: "hand",
 	},
 	scoped: {
-		label: "帮我批准",
+		label: "安全操作自动",
 		description: "已授权的安全操作自动继续，仅风险操作询问",
 		icon: "shield-check",
 	},
 	"vault-full": {
-		label: "完全访问权限",
+		label: "库内读写自动",
 		description: "当前 Vault 普通读写自动，高风险与外部目标仍受保护",
 		icon: "shield-alert",
 	},
@@ -906,6 +906,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		this.root?.remove();
 	}
 	focusComposer(): void { this.native.focusComposer(); }
+	prefillComposer(text: string): void { this.native.prefillComposer(text); }
 	async destroy(): Promise<void> {
 		this.setModelMenuOpen(false);
 		this.setPermissionMenuOpen(false);

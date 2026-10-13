@@ -10,6 +10,10 @@ import type { TalosView } from "../../view";
 import { fillBanner, fillGateStateChart, fillGates, fillInboxAgeDist, fillInboxClusters, fillSignalList, fillTalosModules } from "../charts/talos-view-charts";
 import { moduleHero } from "../view-modules";
 import { mountFlowPipeline } from "../flow-pipeline";
+import { InboxTriagePanel } from "../inbox-triage-panel";
+import { TRIAGE_TARGET_KEYS, inboxMoveRequest } from "../../inbox-triage";
+import { evaluateActionRisk } from "../../action-core/risk-policy";
+import { SCHEMA_LABELS } from "../../data/schema";
 
 export async function renderChatPage(view: TalosView, page: HTMLElement): Promise<void> {
 	try {
@@ -296,6 +300,8 @@ export function renderInboxPage(view: TalosView, page: HTMLElement, d: Collected
 	});
 	mountFlowPipeline(view, hero, d, "inbox");
 
+	renderInboxTriageQueue(view, page, d);
+
 	const triage = page.createDiv({
 		cls: "workflow-v2-primary inbox-v2-primary",
 	});
@@ -354,4 +360,52 @@ export function renderInboxPage(view: TalosView, page: HTMLElement, d: Collected
 		d.inbox.recent,
 		"收件箱已清空"
 	);
+}
+
+/** 逐条分诊：卡片 → 提案 → 批准 → 落到目标目录，全程留在收件箱页。 */
+function renderInboxTriageQueue(view: TalosView, page: HTMLElement, d: Collected): void {
+	const queue = d.inbox.queue ?? [];
+	if (queue.length === 0) return;
+	const panel = view.panel(
+		page,
+		"#F97316",
+		"待分诊",
+		"逐条决定去向 · 收下需你批准后才移动"
+	);
+	panel.addClass("inbox-v2-triage-panel");
+	panel.setAttribute("data-workflow-section", "triage-queue");
+	const runtime = view.plugin.getConsoleActionRuntime();
+	const definition = runtime.registry.get("triage-inbox-note");
+	new InboxTriagePanel({
+		parent: panel,
+		items: queue,
+		total: d.inbox.count,
+		inboxDir: view.plugin.talosSettings.inboxFolder,
+		targets: TRIAGE_TARGET_KEYS.map((key) => ({
+			key,
+			label: SCHEMA_LABELS[key],
+			dir: view.paths.dir(key),
+		})),
+		session: view.inboxTriageSession,
+		existingPaths: () => new Set(view.app.vault.getFiles().map((file) => file.path)),
+		evaluate: (request) =>
+			definition
+				? evaluateActionRisk(definition, request)
+				: { decision: "propose", reason: "动作未注册，按高风险处理" },
+		onOpen: (path) => void openFile(view.app, path),
+		onApprove: async (plan) => {
+			const task = await runtime.runner.run({
+				actionId: "triage-inbox-note",
+				idempotencyKey: `inbox-triage:${plan.from}->${plan.to}:${Date.now()}`,
+				input: { from: plan.from, to: plan.to },
+				request: inboxMoveRequest(plan),
+				approvalGranted: true,
+			});
+			if (task.state === "completed") {
+				new Notice(`已归档到 ${plan.to}`);
+				return { ok: true, message: `已归档到 ${plan.to}` };
+			}
+			return { ok: false, message: task.error || `归档未完成：${task.state}` };
+		},
+	}).mount();
 }

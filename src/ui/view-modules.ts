@@ -7,6 +7,13 @@ import type { TalosView } from "../view";
 import { buildPixelPatrol } from "./view-cosmos";
 import { routeContextLabel } from "./navigation-model";
 
+export const COMMAND_ACTION_ICON = "message-square-text";
+
+/** 命令按钮统一的说明：点击填入对话、右键复制。 */
+export function commandActionHint(command: string): string {
+	return `填入 TALOS 对话「${command}」，按回车发送 · 右键复制`;
+}
+
 export function addActionButtonContent(view: TalosView, button: HTMLElement, label: string, variant: "" | "compact" | "mini" = ""): void {
 	button.dataset.talosActionButton = "true";
 	button.dataset.talosActionVariant = variant;
@@ -38,14 +45,26 @@ export function moduleHero(view: TalosView, parent: HTMLElement, options: Module
 				? { onActivate: () => void openFile(view.app, stat.path as string) }
 				: {}),
 		})),
-		actions: (options.actions || []).map((action) => ({
-			label: action.label,
-			icon: action.icon,
-			onActivate: () => {
-				if (action.command) void view.copyText(action.command);
-				else if (action.path) void openFile(view.app, action.path);
-			},
-		})),
+		actions: (options.actions || []).map((action) => {
+			const command = action.command;
+			if (!command) {
+				return {
+					label: action.label,
+					icon: action.icon,
+					onActivate: () => {
+						if (action.path) void openFile(view.app, action.path);
+					},
+				};
+			}
+			return {
+				label: action.label,
+				// 旧的「复制」图标会误导：按钮现在把命令送进对话框。
+				icon: action.icon === "copy" ? COMMAND_ACTION_ICON : action.icon,
+				hint: commandActionHint(command),
+				onActivate: () => void view.sendCommandToChat(command),
+				onSecondary: () => void view.copyText(command),
+			};
+		}),
 	});
 
 	// 像素场景保留为紧凑身份带，不再占据整页宽的大型 Hero 区域。

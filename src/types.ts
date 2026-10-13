@@ -113,12 +113,25 @@ export interface InboxAgeBucket {
 	tone: "info" | "good" | "warn" | "hot";
 }
 
+/** 待分诊队列中的一条收件箱笔记。 */
+export interface InboxQueueItem {
+	path: string;
+	title: string;
+	ageDays: number;
+	/** 笔记 frontmatter / 正文已有的标签。 */
+	tags: string[];
+	/** 与这条笔记互相链接的已有笔记（收件箱外，最多 3 条）。 */
+	linked: string[];
+}
+
 export interface InboxDigest {
 	count: number;
 	oldestDays: number;
 	clusters: InboxCluster[];
 	recent: SignalItem[];
 	ageBuckets: InboxAgeBucket[];
+	/** 待分诊队列，按进入时间从早到晚，最多 INBOX_QUEUE_LIMIT 条。 */
+	queue: InboxQueueItem[];
 }
 
 export interface HealthDigest {

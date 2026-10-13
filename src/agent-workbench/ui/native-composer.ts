@@ -534,6 +534,14 @@ export class NativeComposer {
 	getValue(): string { return this.textarea.value; }
 	setValue(value: string): void { this.textarea.value = value; }
 
+	/** 填入文本、刷新命令提示并把光标放到末尾；不触发发送。 */
+	prefill(value: string): void {
+		this.textarea.value = value;
+		this.updateSuggestions();
+		this.textarea.focus();
+		this.textarea.setSelectionRange(value.length, value.length);
+	}
+
 	destroy(): void {
 		if (this.disposed) return;
 		this.disposed = true;

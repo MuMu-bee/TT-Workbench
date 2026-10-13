@@ -1,11 +1,13 @@
 import { App, TFile, TFolder, normalizePath } from "obsidian";
 import type { TalosSettings } from "../settings";
 import type { VaultPaths } from "./schema";
+import { INBOX_FALLBACK_TOPIC, INBOX_TOPIC_RULES, classifyInboxTopic } from "../inbox-triage";
 import type {
 	HealthDigest,
 	InboxAgeBucket,
 	InboxCluster,
 	InboxDigest,
+	InboxQueueItem,
 	KnowledgeHub,
 	MetricTile,
 	OutputCenter,
@@ -184,11 +186,8 @@ export async function collectInboxDigest(app: App, settings: TalosSettings): Pro
 	const notes = notesUnder(app, settings.inboxFolder);
 	let oldestDays = 0;
 	const clusters: InboxCluster[] = [
-		{ name: "Loop / 循环工程", count: 0, hint: "适合进洞察或素材聚类" },
-		{ name: "微信同步", count: 0, hint: "适合沉淀为自动化模块" },
-		{ name: "AI 控制台", count: 0, hint: "适合回流 TALOS 插件" },
-		{ name: "Agent 工程", count: 0, hint: "适合进 Claude / Agent 素材" },
-		{ name: "其他", count: 0, hint: "需要人工判断" },
+		...INBOX_TOPIC_RULES.map((rule) => ({ name: rule.name, count: 0, hint: rule.hint })),
+		{ name: INBOX_FALLBACK_TOPIC.name, count: 0, hint: INBOX_FALLBACK_TOPIC.hint },
 	];
 	const addCluster = (index: number) => {
 		const cluster = clusters[index];
@@ -205,12 +204,7 @@ export async function collectInboxDigest(app: App, settings: TalosSettings): Pro
 		oldestDays = Math.max(oldestDays, age);
 		const bucket = age <= 3 ? ageBuckets[0] : age <= 7 ? ageBuckets[1] : age <= 14 ? ageBuckets[2] : ageBuckets[3];
 		if (bucket) bucket.count++;
-		const text = `${f.basename} ${titleFor(app, f)}`;
-		if (/loop|循环/i.test(text)) addCluster(0);
-		else if (/微信|黑曜石|同步/.test(text)) addCluster(1);
-		else if (/控制台|仪表盘|talos/i.test(text)) addCluster(2);
-		else if (/agent|claude|工程/i.test(text)) addCluster(3);
-		else addCluster(4);
+		addCluster(classifyInboxTopic(`${f.basename} ${titleFor(app, f)}`));
 	}
 	const recent = notes
 		.sort((a, b) => b.stat.mtime - a.stat.mtime)
@@ -220,7 +214,45 @@ export async function collectInboxDigest(app: App, settings: TalosSettings): Pro
 			meta: `${daysOld(f.stat.ctime)}d · ${f.path}`,
 			path: f.path,
 		}));
-	return { count: notes.length, oldestDays, clusters: clusters.filter((c) => c.count > 0), recent, ageBuckets };
+	const queue = collectInboxQueue(app, notes, settings.inboxFolder);
+	return { count: notes.length, oldestDays, clusters: clusters.filter((c) => c.count > 0), recent, ageBuckets, queue };
+}
+
+export const INBOX_QUEUE_LIMIT = 30;
+
+function tagsFor(app: App, file: TFile): string[] {
+	const cache = app.metadataCache.getFileCache(file);
+	const raw: unknown = cache?.frontmatter?.tags;
+	const fromFrontmatter = Array.isArray(raw)
+		? raw.filter((tag): tag is string => typeof tag === "string")
+		: typeof raw === "string" ? raw.split(/[,\s]+/) : [];
+	const inline = (cache?.tags ?? []).map((tag) => tag.tag);
+	return [...new Set([...fromFrontmatter, ...inline].map((tag) => tag.replace(/^#/, "").trim()).filter(Boolean))].slice(0, 6);
+}
+
+/** 待分诊队列：最早进入的在前；相关笔记只读 Obsidian 已解析的链接图，不扫正文。 */
+function collectInboxQueue(app: App, notes: TFile[], inboxFolder: string): InboxQueueItem[] {
+	const inboxPrefix = `${normalizePath(inboxFolder)}/`;
+	const picked = [...notes].sort((a, b) => a.stat.ctime - b.stat.ctime).slice(0, INBOX_QUEUE_LIMIT);
+	const wanted = new Set(picked.map((file) => file.path));
+	const linked = new Map<string, string[]>();
+	const remember = (note: string, other: string) => {
+		if (other === note || other.startsWith(inboxPrefix) || isExcluded(other)) return;
+		const list = linked.get(note) ?? [];
+		if (list.length < 3 && !list.includes(other)) linked.set(note, [...list, other]);
+	};
+	const resolved = app.metadataCache.resolvedLinks ?? {};
+	for (const [source, targets] of Object.entries(resolved)) {
+		if (wanted.has(source)) for (const target of Object.keys(targets)) remember(source, target);
+		for (const target of Object.keys(targets)) if (wanted.has(target)) remember(target, source);
+	}
+	return picked.map((file) => ({
+		path: file.path,
+		title: titleFor(app, file),
+		ageDays: daysOld(file.stat.ctime),
+		tags: tagsFor(app, file),
+		linked: linked.get(file.path) ?? [],
+	}));
 }
 
 export async function collectHealthDigest(

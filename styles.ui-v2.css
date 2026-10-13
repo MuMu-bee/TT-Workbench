@@ -4221,3 +4221,121 @@ body .talos-custom-api__kinds button.is-active {
 	color: var(--text-muted);
 	font-weight: 600;
 }
+
+/* 收件箱待分诊：逐条卡片 → 提案 → 批准（console-ux-v1 批次 A2） */
+.talos-console[data-talos-page="inbox"] .inbox-v2-triage-panel .inbox-triage {
+	display: grid;
+	gap: 10px;
+}
+
+.talos-console .inbox-triage__summary {
+	margin: 0;
+	color: var(--talos-ui-muted);
+	font-size: 12px;
+}
+
+.talos-console .inbox-triage__list {
+	display: grid;
+	gap: 8px;
+}
+
+.talos-console .inbox-triage-card {
+	display: grid;
+	gap: 6px;
+	padding: 10px 12px;
+	border: 1px solid var(--talos-ui-line-subtle);
+	border-radius: var(--talos-ui-radius-control);
+	background: var(--talos-ui-surface-raised);
+	min-width: 0;
+}
+
+.talos-console .inbox-triage-card[data-deferred="true"] {
+	opacity: 0.72;
+}
+
+.talos-console .inbox-triage-card__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 10px;
+	min-width: 0;
+}
+
+.talos-console .inbox-triage-card__title {
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	color: var(--talos-ui-ink);
+	font-weight: 600;
+	text-align: left;
+	cursor: pointer;
+	overflow-wrap: anywhere;
+	height: auto;
+}
+
+.talos-console .inbox-triage-card__title:hover {
+	text-decoration: underline;
+}
+
+.talos-console .inbox-triage-card__meta,
+.talos-console .inbox-triage-card__related-label {
+	color: var(--talos-ui-muted);
+	font-size: 12px;
+}
+
+.talos-console .inbox-triage-card__tags,
+.talos-console .inbox-triage-card__related {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 8px;
+	min-width: 0;
+}
+
+.talos-console .inbox-triage-card__tag {
+	color: var(--talos-ui-accent);
+	font-size: 12px;
+}
+
+.talos-console .inbox-triage-card__related-link {
+	padding: 0 6px;
+	height: auto;
+	border: 1px solid var(--talos-ui-line-subtle);
+	border-radius: var(--talos-ui-radius-control);
+	background: none;
+	box-shadow: none;
+	font-size: 12px;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.talos-console .inbox-triage-card__controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+}
+
+.talos-console .inbox-triage-card__target {
+	flex: 1 1 180px;
+	min-width: 0;
+	max-width: 320px;
+}
+
+.talos-console .inbox-triage-card__status {
+	margin: 0;
+	font-size: 12px;
+	color: var(--talos-ui-muted);
+}
+
+.talos-console .inbox-triage-card__status:empty {
+	display: none;
+}
+
+.talos-console .inbox-triage-card :focus-visible {
+	outline: 2px solid var(--talos-ui-focus);
+	outline-offset: 2px;
+}

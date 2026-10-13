@@ -8,6 +8,7 @@ import {
 import type TalosPlugin from "./main";
 import { TalosSettingTab } from "./settings";
 import { LensConsole, LENS_ROOT_ID } from "./ui/lens/lens-console";
+import type { InboxTriageSession } from "./ui/inbox-triage-panel";
 import type { LensModuleId } from "./ui/lens/lens-pages";
 import type {
 	GateItem,
@@ -122,6 +123,8 @@ export class TalosView extends ItemView {
 	jarvisMounted = false;
 	chatSurface: TalosChatSurface | null = null;
 	chatMounted = false;
+	/** 收件箱分诊的会话状态（「稍后」顺序），页面重绘后保留，不写文件。 */
+	readonly inboxTriageSession: InboxTriageSession = { deferred: [] };
 	private clockTimer: number | null = null;
 	actionPanel: ConsoleActionPanel | null = null;
 	embeddedSettingsTab: TalosSettingTab | null = null;
@@ -884,6 +887,20 @@ export class TalosView extends ItemView {
 
 
 
+
+	/** 控制台命令按钮：填进右栏 TALOS 对话由用户确认发送；对话不可用时退回复制。 */
+	async sendCommandToChat(command: string): Promise<void> {
+		if (await this.plugin.prefillChatSidebar(command)) {
+			new Notice(`已填入 TALOS 对话：${command}（按回车发送）`);
+			return;
+		}
+		try {
+			await navigator.clipboard.writeText(command);
+			new Notice(`对话暂不可用，已复制：${command}`);
+		} catch {
+			new Notice(`对话暂不可用，复制也失败：${command}`);
+		}
+	}
 
 	async copyText(text: string): Promise<void> {
 		try {

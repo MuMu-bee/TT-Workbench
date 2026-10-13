@@ -12,6 +12,7 @@ export class DeferredChatWorkbench implements ChatSurfaceWorkbench {
 	private workbench: ChatSurfaceWorkbench | null = null;
 	private loading: Promise<ChatSurfaceWorkbench> | null = null;
 	private destroyed = false;
+	private pendingPrefill: string | null = null;
 
 	constructor(
 		private readonly load: () => Promise<ChatSurfaceWorkbench>,
@@ -39,6 +40,7 @@ export class DeferredChatWorkbench implements ChatSurfaceWorkbench {
 		}
 		const workbench = await this.resolve();
 		await workbench.mount(container, namespace);
+		this.flushPrefill();
 	}
 
 	async suspend(): Promise<void> {
@@ -47,6 +49,20 @@ export class DeferredChatWorkbench implements ChatSurfaceWorkbench {
 
 	focusComposer(): void {
 		this.workbench?.focusComposer();
+	}
+
+	/** 工作台尚在加载时先记下，挂载完成后再填入；只保留最后一次请求。 */
+	prefillComposer(text: string): void {
+		this.pendingPrefill = text;
+		if (this.workbench) this.flushPrefill();
+	}
+
+	private flushPrefill(): void {
+		const text = this.pendingPrefill;
+		if (text === null || !this.workbench) return;
+		this.pendingPrefill = null;
+		if (this.workbench.prefillComposer) this.workbench.prefillComposer(text);
+		else this.workbench.focusComposer();
 	}
 
 	async destroy(): Promise<void> {
