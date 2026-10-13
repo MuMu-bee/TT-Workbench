@@ -31,6 +31,7 @@ describe("createBuiltinActionRegistry", () => {
 			{ id: "publish-backfill", risk: "C" },
 			{ id: "decide-approval", risk: "C" },
 			{ id: "decide-preference", risk: "C" },
+			{ id: "triage-inbox-note", risk: "C" },
 		]);
 	});
 

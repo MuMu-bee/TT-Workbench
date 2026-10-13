@@ -39,7 +39,7 @@ describe("production console action runtime", () => {
 			timers: nodeTimers,
 		});
 
-		expect(runtime.registry.list()).toHaveLength(7);
+		expect(runtime.registry.list()).toHaveLength(8);
 		expect(runtime.recoveryStore).toBe(recoveryStore);
 		expect(runtime.approvals.store).toBe(runtime.store);
 
