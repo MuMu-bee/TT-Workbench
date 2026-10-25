@@ -1,19 +1,24 @@
-# TALOS for Obsidian
+# TT工作台 (TT-Workbench) for Obsidian
 
-![version](https://img.shields.io/badge/version-v0.4.6-2f6feb)
+![version](https://img.shields.io/badge/version-1.0.0-2f6feb)
 ![obsidian](https://img.shields.io/badge/Obsidian-1.11.4%2B-7c3aed)
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-111827)
 ![license](https://img.shields.io/badge/license-Personal%20Use%20Source%20Available-FAD861)
 
 > 把 Obsidian Vault 变成可观察、可治理、可执行的个人 AI 工作台。
 
-TALOS 是一个桌面端 Obsidian 原生插件。它把散落在 Vault 里的任务、项目、知识、收件箱、健康记录和发布状态汇总为一个实时控制台，并把多智能体对话、审批治理和「屈原」实时语音放进同一套工作流。
+**TT工作台（TT-Workbench）** 是基于 **TALOS for Obsidian v0.4.9** 深度定制的独立发行版：一个桌面端 Obsidian 原生插件，把散落在 Vault 里的任务、项目、知识、收件箱、健康记录和发布状态汇总为一个实时控制台，并把多智能体对话、审批治理和「屈原」实时语音放进同一套工作流。
 
-> **源码许可**：个人用户可免费用于非商业目的，包括学习、使用、修改和在同一许可下非商业分享；公司内部使用、客户交付、收费服务、托管、转售、白标及其他商业用途必须事先取得书面授权。本项目属于 **Source Available（源码开放）**，不是 OSI 定义的 Open Source。
+## 与 TALOS 的关系(署名与合规)
+
+- 上游项目：**TALOS for Obsidian**，作者 **外脑玩家 Haaper**，仓库 [WAINAO-Haaper/talos-plugin](https://github.com/WAINAO-Haaper/talos-plugin)。
+- 本仓库是个人非商业用途的定制 fork，遵循 **TALOS Personal Use Source License 1.0** 分发：原项目 `LICENSE`、`THIRD-PARTY-NOTICES.md`、`THIRD-PARTY-LICENSES.txt` 及全部版权与署名**完整保留、逐字未改**。
+- 全部修改逐文件记录于 [`MODIFICATIONS.md`](MODIFICATIONS.md)；审查依据见 [`docs/CODE-REVIEW-TT.md`](docs/CODE-REVIEW-TT.md)；验收结论见 [`ACCEPTANCE.md`](ACCEPTANCE.md)。
+- 本项目为 **Source Available（源码开放）**，不是 OSI 定义的 Open Source。不收取任何费用。
 
 ## 界面预览
 
-以下为控制台实际运行界面与 v0.4.5 TalosBall 0.3.0 动画预览。点击图片可查看原始尺寸。
+以下截图来自上游 TALOS v0.4.x（TT工作台保留同一控制台架构）。点击图片可查看原始尺寸。
 
 | 指挥总览 · Bauhaus | AI 对话 · DeepSeek Harness |
 |---|---|
@@ -28,7 +33,7 @@ TALOS 是一个桌面端 Obsidian 原生插件。它把散落在 Vault 里的任
 | 工作区 | 你可以做什么 |
 |---|---|
 | **指挥总览** | 查看今日焦点、知识规模、系统健康、发布闭环、重要事项、审批队列和任务进度。 |
-| **AI 对话** | 在 TALOS 原生多会话工作台与嵌入式 DeepSeek Harness 中切换项目、模型和会话。 |
+| **AI 对话** | 在原生多会话工作台与嵌入式 DeepSeek Harness 中切换项目、模型和会话。 |
 | **屈原语音** | 使用 Qwen Realtime 进行唤醒、连续对话、实时转写与语音回复；语音工具默认只读。 |
 | **收件箱治理** | 按积压年龄、主题聚类和最近进入情况整理内容，并进入归档、消化或地图视图。 |
 | **全库视图** | 查看内容分布、README 完整性、库健康、活跃天数、项目地图和笔记热力图。 |
@@ -44,73 +49,42 @@ TALOS 是一个桌面端 Obsidian 原生插件。它把散落在 Vault 里的任
 - **只读语音工具**：语音可查询 Vault 状态、统计和进度；不会暴露写库或命令执行工具。只有明确说出「联网搜索」或「上网查」时，才会发送当前问题进行联网检索。
 - **十套视觉主题**：Aurora、Nebula、Animal Island、Macintosh、数据流、柔光浮雕、Bauhaus、Executive Brief、Paper 和 Swiss Modernism；可选择只应用于控制台或同步到整个 Vault。
 - **安全默认值**：API 密钥只写入 Obsidian SecretStorage；审计记录脱敏；缺少可验证 OS 沙箱时，写入型 Execute 会失败关闭。
-- **无损升级**：迁移按 schema 分步执行；首次启动可补齐缺失的 TALOS 基线人格与注册文件，但不会覆盖已有内容。
+- **无损升级**：迁移按 schema 分步执行；首次启动可补齐缺失的基线人格与注册文件，但不会覆盖已有内容。
 
 ## 平台状态
 
-v0.4.6 使用同一套跨平台代码，但不同系统的安全能力并不伪装成完全一致。
+沿袭上游 v0.4.6+ 的跨平台边界（同一套代码，不伪装安全能力一致）：
 
 | 平台 | 当前状态 | AI 执行边界 |
 |---|---|---|
 | **macOS** | 主要支持平台 | 本机 Claude / Codex / OhMyPi 可在可验证的 macOS Seatbelt 沙箱内运行；沙箱不可用时 Execute 失败关闭。 |
-| **Windows 10/11 x64** | 自 v0.4.1 起加入部署与兼容支持 | 推荐使用 SecretStorage 中配置的 Direct API Provider；当前为 **Plan-only**，不会启动本机 CLI 或执行工具。`.cmd` / `.bat` 仅用于安全发现，路径包含 shell 元字符时拒绝启动。 |
+| **Windows 10/11 x64** | 部署与兼容支持 | 推荐使用 SecretStorage 中配置的 Direct API Provider；当前为 **Plan-only**，不会启动本机 CLI 或执行工具。`.cmd` / `.bat` 仅用于安全发现，路径包含 shell 元字符时拒绝启动。 |
 | **其他桌面系统** | 非当前交付重点 | 没有可验证 OS 沙箱时，本机智能体 Execute 失败关闭。 |
 
-### 目标硬件
-
-- macOS：Apple M1 Air、8 GB 内存、SSD 或更高配置。
-- Windows：4 核 x64 CPU、8 GB 内存、SSD，性能目标对齐 M1 Air 级别设备。
-- Obsidian **≥ 1.11.4**。
-
-当前自动化回归、构建和跨平台边界测试已通过；M1 Air 与对应 Windows 真机的长会话、语音和大库性能矩阵仍在持续验收。因此以上是支持目标，不是尚未完成真机矩阵前的性能保证。
-
-### 发布状态说明
-
-本仓库的插件版本发布不改变 TALOS 2.x 的统一产品发布权威。当前统一产品门仍为 `formal_release_allowed=false`；只有 G1–G7 全部通过并取得单独授权后，才能宣称 TALOS 产品正式放行。PUB-W 属于内容发布工作流，不是产品发布门，也不能替代 G1–G7。
+- Obsidian **≥ 1.11.4**；目标硬件对齐上游（8 GB 内存 + SSD 的 M1 Air / 4 核 x64 级别）。
 
 ## 安装
 
-TALOS 对个人非商业用途开放源码，不进入 Obsidian 社区插件商店。请从本仓库 [Releases](https://github.com/WAINAO-Haaper/talos-plugin/releases) 安装。商业使用须先取得书面授权；完整边界见 [`LICENSE`](LICENSE)。v0.4.5 候选已嵌入 TalosBall 0.3.0；v0.4.1 不再建议用于商业分发。
+TT工作台不进入 Obsidian 社区插件商店，遵循上游许可从本仓库 Releases 以源码/构建产物非商业分发。
 
-### 按系统下载安装包
+1. 从 Release 下载安装包（或自行执行 `npm run build` 产出 `main.js` / `claude-sdk.cjs` / `styles.css`）。
+2. 将其放入 `<你的 Vault>/.obsidian/plugins/tt-workbench/`。
+3. 重启 Obsidian，打开「设置 → 社区插件」，启用 **TT工作台**。
+4. 进入「TT工作台设置 → 智能体与模型」，配置本机运行时或把 API 密钥保存到 SecretStorage，并选择 Provider 与模型。
 
-| 操作系统 | 安装包名称 |
-|---|---|
-| **macOS** | `TALOS-v0.4.6-macOS.zip` |
-| **Windows 10/11 x64** | `TALOS-v0.4.6-Windows.zip` |
+手动安装需包含：`main.js`、`claude-sdk.cjs`、`manifest.json`、`styles.css`、`LICENSE`、`THIRD-PARTY-NOTICES.md`、`THIRD-PARTY-LICENSES.txt`、`MaShanZheng-Regular.ttf`、`MaShanZheng-OFL.txt`、`TALOS-Favicon-64-v1.png`。
 
-两个压缩包使用同一套 v0.4.6 插件载荷，文件名用于帮助用户选择对应系统的安装入口。
-
-1. 从最新 Release 下载与你的操作系统对应的 ZIP。
-2. 解压后将其中的 `talos` 文件夹放到 `<你的 Vault>/.obsidian/plugins/`。
-3. 重启 Obsidian，打开「设置 → 社区插件」，启用 TALOS。
-4. 进入「TALOS 设置 → 智能体与模型」，配置本机运行时或把 API 密钥保存到 SecretStorage，并选择 Provider 与模型。
-
-### 手动安装（macOS / Windows）
-
-把 Release 中的以下文件放入 `<你的 Vault>/.obsidian/plugins/talos/`：
-
-- `main.js`
-- `claude-sdk.cjs`（v0.4.6 起，Claude 运行时按需加载）
-- `manifest.json`
-- `styles.css`
-- `LICENSE`
-- `THIRD-PARTY-NOTICES.md`
-- `THIRD-PARTY-LICENSES.txt`
-- `MaShanZheng-Regular.ttf`
-- `MaShanZheng-OFL.txt`
-- `TALOS-Favicon-64-v1.png`
-
-升级前建议备份 Vault。覆盖插件文件时不要删除或替换 `data.json`、`.talos/` 和已有的人格、身份文件。
+> 升级前建议备份 Vault。覆盖插件文件时不要删除或替换 `data.json`、`.talos/` 和已有的人格、身份文件。
+> 从上游 TALOS 迁移：数据目录（`.talos/`）与命令协议（`talos-ask`）保持兼容，卸载 TALOS 后安装本插件即可沿用既有数据；两插件不要同时启用。
 
 ## 快速上手
 
-1. 点击 Obsidian 左侧栏的 TALOS 图标，打开统一控制台。
+1. 点击 Obsidian 左侧栏的 TT 图标，打开统一控制台。
 2. 在「总览」确认今日焦点、系统健康、审批队列和待处理事项。
 3. 在「AI 对话」选择工作区、Provider、模型与工作流。Windows 用户优先选择 Direct API 的 Plan 模式。
 4. 在「屈原语音」配置百炼地域、Qwen Realtime 模型和音色；说出唤醒词后开始连续对话。
 5. 在「收件箱」处理积压，在「全库视图」检查内容分布、README 完整性和创建热力图。
-6. 在「设置」选择主题、映射目录，并决定是否把 TALOS 主题同步到整个 Vault。
+6. 在「设置」选择主题、映射目录，并决定是否把 TT 主题同步到整个 Vault。
 
 ## 安全与隐私
 
@@ -145,17 +119,18 @@ npm run build
 - `src/quyuan/`：人格、Qwen Realtime 语音、只读工具和 TALOS Ball 舞台。
 - `src/data/`：全库统计、导航、项目与发布状态采集。
 - `tests/`：跨平台、安全、迁移、语音、Provider 和 UI 契约回归。
+- `docs/CODE-REVIEW-TT.md`：定制基线的全方位代码审查报告。
+- `MODIFICATIONS.md` / `ACCEPTANCE.md` / `ROADMAP.md`：定制修改清单、验收结论与后续路线。
 
 ## 许可
 
 > Copyright © 2026 外脑玩家 Haaper. 源码对个人非商业用途开放；商业使用须事先获得书面授权。
 
-- `LICENSE`：TALOS 自有材料采用 **TALOS Personal Use Source License 1.0**。个人非商业使用、学习、修改及按同一许可非商业分享无需付费；任何商业使用必须事先取得书面授权。该许可属于 Source Available，不是 OSI 批准的开源许可证。
-- 商业授权联系：微信 `wadeonly`；邮箱 `han747266@gmail.com`。
+- `LICENSE`：TALOS 自有材料采用 **TALOS Personal Use Source License 1.0**（逐字保留，未做任何修改）。个人非商业使用、学习、修改及按同一许可非商业分享无需付费；任何商业使用必须事先取得书面授权。该许可属于 Source Available，不是 OSI 批准的开源许可证。本 fork 的分发遵循同一许可，未施加任何额外限制，亦不收取任何费用。
+- 商业授权联系（上游作者）：微信 `wadeonly`；邮箱 `han747266@gmail.com`。
 - `THIRD-PARTY-NOTICES.md`：第三方组件、视觉参考和商业条款摘要。
 - `THIRD-PARTY-LICENSES.txt`：由 lockfile 自动生成的生产依赖许可证包。
 - `MaShanZheng-Regular.ttf` / `MaShanZheng-OFL.txt`：屈原标题字体及 SIL OFL 1.1 许可证。
+- **TALOS Ball**：语音中心视觉使用 TalosBall 0.3.0；来源与发布门见 [TALOS Ball provenance](docs/talos-ball-provenance.md)。
 
-- **TALOS Ball**：语音中心视觉使用 TalosBall 0.3.0；Plugin 保留语音状态适配与生命周期集成，几何、32 态和动效遵循固定等价基线；来源与发布门见 [TALOS Ball provenance](docs/talos-ball-provenance.md)。
-
-完整变更记录见 [`CHANGELOG.md`](CHANGELOG.md)。
+完整变更记录见 [`CHANGELOG.md`](CHANGELOG.md)；上游原始说明以 [上游仓库 README](https://github.com/WAINAO-Haaper/talos-plugin#readme) 为准。
