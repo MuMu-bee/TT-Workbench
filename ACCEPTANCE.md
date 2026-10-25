@@ -18,9 +18,22 @@
 ## CI 记录
 
 - 仓库:[MuMu-bee/TT-Workbench](https://github.com/MuMu-bee/TT-Workbench)(public,main)
-- 首次推送运行 [run 40195720207](https://github.com/MuMu-bee/TT-Workbench/actions/runs/40195720207):2 项源码文本断言测试失败(voice-readonly-policy 品牌字符串、release-gate-contract README 声明缺失)→ 已修复(见 commit 758ecbd)。
-- 权威运行 [run 40196315122](https://github.com/MuMu-bee/TT-Workbench/actions/runs/40196315122) @ `758ecbd`:**conclusion = success**,Job "Lint · Typecheck · Test · License · Build" 全部通过(945 项测试全绿),A8 通过。
-- 交付过程说明:交付期间本地网络对 GitHub 大包上传持续重置,曾启用 git-data API 兜底通道(blob 级上传,断点续传);网络恢复后改用完整 `git push` 交付(207 个提交全量历史,含上游 200 个提交),API 兜底产生的引导提交被 force-push 覆盖,远端与本地历史一致(`ls-remote` = `908a3ee` → 后续 `758ecbd`)。
+- 1.0.0 品牌化批次:权威运行 [run 40196315122](https://github.com/MuMu-bee/TT-Workbench/actions/runs/40196315122) @ `758ecbd`:**success**(945 项测试全绿)。首次运行 40195720207 的 2 项文本断言失败已修复(758ecbd)。
+- 1.1.0 运行时收敛批次:推送过程中修复三处 CI 环境问题(① lockfile 失同步→重建;② npm 11 生成 lock 在 CI 触发 EBADPLATFORM→CI 升级 Node 24 与本地工具链一致;③ 许可清单随 lock 过期→重生成),权威运行 @ `4ae5fa4`:**success**,Job "Lint · Typecheck · Test · License · Build" 全部通过。
+- 交付过程说明:1.0.0 交付期间本地网络对 GitHub 大包上传持续重置,曾启用 git-data API 兜底通道;网络恢复后以完整 `git push` 交付全量历史。1.1.0 批次直接 git push 成功。
+
+## 1.1.0 运行时收敛批次验收(2026-10-25)
+
+| # | 验收标准 | 结果 |
+|---|---|---|
+| B1 | 原生运行时仅剩 OhMyPi:RuntimeId 契约 = "ohmypi",Claude/Codex 适配链(适配器/传输/SDK依赖/独立bundle/守卫脚本)全部删除 | ✅ 代码检索 0 残留;typecheck 通过 |
+| B2 | Provider 注册表仅产出挂载 ohmypi 的 anthropic-api / openai-compatible 两个 Direct API profile;旧 codex 凭据不再生成 profile(回归测试钉死) | ✅ |
+| B3 | 屈原语音 Realtime 服务端可插拔:dashscope 预设语义不变;openai-compatible 走两步握手(/sessions 临时凭据 → SDP 交换);端点 HTTPS/loopback 校验、SecretStorage 密钥、出库审计与一次性授权保留 | ✅ 单元测试+类型验证 |
+| B4 | OhMyPi 沙箱获得与原 Codex 分支同级的 Vault 保护区拒绝与 .env 拒绝 | ✅ security/native-runtime-policy 测试锁定 |
+| B5 | 五道门:typecheck/lint/测试(886 通过,4 项为既有 Windows 平台差异)/102 包许可证审计/生产构建(main.js 0.83MB,无 SDK 残留) | ✅ 本地全绿 |
+| B6 | CI(Ubuntu,Node 24)全绿 @ `4ae5fa4` | ✅ |
+| B7 | 文档同步:README(运行时/语音/安装清单)、CHANGELOG 1.1.0、MODIFICATIONS 1.1.0 节 | ✅ |
+| B8 | 破坏性变更明示:Claude/Codex 本机运行时不再可用(codex 系设置字段转迁移兼容) | ✅ CHANGELOG/README 注明 |
 
 ## 已知平台差异(非缺陷,不在验收排除范围)
 
