@@ -22,7 +22,7 @@ export interface CustomApiSettingsPort {
 
 const SETTINGS_FIELDS = {
 	anthropic: { baseUrl: "anthropicBaseUrl", models: "agentWorkbenchClaudeModels", secret: "anthropicApiKey" },
-	openai: { baseUrl: "codexBaseUrl", models: "agentWorkbenchCodexModels", secret: "codexApiKey" },
+	openai: { baseUrl: "openaiBaseUrl", models: "agentWorkbenchCodexModels", secret: "openaiApiKey" },
 } as const;
 
 function hasSavedKey(port: CustomApiSettingsPort, kind: CustomApiKind): boolean {

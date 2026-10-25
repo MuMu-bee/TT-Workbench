@@ -67,7 +67,7 @@ export class AgentWorkbenchService {
 	readonly runtimes: RuntimeRegistry;
 	private initialized = false;
 	private disposed = false;
-	private selectedRuntimeId: RuntimeId = "codex";
+	private selectedRuntimeId: RuntimeId = "ohmypi";
 	private selectedProviderProfileId: string | undefined;
 	private selectedModel: string | undefined;
 	private selectedReasoning: string | undefined;
@@ -660,8 +660,6 @@ export class AgentWorkbenchService {
 
 	private providerEgressHosts(runtimeId: RuntimeId, providerProfileId?: string): string[] {
 		const defaults: Partial<Record<RuntimeId, string[]>> = {
-			claude: ["api.anthropic.com"],
-			codex: ["api.openai.com", "chatgpt.com"],
 			ohmypi: ["api.deepseek.com", "open.bigmodel.cn"],
 		};
 		const selected = providerProfileId

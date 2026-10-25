@@ -12,7 +12,7 @@ import { ProcessSandbox } from "../src/agent-workbench/security/process-sandbox"
 import { LoopbackEgressProxy } from "../src/agent-workbench/security/loopback-egress-proxy";
 import type { SecurityAuditRecord } from "../src/agent-workbench/security/security-audit";
 import { VaultBoundary } from "../src/agent-workbench/security/vault-boundary";
-import { codexProtectedVaultSubpaths } from "../src/agent-workbench/security/codex-permission-profile";
+import { codexProtectedVaultSubpaths } from "../src/agent-workbench/security/vault-protected-subpaths";
 import { AgentWorkbenchService } from "../src/agent-workbench/core/agent-workbench-service";
 import { normalizeToolAction } from "../src/agent-workbench/security/tool-action-normalizer";
 

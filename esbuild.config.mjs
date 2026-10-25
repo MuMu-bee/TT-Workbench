@@ -3,33 +3,6 @@ import process from 'process';
 import { builtinModules } from 'node:module';
 import { readFile } from 'node:fs/promises';
 
-// claude-agent-sdk 的进程关闭链路裸调 setTimeout(...).unref()（Node timer API）。
-// Obsidian 渲染进程的全局 setTimeout 是浏览器版（返回 number，没有 .unref），
-// 会抛 Uncaught TypeError: setTimeout(...).unref is not a function ——
-// 该异常沿 dispose → unmount → renderPage 冒泡，把 jarvisMounted 状态炸脏，
-// 屈原页从此白屏（2026-07-09 定位）。
-// 修法：仅对 sdk.mjs 注入 node:timers 的 setTimeout/clearTimeout（模块级 shadow，
-// 不污染全局、不影响插件其余代码）。node:timers 在 external 列表里，运行时走
-// require("node:timers")，Obsidian 桌面端可用。
-const sdkNodeTimersShim = {
-	name: 'sdk-node-timers-shim',
-	setup(build) {
-		build.onLoad(
-			{ filter: /@anthropic-ai[\\/]claude-agent-sdk[\\/]sdk\.mjs$/ },
-			async (args) => {
-				const src = await readFile(args.path, 'utf8');
-				const shim =
-					'import { setTimeout, clearTimeout } from "node:timers";\n';
-				// 保留 shebang 在第一行（否则不是合法 JS）
-				const contents = src.startsWith('#!')
-					? src.replace(/^(#![^\n]*\n)/, `$1${shim}`)
-					: shim + src;
-				return { contents, loader: 'js' };
-			},
-		);
-	},
-};
-
 // 经审计的第三方浏览器运行时以文本快照进入 bundle，再由专用 Worker 执行。
 // 仅匹配仓库内的 *.vendor.txt；运行时不解析 URL、不下载或执行远程 JavaScript。
 const staticVendorText = {
@@ -115,26 +88,18 @@ const shared = {
 	minify: prod,
 };
 
-// main.js 不再在运行时引用 claude-agent-sdk（约占原 bundle 的一半）；SDK 单独
-// 打成 claude-sdk.cjs，与 main.js 同目录发布，首次运行 Claude 时才 require。
-const contexts = await Promise.all([
-	esbuild.context({
-		...shared,
-		entryPoints: ['src/main.ts'],
-		plugins: [staticVendorText],
-		outfile: 'main.js',
-	}),
-	esbuild.context({
-		...shared,
-		entryPoints: ['src/agent-workbench/transports/claude-sdk-entry.ts'],
-		plugins: [sdkNodeTimersShim],
-		outfile: 'claude-sdk.cjs',
-	}),
-]);
+// TT 1.1.0:claude-agent-sdk 与独立 claude-sdk.cjs bundle 已随 Claude 运行时移除,
+// 只保留单一 main.js 入口(sdk-node-timers-shim 同步删除)。
+const context = await esbuild.context({
+	...shared,
+	entryPoints: ['src/main.ts'],
+	plugins: [staticVendorText],
+	outfile: 'main.js',
+});
 
 if (prod) {
-	await Promise.all(contexts.map((context) => context.rebuild()));
+	await context.rebuild();
 	process.exit(0);
 } else {
-	await Promise.all(contexts.map((context) => context.watch()));
+	await context.watch();
 }

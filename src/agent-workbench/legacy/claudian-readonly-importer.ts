@@ -120,7 +120,7 @@ export class ClaudianReadonlyImporter {
 			const manifest: ConversationManifest = {
 				schemaVersion: 1, conversationId, title: title.text.trim() || "导入会话",
 				createdAt: new Date(metadata.createdAt).toISOString(), updatedAt: new Date(metadata.updatedAt).toISOString(),
-				lifecycle: "active", selection: { runtimeId: metadata.providerId === "claude" ? "claude" : "codex" },
+				lifecycle: "active", selection: { runtimeId: "ohmypi" }, // TT 1.1.0:历史 Claude/Codex 会话导入后统一落到唯一运行时
 				importedFrom: { kind: "claudian", sourceDigest, transcript },
 			};
 			await this.conversations.store.create(manifest);

@@ -44,13 +44,10 @@ export function validateProviderProfile(profile: ProviderProfile): ProviderProfi
 		}
 		profile = { ...profile, endpoint: url.toString().replace(/\/$/, "") };
 	}
-	if (profile.runtimeId === "codex" && !["openai-responses", "openai-chat"].includes(profile.protocol)) {
-		throw new Error("Codex 自定义 Provider 必须兼容 OpenAI Responses 或 Chat Completions");
+	if (profile.runtimeId !== "ohmypi") {
+		throw new Error("TT工作台 仅支持 OhMyPi 运行时的 Provider 配置");
 	}
-	if (profile.runtimeId === "claude" && !["anthropic-agent", "anthropic-messages"].includes(profile.protocol)) {
-		throw new Error("Claude runtime 必须使用 anthropic-agent 或 anthropic-messages 协议");
-	}
-	if (profile.runtimeId === "ohmypi" && !["ohmypi-native", "openai-chat", "openai-responses", "anthropic-agent"].includes(profile.protocol)) {
+	if (!["ohmypi-native", "openai-chat", "openai-responses", "anthropic-agent", "anthropic-messages"].includes(profile.protocol)) {
 		throw new Error("OhMyPi Provider 协议不兼容");
 	}
 	return profile;

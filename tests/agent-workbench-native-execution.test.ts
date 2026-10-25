@@ -55,10 +55,10 @@ function fixtures(
 		write: async (value) => { ledgerState = structuredClone(value); },
 	});
 	const runtime: AgentRuntimeAdapter = {
-		id: "codex",
-		probe: async () => ({ runtimeId: "codex", status: "ready" }),
+		id: "ohmypi",
+		probe: async () => ({ runtimeId: "ohmypi", status: "ready" }),
 		listModels: async () => [],
-		createSession: async (_input: CreateSessionInput) => ({ runtimeId: "codex", sessionId: "native-1" }),
+		createSession: async (_input: CreateSessionInput) => ({ runtimeId: "ohmypi", sessionId: "native-1" }),
 		resumeSession: async () => undefined,
 		send,
 		cancel: async () => undefined,
@@ -94,7 +94,7 @@ describe("TALOS native execution coordinator", () => {
 				eventId: "native-delta",
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "assistant.delta",
 				timestamp: "2026-08-28T00:00:00.000Z",
 				payload: { text: "done" },
@@ -162,7 +162,7 @@ describe("TALOS native execution coordinator", () => {
 	});
 
 	it("fails closed before staging or runtime startup when provider egress is denied", async () => {
-		const send = vi.fn(async function* () { yield createAgentEvent({ eventId: "unexpected", conversationId: "c", turnId: "t", runtimeId: "codex", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} }); });
+		const send = vi.fn(async function* () { yield createAgentEvent({ eventId: "unexpected", conversationId: "c", turnId: "t", runtimeId: "ohmypi", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} }); });
 		const audit = vi.fn(async () => ({ allowed: false, message: "blocked by audit" }));
 		const fixture = fixtures(send, audit);
 		const conversation = await fixture.conversations.create();
@@ -175,7 +175,7 @@ describe("TALOS native execution coordinator", () => {
 				toolPolicy: { kind: "read-only" },
 			})) throw new Error(`unexpected event: ${event.type}`);
 		}).rejects.toThrow("blocked by audit");
-		expect(audit).toHaveBeenCalledWith(expect.objectContaining({ runtimeId: "codex", prompt: "private prompt", hasImages: false }));
+		expect(audit).toHaveBeenCalledWith(expect.objectContaining({ runtimeId: "ohmypi", prompt: "private prompt", hasImages: false }));
 		expect(send).not.toHaveBeenCalled();
 		expect(await fixture.ledger.list(conversation.conversationId)).toEqual([]);
 	});
@@ -186,7 +186,7 @@ describe("TALOS native execution coordinator", () => {
 				eventId: "accepted-delta",
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "assistant.delta",
 				timestamp: "2026-08-28T00:00:00.000Z",
 				payload: { text: "partial" },
@@ -224,7 +224,7 @@ describe("TALOS native execution coordinator", () => {
 				eventId: "profile-done",
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "turn.finished",
 				timestamp: new Date().toISOString(),
 				payload: {},
@@ -234,7 +234,7 @@ describe("TALOS native execution coordinator", () => {
 		const conversation = {
 			...created,
 			selection: {
-				runtimeId: "codex" as const,
+				runtimeId: "ohmypi" as const,
 				providerProfileId: "openai-compatible",
 			},
 		};
@@ -247,7 +247,7 @@ describe("TALOS native execution coordinator", () => {
 			toolPolicy: { kind: "read-only" },
 		})) void event;
 		expect(audit).toHaveBeenCalledWith(expect.objectContaining({
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			providerProfileId: "openai-compatible",
 		}));
 	});
@@ -257,7 +257,7 @@ describe("TALOS native execution coordinator", () => {
 		const auditGate = new Promise<{ allowed: boolean }>((resolve) => { releaseAudit = resolve; });
 		const audit = vi.fn(() => auditGate);
 		const fixture = fixtures(async function* (turn) {
-			yield createAgentEvent({ eventId: "done", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} });
+			yield createAgentEvent({ eventId: "done", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} });
 		}, audit);
 		const conversation = await fixture.conversations.create();
 		const request = {
@@ -286,7 +286,7 @@ describe("TALOS native execution coordinator", () => {
 				eventId: `accepted-${turn.conversationId}`,
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "runtime.status",
 				timestamp: new Date().toISOString(),
 				payload: { message: "accepted" },
@@ -295,7 +295,7 @@ describe("TALOS native execution coordinator", () => {
 				eventId: `finished-${turn.conversationId}`,
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "turn.finished",
 				timestamp: new Date().toISOString(),
 				payload: {},
@@ -320,10 +320,10 @@ describe("TALOS native execution coordinator", () => {
 
 	it("drops cross-turn events and stops after the first terminal event", async () => {
 		const fixture = fixtures(async function* (turn) {
-			yield createAgentEvent({ eventId: "wrong-turn", conversationId: turn.conversationId, turnId: "stale-turn", runtimeId: "codex", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "stale" } });
-			yield createAgentEvent({ eventId: "valid-delta", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "valid" } });
-			yield createAgentEvent({ eventId: "valid-finish", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} });
-			yield createAgentEvent({ eventId: "late-delta", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "late" } });
+			yield createAgentEvent({ eventId: "wrong-turn", conversationId: turn.conversationId, turnId: "stale-turn", runtimeId: "ohmypi", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "stale" } });
+			yield createAgentEvent({ eventId: "valid-delta", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "valid" } });
+			yield createAgentEvent({ eventId: "valid-finish", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} });
+			yield createAgentEvent({ eventId: "late-delta", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "late" } });
 		});
 		const conversation = await fixture.conversations.create();
 		const events: AgentEvent[] = [];
@@ -342,8 +342,8 @@ describe("TALOS native execution coordinator", () => {
 	it("responds to a cancelled native question instead of parking the provider", async () => {
 		const respondUserInput = vi.fn(async () => undefined);
 		const fixture = fixtures(async function* (turn) {
-			yield createAgentEvent({ eventId: "question", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "user.question", timestamp: new Date().toISOString(), nativeId: "question-1", payload: { questions: [] } });
-			yield createAgentEvent({ eventId: "done", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} });
+			yield createAgentEvent({ eventId: "question", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "user.question", timestamp: new Date().toISOString(), nativeId: "question-1", payload: { questions: [] } });
+			yield createAgentEvent({ eventId: "done", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "turn.finished", timestamp: new Date().toISOString(), payload: {} });
 		}, undefined, { respondUserInput });
 		const conversation = await fixture.conversations.create();
 		for await (const event of fixture.execution.execute(conversation, {
@@ -384,7 +384,7 @@ describe("TALOS native execution coordinator", () => {
 	it("keeps a provider failure terminal instead of synthesizing a completed turn", async () => {
 		const dispose = vi.fn(async () => undefined);
 		const fixture = fixtures(async function* (turn) {
-			yield createAgentEvent({ eventId: "failed", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "error", timestamp: new Date().toISOString(), payload: { message: "provider failed" } });
+			yield createAgentEvent({ eventId: "failed", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "error", timestamp: new Date().toISOString(), payload: { message: "provider failed" } });
 		}, undefined, { dispose });
 		const conversation = await fixture.conversations.create();
 		const events: AgentEvent[] = [];
@@ -401,14 +401,14 @@ describe("TALOS native execution coordinator", () => {
 
 	it("releases the native process after every terminal turn and resumes the durable binding on demand", async () => {
 		const dispose = vi.fn(async () => undefined);
-		const createSession = vi.fn(async () => ({ runtimeId: "codex" as const, sessionId: "native-1" }));
+		const createSession = vi.fn(async () => ({ runtimeId: "ohmypi" as const, sessionId: "native-1" }));
 		const resumeSession = vi.fn(async () => undefined);
 		const fixture = fixtures(async function* (turn) {
 			yield createAgentEvent({
 				eventId: `finished-${turn.turnId}`,
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "turn.finished",
 				timestamp: new Date().toISOString(),
 				payload: {},
@@ -441,7 +441,7 @@ describe("TALOS native execution coordinator", () => {
 				eventId: "finished-before-dispose",
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "turn.finished",
 				timestamp: new Date().toISOString(),
 				payload: {},
@@ -473,7 +473,7 @@ describe("TALOS native execution coordinator", () => {
 					eventId,
 					conversationId: turn.conversationId,
 					turnId: turn.turnId,
-					runtimeId: "codex",
+					runtimeId: "ohmypi",
 					type: "assistant.final",
 					timestamp: new Date().toISOString(),
 					nativeId: "native-final-1",
@@ -484,7 +484,7 @@ describe("TALOS native execution coordinator", () => {
 				eventId: "finished",
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				type: "turn.finished",
 				timestamp: new Date().toISOString(),
 				payload: {},

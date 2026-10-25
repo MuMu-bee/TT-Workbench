@@ -24,14 +24,6 @@ interface RuntimeSpecification {
 }
 
 const SPECIFICATIONS: Record<RuntimeId, RuntimeSpecification> = {
-	claude: {
-		command: "claude", fixedPaths: ["/opt/homebrew/bin/claude", "/usr/local/bin/claude"],
-		versionArgs: ["--version"], minimum: [1, 0, 0], installUrl: "https://docs.anthropic.com/en/docs/claude-code/setup",
-	},
-	codex: {
-		command: "codex", fixedPaths: ["/opt/homebrew/bin/codex", "/usr/local/bin/codex"],
-		versionArgs: ["--version"], minimum: [0, 122, 0], installUrl: "https://developers.openai.com/codex/cli",
-	},
 	ohmypi: {
 		command: "omp", fixedPaths: ["/opt/homebrew/bin/omp", "/usr/local/bin/omp"],
 		versionArgs: ["--version"], minimum: [0, 1, 0], installUrl: "https://github.com/can1357/oh-my-pi",

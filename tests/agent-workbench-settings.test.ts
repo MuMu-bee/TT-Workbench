@@ -6,12 +6,12 @@ import { AgentWorkbenchService } from "../src/agent-workbench/core/agent-workben
 function settings(): WorkbenchSettings {
 	return {
 		schemaVersion: 1,
-		runtimes: [{ id: "codex-local", runtimeId: "codex", executablePath: "/synthetic/codex" }],
+		runtimes: [{ id: "codex-local", runtimeId: "ohmypi", executablePath: "/synthetic/codex" }],
 		providers: [{
-			id: "openai-main", displayName: "OpenAI", runtimeId: "codex", protocol: "openai-responses",
+			id: "openai-main", displayName: "OpenAI", runtimeId: "ohmypi", protocol: "openai-responses",
 			endpoint: "https://api.example.test/", models: ["model-a"], secretRef: "talos-openai-main", enabled: true,
 		}],
-		selection: { runtimeId: "codex", providerProfileId: "openai-main", model: "model-a", reasoning: "high", serviceTier: "fast" },
+		selection: { runtimeId: "ohmypi", providerProfileId: "openai-main", model: "model-a", reasoning: "high", serviceTier: "fast" },
 		workflow: "plan", permission: "ask",
 	};
 }
@@ -39,8 +39,8 @@ describe("WorkbenchSettingsStore", () => {
 		const wrongProtocol = settings();
 		const wrongProtocolProvider = wrongProtocol.providers.at(0);
 		if (!wrongProtocolProvider) throw new Error("expected provider fixture");
-		wrongProtocolProvider.protocol = "anthropic-agent";
-		await expect(store.save(wrongProtocol)).rejects.toThrow("Responses");
+		wrongProtocolProvider.runtimeId = "claude" as never;
+		await expect(store.save(wrongProtocol)).rejects.toThrow("OhMyPi");
 		const wrongRef = settings();
 		const wrongRefProvider = wrongRef.providers.at(0);
 		if (!wrongRefProvider) throw new Error("expected provider fixture");
@@ -58,22 +58,23 @@ describe("WorkbenchSettingsStore", () => {
 		);
 		const service = new AgentWorkbenchService({ settingsStore: store });
 		await service.initialize();
-		expect(service.getSelectedRuntimeId()).toBe("codex");
-		expect(service.getSelection()).toEqual({ runtimeId: "codex", providerProfileId: "openai-main", model: "model-a", reasoning: "high", serviceTier: "fast" });
-		expect(service.getRuntimeProfile("codex")?.executablePath).toBe("/synthetic/codex");
-		expect(await service.listModels("codex")).toEqual([{ id: "model-a", label: "model-a", providerProfileId: "openai-main" }]);
+		expect(service.getSelectedRuntimeId()).toBe("ohmypi");
+		expect(service.getSelection()).toEqual({ runtimeId: "ohmypi", providerProfileId: "openai-main", model: "model-a", reasoning: "high", serviceTier: "fast" });
+		expect(service.getRuntimeProfile("ohmypi")?.executablePath).toBe("/synthetic/codex");
+		expect(await service.listModels("ohmypi")).toEqual([{ id: "model-a", label: "model-a", providerProfileId: "openai-main" }]);
+		// TT 1.1.0:单运行时下 selectRuntime 同值不破坏既有选择(旧多运行时切换会清空 profile/model)。
 		service.selectRuntime("ohmypi");
 		service.setWorkflowMode("execute");
 		service.setPermissionMode("scoped");
 		await service.flushSettings();
 		expect(value).toMatchObject({ selection: { runtimeId: "ohmypi" }, workflow: "execute", permission: "scoped" });
-		expect(value.selection).toEqual({ runtimeId: "ohmypi" });
+		expect(value.selection).toEqual({ runtimeId: "ohmypi", providerProfileId: "openai-main", model: "model-a", reasoning: "high", serviceTier: "fast" });
 		expect(value.providers[0]?.secretRef).toBe("talos-openai-main");
 	});
 
 	it("projects the native runtime model into the TALOS selector atomically", async () => {
 		let value = settings();
-		value.selection = { runtimeId: "codex" };
+		value.selection = { runtimeId: "ohmypi" };
 		const store = new WorkbenchSettingsStore(
 			{ read: async () => structuredClone(value), write: async (next) => { value = structuredClone(next); } },
 			{ has: () => true },
@@ -82,13 +83,13 @@ describe("WorkbenchSettingsStore", () => {
 			settingsStore: store,
 		});
 		await service.initialize();
-		service.selectRuntime("codex", "gpt-5.5");
+		service.selectRuntime("ohmypi", "gpt-5.5");
 		await service.flushSettings();
-		expect(service.getSelection()).toEqual({ runtimeId: "codex", model: "gpt-5.5" });
+		expect(service.getSelection()).toEqual({ runtimeId: "ohmypi", model: "gpt-5.5" });
 		expect(value.selection.model).toBe("gpt-5.5");
-		service.selectRuntime("codex", null);
+		service.selectRuntime("ohmypi", null);
 		await service.flushSettings();
-		expect(service.getSelection()).toEqual({ runtimeId: "codex" });
+		expect(service.getSelection()).toEqual({ runtimeId: "ohmypi" });
 	});
 
 	it("drops a conversation selection whose provider profile no longer exists", async () => {
@@ -100,13 +101,13 @@ describe("WorkbenchSettingsStore", () => {
 		const service = new AgentWorkbenchService({ settingsStore: store });
 		await service.initialize();
 		service.restoreSelection({
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			providerProfileId: "removed-provider",
 			model: "removed-model",
 			reasoning: "high",
 			serviceTier: "fast",
 		});
-		expect(service.getSelection()).toEqual({ runtimeId: "codex" });
+		expect(service.getSelection()).toEqual({ runtimeId: "ohmypi" });
 	});
 
 	it("syncs only TALOS-managed API profiles and avoids no-op writes", async () => {
@@ -129,7 +130,7 @@ describe("WorkbenchSettingsStore", () => {
 		const managed = {
 			id: "openai",
 			displayName: "OpenAI Responses API",
-			runtimeId: "codex" as const,
+			runtimeId: "ohmypi" as const,
 			protocol: "openai-responses" as const,
 			endpoint: "https://responses.example.test/",
 			models: ["model-b"],
@@ -155,7 +156,7 @@ describe("WorkbenchSettingsStore", () => {
 it("allows egress only to the selected provider profile", async () => {
 	let value = settings();
 	value.providers.push({
-		id: "openai-unused", displayName: "Unused", runtimeId: "codex", protocol: "openai-responses",
+		id: "openai-unused", displayName: "Unused", runtimeId: "ohmypi", protocol: "openai-responses",
 		endpoint: "https://unused.example.test", models: ["model-unused"], enabled: true,
 	});
 	let providerEgressHosts: string[] = [];
@@ -177,13 +178,14 @@ it("allows egress only to the selected provider profile", async () => {
 	await service.initialize();
 	service.setWorkflowMode("execute");
 	await service.authorizeTool({
-		runtimeId: "codex", conversationId: "conversation-1", vaultRoot: "/synthetic/vault",
+		runtimeId: "ohmypi", conversationId: "conversation-1", vaultRoot: "/synthetic/vault",
 		toolName: "NetworkRequest", toolInput: { url: "https://api.example.test/v1" },
 		approvalUiAttached: true,
 		prompt: async () => "deny",
 	});
 	expect(providerEgressHosts).toEqual(["api.example.test"]);
-	service.selectRuntime("ohmypi");
+	// TT 1.1.0:同值 selectRuntime 保留 profile;显式清空后再验证出口默认白名单。
+	service.restoreSelection({ runtimeId: "ohmypi" });
 	await service.authorizeTool({
 		runtimeId: "ohmypi", conversationId: "conversation-1", vaultRoot: "/synthetic/vault",
 		toolName: "NetworkRequest", toolInput: { url: "https://api.deepseek.com/v1" },

@@ -5,8 +5,6 @@ import type { PermissionMode } from "../contracts/approval";
 import type { CustomApiHost, CustomApiResult } from "../config/custom-api";
 import type { ModelDescriptor, RuntimeHealth, RuntimeId } from "../contracts/runtime-adapter";
 import {
-	CLAUDE_PROVIDER_ICON,
-	OPENAI_PROVIDER_ICON,
 	PI_PROVIDER_ICON,
 	createProviderIconSvg,
 } from "./provider-icons";
@@ -21,14 +19,10 @@ export interface TalosAgentWorkbenchOptions {
 }
 
 const NATIVE_PROVIDER_LABELS: Record<RuntimeId, string> = {
-	claude: "Claude 本机登录",
-	codex: "Codex 本机登录",
 	ohmypi: "OhMyPi 原生 Provider",
 };
 
 const RUNTIME_PRESENTATION = [
-	{ id: "claude", label: "Claude", icon: CLAUDE_PROVIDER_ICON },
-	{ id: "codex", label: "Codex", icon: OPENAI_PROVIDER_ICON },
 	{ id: "ohmypi", label: "OhMyPi", icon: PI_PROVIDER_ICON },
 ] as const;
 
@@ -85,7 +79,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 	private toolbarControls: { leading: HTMLElement[]; trailing: HTMLElement[] } = { leading: [], trailing: [] };
 	private modelAnnouncement: HTMLElement | null = null;
 	private modelDescriptors: ModelDescriptor[] = [];
-	private modelRuntimeId: RuntimeId = "codex";
+	private modelRuntimeId: RuntimeId = "ohmypi";
 	private reasoningControl: HTMLElement | null = null;
 	private reasoning: HTMLSelectElement | null = null;
 	private serviceTierControl: HTMLElement | null = null;
@@ -464,7 +458,8 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		void this.refreshRuntime(this.options.service.getSelectedRuntimeId());
 	}
 
-	private appendHandoffMarker(root: HTMLElement, from: RuntimeId, to: RuntimeId): void {
+	// TT 1.1.0:运行时收敛后 from/to 恒同值,标记不可达;签名放宽保留机制供未来多运行时扩展。
+	private appendHandoffMarker(root: HTMLElement, from: string, to: string): void {
 		if (from === to) return;
 		const marker = this.handoffToast ?? root.ownerDocument.createElement("div");
 		if (this.handoffDismissTimer) window.clearTimeout(this.handoffDismissTimer);
@@ -508,7 +503,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 	}
 
 	private runtimePresentation(runtimeId: RuntimeId) {
-		return RUNTIME_PRESENTATION.find((runtime) => runtime.id === runtimeId) ?? RUNTIME_PRESENTATION[1];
+		return RUNTIME_PRESENTATION.find((runtime) => runtime.id === runtimeId) ?? RUNTIME_PRESENTATION[0];
 	}
 
 	private renderModelTriggerIcon(runtimeId: RuntimeId): void {
@@ -543,11 +538,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		const title = doc.createElement("strong");
 		title.textContent = `选择 ${this.runtimePresentation(this.modelRuntimeId).label} 模型`;
 		const hint = doc.createElement("small");
-		hint.textContent = this.modelRuntimeId === "codex"
-			? "模型来自 Codex 终端；5.6 按 Sol／Terra／Luna 分档"
-			: this.modelRuntimeId === "claude"
-				? "使用 Claude Code 官方模型别名或当前 API 目录"
-				: "模型来自当前 OhMyPi Provider";
+		hint.textContent = "模型来自当前 OhMyPi Provider";
 		heading.append(title, hint);
 		list.appendChild(heading);
 
@@ -631,7 +622,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		const title = doc.createElement("strong");
 		title.textContent = "应如何批准智能体操作？";
 		const hint = doc.createElement("small");
-		hint.textContent = "同一授权标准用于 Claude、Codex 与 OhMyPi";
+		hint.textContent = "同一授权标准用于 OhMyPi 与 Direct API";
 		heading.append(title, hint);
 		this.permissionMenu.appendChild(heading);
 		const current = this.options.service.getPermissionMode();
@@ -863,7 +854,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		this.status.textContent = `${RUNTIME_PRESENTATION.find((runtime) => runtime.id === runtimeId)?.label ?? runtimeId} · ${RUNTIME_HEALTH_LABELS[probe.status]}${probe.version ? ` · ${probe.version}` : ""}${probe.reason ? ` · ${probe.reason}` : ""}`;
 		this.install.hidden = probe.status !== "not-installed" && probe.status !== "incompatible";
 		if (!this.install.hidden) {
-			const urls: Record<RuntimeId, string> = { claude: "https://docs.anthropic.com/en/docs/claude-code/setup", codex: "https://developers.openai.com/codex/cli", ohmypi: "https://github.com/can1357/oh-my-pi" };
+			const urls: Record<RuntimeId, string> = { ohmypi: "https://github.com/can1357/oh-my-pi" };
 			this.install.href = urls[runtimeId];
 		}
 		this.model.replaceChildren();

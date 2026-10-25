@@ -43,9 +43,9 @@
 
 - **实时 Vault 控制台**：基于 Obsidian `ItemView` 原生渲染；打开即统计，文件变化后事件驱动刷新。
 - **行动与治理**：将焦点、待办、审批、偏好候选、发布门和健康信号放在同一个决策面板中。
-- **多智能体工作台**：支持 Claude、Codex、OhMyPi、本机登录态和兼容 Anthropic/OpenAI 协议的 Direct API Provider；提供会话恢复、分叉、压缩、附件、工具调用、diff、MCP、Skills 和子智能体界面。
+- **多智能体工作台**：单一原生运行时 OhMyPi（1.1.0 起收敛），叠加 Anthropic Messages / OpenAI 兼容两类 Direct API Provider；提供会话恢复、分叉、压缩、附件、工具调用、diff、MCP、Skills 和子智能体界面。
 - **DeepSeek Harness**：在控制台内打开隔离的 Harness 工作区，保留项目与多会话导航，并由插件管理本地进程和健康状态。
-- **屈原 Qwen Realtime 语音**：支持语音唤醒、持续监听、实时转写、音频回复、文本只读查询和 TALOS Ball 状态舞台。
+- **屈原实时语音**：支持语音唤醒、持续监听、实时转写、音频回复、文本只读查询和 TALOS Ball 状态舞台；1.1.0 起服务端可插拔——默认阿里百炼 Qwen Realtime，或接入任意 OpenAI Realtime 兼容 WebRTC 端点（两步握手，密钥仍只存 SecretStorage）。
 - **只读语音工具**：语音可查询 Vault 状态、统计和进度；不会暴露写库或命令执行工具。只有明确说出「联网搜索」或「上网查」时，才会发送当前问题进行联网检索。
 - **十套视觉主题**：Aurora、Nebula、Animal Island、Macintosh、数据流、柔光浮雕、Bauhaus、Executive Brief、Paper 和 Swiss Modernism；可选择只应用于控制台或同步到整个 Vault。
 - **安全默认值**：API 密钥只写入 Obsidian SecretStorage；审计记录脱敏；缺少可验证 OS 沙箱时，写入型 Execute 会失败关闭。
@@ -57,7 +57,7 @@
 
 | 平台 | 当前状态 | AI 执行边界 |
 |---|---|---|
-| **macOS** | 主要支持平台 | 本机 Claude / Codex / OhMyPi 可在可验证的 macOS Seatbelt 沙箱内运行；沙箱不可用时 Execute 失败关闭。 |
+| **macOS** | 主要支持平台 | 本机 OhMyPi 可在可验证的 macOS Seatbelt 沙箱内运行；沙箱不可用时 Execute 失败关闭。 |
 | **Windows 10/11 x64** | 部署与兼容支持 | 推荐使用 SecretStorage 中配置的 Direct API Provider；当前为 **Plan-only**，不会启动本机 CLI 或执行工具。`.cmd` / `.bat` 仅用于安全发现，路径包含 shell 元字符时拒绝启动。 |
 | **其他桌面系统** | 非当前交付重点 | 没有可验证 OS 沙箱时，本机智能体 Execute 失败关闭。 |
 
@@ -72,7 +72,7 @@ TT工作台不进入 Obsidian 社区插件商店，遵循上游许可从本仓�
 3. 重启 Obsidian，打开「设置 → 社区插件」，启用 **TT工作台**。
 4. 进入「TT工作台设置 → 智能体与模型」，配置本机运行时或把 API 密钥保存到 SecretStorage，并选择 Provider 与模型。
 
-手动安装需包含：`main.js`、`claude-sdk.cjs`、`manifest.json`、`styles.css`、`LICENSE`、`THIRD-PARTY-NOTICES.md`、`THIRD-PARTY-LICENSES.txt`、`MaShanZheng-Regular.ttf`、`MaShanZheng-OFL.txt`、`TALOS-Favicon-64-v1.png`。
+手动安装需包含：`main.js`、`manifest.json`、`styles.css`、`LICENSE`、`THIRD-PARTY-NOTICES.md`、`THIRD-PARTY-LICENSES.txt`、`MaShanZheng-Regular.ttf`、`MaShanZheng-OFL.txt`、`TALOS-Favicon-64-v1.png`。
 
 > 升级前建议备份 Vault。覆盖插件文件时不要删除或替换 `data.json`、`.talos/` 和已有的人格、身份文件。
 > 从上游 TALOS 迁移：数据目录（`.talos/`）与命令协议（`talos-ask`）保持兼容，卸载 TALOS 后安装本插件即可沿用既有数据；两插件不要同时启用。
@@ -112,7 +112,7 @@ npm run licenses:check
 npm run build
 ```
 
-生产构建会执行许可证审计、TypeScript 检查、样式合并和 esbuild 打包。任何分发包必须包含安装章节列出的 10 个文件。
+生产构建会执行许可证审计、TypeScript 检查、样式合并和 esbuild 打包。任何分发包必须包含安装章节列出的 9 个文件。
 
 ### 源码结构
 

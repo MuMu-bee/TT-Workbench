@@ -4,7 +4,6 @@ import { TalosView, VIEW_TYPE_TALOS } from "./view";
 import { TalosChatSidebarView, VIEW_TYPE_TALOS_CHAT, revealChatSidebar } from "./plugin/chat-sidebar-view";
 import { createCustomApiHost } from "./plugin/custom-api-modal";
 import { AgentWorkbenchService } from "./agent-workbench/core/agent-workbench-service";
-import { CLAUDE_SDK_BUNDLE_FILE, configureClaudeSdkBundle } from "./agent-workbench/transports/claude-sdk-port";
 import { ObsidianWorkbenchStorage } from "./agent-workbench/storage/obsidian-workbench-storage";
 import {
 	TalosAgentRecoveryView,
@@ -97,7 +96,6 @@ export default class TalosPlugin extends Plugin {
 	};
 
 	async onload(): Promise<void> {
-		configureClaudeSdkBundle(this.claudeSdkBundlePath());
 		await this.loadTalosSettings();
 		this.talosActionRuntime = this.createTalosActionRuntime();
 		registerApprovalTaskRuntime(
@@ -282,15 +280,6 @@ export default class TalosPlugin extends Plugin {
 			"data-talos-vault-theme",
 			normalizeVisualTheme(this.talosSettings.visualTheme)
 		);
-	}
-
-	// Claude SDK 单独打包在插件目录的 claude-sdk.cjs，首次运行 Claude 时才加载。
-	// 用 getBasePath 能力判断而非 instanceof（真实宿主曾因 instanceof 判断失败）。
-	private claudeSdkBundlePath(): string | null {
-		const adapter = this.app.vault.adapter as { getBasePath?: () => string };
-		const dir = this.manifest.dir;
-		if (typeof adapter.getBasePath !== "function" || !dir) return null;
-		return [adapter.getBasePath(), dir, CLAUDE_SDK_BUNDLE_FILE].join("/");
 	}
 
 	// D-TLP-014：DeepSeek Harness 嵌入面的进程管理单例。
@@ -683,6 +672,7 @@ export default class TalosPlugin extends Plugin {
 
 	async exchangeQuyuanRealtimeSdp(input: {
 		model: string;
+		voice?: string;
 		instructions: string;
 		offerSdp: string;
 	}): Promise<{ answerSdp: string }> {

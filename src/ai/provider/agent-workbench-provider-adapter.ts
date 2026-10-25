@@ -163,7 +163,7 @@ export function createAgentWorkbenchProviderAdapters(
 	service: AgentWorkbenchService,
 	vaultRoot: string,
 ): AgentWorkbenchProviderAdapter[] {
-	return (["claude", "codex", "ohmypi"] as const).map((runtimeId) =>
+	return (["ohmypi"] as const).map((runtimeId) =>
 		new AgentWorkbenchProviderAdapter({ runtimeId, service, vaultRoot })
 	);
 }

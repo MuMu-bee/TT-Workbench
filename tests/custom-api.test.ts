@@ -81,7 +81,7 @@ describe("saving a custom API", () => {
 		const result = await saveCustomApi(value as never, {
 			kind: "anthropic", baseUrl: " https://open.bigmodel.cn/api/anthropic ", models: ["glm-5.3", "glm-5.2"], apiKey: "placeholder-key",
 		});
-		expect(result).toEqual({ runtimeId: "claude", profileId: "anthropic", model: "glm-5.3" });
+		expect(result).toEqual({ runtimeId: "ohmypi", profileId: "anthropic-api", model: "glm-5.3" });
 		expect(value.talosSettings.anthropicBaseUrl).toBe("https://open.bigmodel.cn/api/anthropic");
 		expect(value.talosSettings.agentWorkbenchClaudeModels).toBe("glm-5.3\nglm-5.2");
 		expect(value.talosSettings.anthropicApiKey).toBe("");
@@ -94,7 +94,7 @@ describe("saving a custom API", () => {
 		const { store, value } = port();
 		await saveCustomApi(value as never, { kind: "openai", baseUrl: "", models: ["gpt-5.5"], apiKey: "first" });
 		const result = await saveCustomApi(value as never, { kind: "openai", baseUrl: "https://api.openai.com/v1", models: ["gpt-5.5"], apiKey: "" });
-		expect(result.runtimeId).toBe("codex");
+		expect(result.runtimeId).toBe("ohmypi");
 		expect([...store.secrets.values()]).toEqual(["first"]);
 		await expect(saveCustomApi(value as never, { kind: "openai", baseUrl: "http://example.com", models: ["x"], apiKey: "" })).rejects.toThrow("HTTPS");
 	});

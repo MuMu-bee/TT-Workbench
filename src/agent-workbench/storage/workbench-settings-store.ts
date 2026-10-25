@@ -39,11 +39,11 @@ export function assertSafeWorkbenchSettings(value: unknown, key = ""): void {
 }
 
 function defaults(): WorkbenchSettings {
-	return { schemaVersion: 1, runtimes: [], providers: [], selection: { runtimeId: "codex" }, workflow: "plan", permission: "ask" };
+	return { schemaVersion: 1, runtimes: [], providers: [], selection: { runtimeId: "ohmypi" }, workflow: "plan", permission: "ask" };
 }
 
 function normalizeSelection(selection: RuntimeSelection, providers: ProviderProfile[]): RuntimeSelection {
-	if (!selection || !["claude", "codex", "ohmypi"].includes(selection.runtimeId)) throw new Error("runtime selection 无效");
+	if (!selection || selection.runtimeId !== "ohmypi") throw new Error("runtime selection 无效");
 	const reasoning = typeof selection.reasoning === "string" && selection.reasoning.trim() ? selection.reasoning.trim() : undefined;
 	const serviceTier = typeof selection.serviceTier === "string" && selection.serviceTier.trim() ? selection.serviceTier.trim() : undefined;
 	if (!selection.providerProfileId) {

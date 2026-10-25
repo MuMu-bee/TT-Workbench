@@ -19,17 +19,17 @@ describe("RuntimeDiscoveryService", () => {
 	it("covers ready, missing, incompatible, unauthenticated, degraded and crashed states", async () => {
 		const host = new FakeProbeHost();
 		const service = new RuntimeDiscoveryService(host);
-		expect((await service.probe("claude")).status).toBe("ready");
+		expect((await service.probe("ohmypi")).status).toBe("ready");
 		host.executable = null;
-		expect((await service.probe("codex")).status).toBe("not-installed");
-		host.executable = "/synthetic/bin/codex"; host.version = "codex 0.121.0";
-		expect((await service.probe("codex")).status).toBe("incompatible");
-		host.version = "codex-cli 0.122.0"; host.handshakeResult = "unauthenticated";
-		expect((await service.probe("codex")).status).toBe("unauthenticated");
+		expect((await service.probe("ohmypi")).status).toBe("not-installed");
+		host.executable = "/synthetic/bin/omp"; host.version = "omp 0.0.9";
+		expect((await service.probe("ohmypi")).status).toBe("incompatible");
+		host.version = "omp 0.32.1"; host.handshakeResult = "unauthenticated";
+		expect((await service.probe("ohmypi")).status).toBe("unauthenticated");
 		host.handshakeResult = "degraded";
-		expect((await service.probe("codex")).status).toBe("degraded");
+		expect((await service.probe("ohmypi")).status).toBe("degraded");
 		host.crash = new Error("synthetic crash");
-		expect((await service.probe("codex")).status).toBe("crashed");
+		expect((await service.probe("ohmypi")).status).toBe("crashed");
 	});
 
 	it("prioritizes an explicit executable and produces bounded install guidance", async () => {

@@ -8,6 +8,7 @@ import {
 	type TalosVoiceRuntimeHost,
 } from "./native-voice-driver";
 import { resolveEffectiveRuntimePolicy } from "./runtime-policy";
+import { quyuanRealtimeProviderId, resolveQuyuanRealtimeSessionConfig } from "./realtime-provider";
 import { buildTalosDataMap } from "./voice-data-map";
 import { QuyuanVoiceCharacterStage } from "./voice-character-stage";
 import {
@@ -33,6 +34,7 @@ interface TalosQuyuanPlugin extends TalosVoiceRuntimeHost {
 	activateQuyuanV2View(): Promise<void>;
 	exchangeQuyuanRealtimeSdp(input: {
 		model: string;
+		voice?: string;
 		instructions: string;
 		offerSdp: string;
 	}): Promise<{ answerSdp: string }>;
@@ -429,7 +431,7 @@ export class QuyuanVoicePanel {
 		const safety = dock.createDiv({ cls: "tq-voice-safety" });
 		setIcon(safety.createSpan(), "shield-check");
 		safety.createSpan({
-			text: "实时音频发送至已配置的百炼地域 · 长期密钥由 SecretStorage 隔离 · 语音工具只读；仅明确说“联网搜索”或“上网查”才发送当前问题",
+			text: "实时音频发送至已配置的 Realtime 服务商 · 长期密钥由 SecretStorage 隔离 · 语音工具只读；仅明确说“联网搜索”或“上网查”才发送当前问题",
 		});
 		this.confirmHostEl = dock.createDiv({
 			cls: "tq-confirm-host",
@@ -708,7 +710,9 @@ export class QuyuanVoicePanel {
 		this.setControlButtonLabel(
 			this.engBtn,
 			"云端实时",
-			"当前使用百炼 Qwen Omni Realtime 端到端语音"
+			this.settings.quyuanRealtimeProviderKind === "openai-compatible"
+				? "当前使用自定义 OpenAI 兼容 Realtime 端到端语音"
+				: "当前使用百炼 Qwen Omni Realtime 端到端语音"
 		);
 		this.engBtn.setAttribute("aria-pressed", "true");
 	}
@@ -719,31 +723,27 @@ export class QuyuanVoicePanel {
 		const current = (): boolean =>
 			this.mounted &&
 			lifecycleGeneration === this.lifecycleGeneration;
-		const model = [
-			"qwen3.5-omni-flash-realtime",
-			"qwen3.5-omni-plus-realtime",
-		].includes(this.settings.quyuanRealtimeModel)
-			? this.settings.quyuanRealtimeModel
-			: "qwen3.5-omni-flash-realtime";
+		// TT 1.1.0:模型/音色/Provider 解析统一收敛到 realtime-provider(单一定义)。
+		let sessionConfig: { kind: "dashscope" | "openai-compatible"; model: string; voice: string };
+		try {
+			sessionConfig = resolveQuyuanRealtimeSessionConfig(this.settings);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			new Notice(`实时语音 Provider 配置无效，已回退百炼默认：${message}`, 8000);
+			sessionConfig = { kind: "dashscope", model: "qwen3.5-omni-flash-realtime", voice: "Tina" };
+		}
+		const model = sessionConfig.model;
 		const realtimeSessionId = "qwen-realtime-" + Date.now();
-		const voice = [
-			"Tina",
-			"Ethan",
-			"Raymond",
-			"Cindy",
-			"Liora Mira",
-			"Sunnybobi",
-		].includes(this.settings.quyuanRealtimeVoice)
-			? this.settings.quyuanRealtimeVoice
-			: "Tina";
+		const voice = sessionConfig.voice;
 		return new QwenRealtimeVoiceSession({
 			model,
 			voice,
+			transcriptionModel: sessionConfig.kind === "dashscope" ? "qwen3-asr-flash-realtime" : undefined,
 			language: this.settings.voiceLang || "zh-CN",
 			instructions: this.realtimeInstructions(),
 			wakeAliases: this.wakeAliases,
 			sleepWord: this.sleepWord,
-			exchangeSdp: (input) => this.plugin.exchangeQuyuanRealtimeSdp(input),
+			exchangeSdp: (input) => this.plugin.exchangeQuyuanRealtimeSdp({ ...input, voice }),
 			executeVaultTool: (name, args, callId) =>
 				this.plugin.executeQuyuanVoiceVaultTool({
 				name,
@@ -836,7 +836,7 @@ export class QuyuanVoicePanel {
 				if (!current()) return;
 				void this.plugin.recordQuyuanProviderUsage({
 					namespace: "voice",
-					providerId: "aliyun-qwen-realtime",
+					providerId: quyuanRealtimeProviderId(this.settings),
 					operation: "realtime-response",
 					model,
 					usage,
@@ -849,7 +849,7 @@ export class QuyuanVoicePanel {
 				if (!current()) return;
 				void this.plugin.recordQuyuanProviderUsage({
 					namespace: "voice",
-					providerId: "aliyun-qwen-realtime",
+					providerId: quyuanRealtimeProviderId(this.settings),
 					operation: "realtime-" + event.type + "-" + event.reasonCode,
 					model,
 					usage: {},
@@ -869,7 +869,7 @@ export class QuyuanVoicePanel {
 				this.controlStatusEl?.setText(`实时语音错误 · ${message}`);
 				this.setTalosBallState("error", 2600);
 				if (this.overlayReply) this.setOverlayMessage(`语音连接失败：${message}`);
-				new Notice(`千问实时语音：${message}`, 10000);
+				new Notice(`实时语音：${message}`, 10000);
 			},
 		});
 	}

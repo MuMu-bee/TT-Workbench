@@ -132,7 +132,7 @@ export class NodeRuntimeProbeHost implements RuntimeProbeHost {
 	}
 
 	async handshake(runtimeId: RuntimeId, executablePath: string, timeoutMs: number): Promise<ProtocolHandshake> {
-		const args = runtimeId === "codex" ? ["app-server", "--help"] : runtimeId === "ohmypi" ? ["--mode", "rpc", "--help"] : ["--help"];
+		const args = runtimeId === "ohmypi" ? ["--mode", "rpc", "--help"] : ["--help"];
 		const result = await this.run(executablePath, args, timeoutMs);
 		if (result.exitCode !== 0) return "degraded";
 		return "ready";

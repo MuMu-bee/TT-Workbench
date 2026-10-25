@@ -1,7 +1,12 @@
 import type { AgentEvent } from "./agent-events";
 import type { RuntimeCapabilities } from "./runtime-capabilities";
 
-export type RuntimeId = "claude" | "codex" | "ohmypi";
+/**
+ * TT工作台 1.1.0 起收敛为单一原生运行时:OhMyPi。
+ * 历史值 "claude" / "codex" 的会话数据仍以字符串形式存在于持久化事件中,
+ * 读取层按未知 runtime 降级处理,不再可创建新会话。
+ */
+export type RuntimeId = "ohmypi";
 export type RuntimeHealth =
 	| "unknown"
 	| "probing"

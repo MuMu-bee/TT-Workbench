@@ -123,8 +123,8 @@ export interface TalosSettings {
 	codexApiKey: string; // 仅用于旧版一次性迁移，运行时读取 SecretStorage
 	codexBaseUrl: string; // Codex harness 的 OpenAI Responses 端点，留空用官方
 	codexModel: string; // Codex harness 模型，留空用 harness 默认（gpt-5.5）
-	agentWorkbenchClaudeModels: string; // TALOS 工作台 Claude API 模型目录，每行一个
-	agentWorkbenchCodexModels: string; // TALOS 工作台 Codex API 模型目录，每行一个
+	agentWorkbenchClaudeModels: string; // Anthropic Direct API 模型目录，每行一个(旧字段名保留以兼容已存设置)
+	agentWorkbenchCodexModels: string; // OpenAI 兼容 Direct API 模型目录，每行一个(旧字段名保留以兼容已存设置)
 	// D-TLP-014：AI 对话页内嵌 DeepSeek Harness 桌面界面（iframe + loopback dsh web）
 	harnessExecutable: string; // dsh CLI 路径，留空自动探测 PATH
 	harnessPort: number; // dsh web 仅监听 127.0.0.1，默认 3180
@@ -143,10 +143,13 @@ export interface TalosSettings {
 	quyuanVadModel: string; // 遗留字段：自定义模型已禁用，仅兼容旧 data.json
 	quyuanVoiceModel: string; // Claude 语音通道独立模型，不影响文字工作台
 	quyuanVoiceEffort: string; // Claude 语音通道独立思考强度
+	quyuanRealtimeProviderKind: string; // 实时语音服务商：dashscope（默认）| openai-compatible
+	quyuanRealtimeEndpoint: string; // openai-compatible：Realtime WebRTC 端点（HTTPS/loopback）
+	quyuanRealtimeSecretRef: string; // openai-compatible：SecretStorage 密钥引用（空 = quyuan-realtime-key）
 	quyuanRealtimeWorkspaceId: string; // 百炼业务空间 ID；用于可信侧 WebRTC SDP 交换
 	quyuanRealtimeRegion: string; // cn-beijing | ap-southeast-1
-	quyuanRealtimeModel: string; // Qwen Omni Realtime 模型
-	quyuanRealtimeVoice: string; // Qwen Omni Realtime 音色
+	quyuanRealtimeModel: string; // Realtime 模型（百炼白名单内，或自定义端点的自由配置）
+	quyuanRealtimeVoice: string; // Realtime 音色
 	quyuanBackground: QuyuanBackgroundType; // 屈原舞台背景效果：letter-glitch | grid-scan
 	quyuanVoiceRecognitionEnabled: boolean; // 屈原语音识别模式：false 时释放麦克风且不监听唤醒词
 	quyuanVoiceInputMode: "continuous" | "push-to-talk"; // 默认持续监听；失败时降级为点击说话
@@ -244,6 +247,9 @@ export const DEFAULT_SETTINGS: TalosSettings = {
 	quyuanVadModel: "",
 	quyuanVoiceModel: "haiku",
 	quyuanVoiceEffort: "low",
+	quyuanRealtimeProviderKind: "dashscope",
+	quyuanRealtimeEndpoint: "",
+	quyuanRealtimeSecretRef: "",
 	quyuanRealtimeWorkspaceId: "",
 	quyuanRealtimeRegion: "cn-beijing",
 	quyuanRealtimeModel: "qwen3.5-omni-flash-realtime",
@@ -805,8 +811,38 @@ export class TalosSettingTab extends PluginSettingTab {
 	private renderVoice(c: HTMLElement): void {
 		new Setting(c)
 			.setName("实时语音")
-			.setDesc("百炼 Qwen Omni Realtime 端到端语音：持续监听、实时字幕、随时打断，不运行本地模型。开启后麦克风音频持续发送到所选地域直至退出，按 Token 计费；只有明确说「联网搜索」时才把该轮问题发给 qwen-flash，不发送 Vault 内容。")
+			.setDesc("Realtime 端到端语音（百炼 Qwen 或 OpenAI 兼容端点）：持续监听、实时字幕、随时打断，不运行本地模型。开启后麦克风音频持续发送到所选地域直至退出，按 Token 计费；只有明确说「联网搜索」时才把该轮问题发给 qwen-flash，不发送 Vault 内容。")
 			.setHeading();
+		new Setting(c)
+			.setName("Realtime 服务商")
+			.setDesc("百炼为默认预设；OpenAI 兼容可接入任意 Realtime WebRTC 端点（两步握手协议），密钥一律只存 SecretStorage。")
+			.addDropdown((d) =>
+				d
+					.addOption("dashscope", "阿里百炼 · Qwen Realtime（默认）")
+					.addOption("openai-compatible", "OpenAI 兼容 Realtime（自定义端点）")
+					.setValue(this.plugin.talosSettings.quyuanRealtimeProviderKind || "dashscope")
+					.onChange(async (value) => {
+						this.plugin.talosSettings.quyuanRealtimeProviderKind = value;
+						await this.plugin.saveTalosSettings();
+						this.renderInto(this.containerEl);
+					})
+		);
+		if ((this.plugin.talosSettings.quyuanRealtimeProviderKind || "dashscope") === "openai-compatible") {
+			this.textIn(
+				c,
+				"Realtime 端点",
+				"OpenAI Realtime 兼容基础 URL（如 https://api.openai.com/v1/realtime），必须 HTTPS 或 loopback；两步握手先 POST /sessions 取临时凭据。",
+				"quyuanRealtimeEndpoint",
+				"https://api.openai.com/v1/realtime"
+			);
+			this.textIn(
+				c,
+				"Realtime 密钥引用",
+				"SecretStorage 中的密钥引用 ID（先在 Provider 密钥处保存）；留空使用 quyuan-realtime-key。",
+				"quyuanRealtimeSecretRef",
+				"quyuan-realtime-key"
+			);
+		}
 		this.secretIn(
 			c,
 			"百炼 API Key",

@@ -4,20 +4,15 @@ import type { AgentRuntimeAdapter, RuntimeId } from "../contracts/runtime-adapte
 import type { ProviderProfile, RuntimeProfile } from "../contracts/provider-profile";
 import { isDirectApiProviderProfile } from "../contracts/provider-profile";
 import type { PermissionMode } from "../contracts/approval";
-import { CodexAppServerAdapter } from "../adapters/codex/codex-app-server-adapter";
-import { ClaudeAgentSdkAdapter } from "../adapters/claude/claude-agent-sdk-adapter";
 import { buildOhMyPiLaunch, OhMyPiRpcAdapter } from "../adapters/ohmypi/ohmypi-rpc-adapter";
 import { ProcessSandbox } from "../security/process-sandbox";
-import { ClaudeSdkQueryPort } from "../transports/claude-sdk-port";
-import { CodexProcessPort } from "../transports/codex-process-port";
 import { OhMyPiProcessPort } from "../transports/ohmypi-process-port";
-import { spawnJsonLineRpc } from "../transports/json-line-rpc-connection";
 import { spawnOmpRpc } from "../transports/omp-rpc-connection";
 import { resolveCertificateEnvironment } from "./certificate-environment";
 import { desktopRuntimePath } from "./node-runtime-probe-host";
 import { RuntimeDiscoveryService } from "./runtime-discovery-service";
-import { codexProtectedVaultSubpaths } from "../security/codex-permission-profile";
 import { LoopbackEgressProxy } from "../security/loopback-egress-proxy";
+import { protectedVaultSubpaths } from "../security/vault-protected-subpaths";
 import { DirectApiRuntimeAdapter } from "../adapters/api/direct-api-runtime-adapter";
 
 export { resolveCertificateEnvironment } from "./certificate-environment";
@@ -60,6 +55,10 @@ export interface RuntimeFactoryInput {
 
 export type ProviderSecretResolver = (secretRef: string) => string | null;
 
+/**
+ * TT工作台 1.1.0:原生运行时只剩 OhMyPi;其模型密钥由 OhMyPi 自身配置管理,
+ * 不经 profile 环境变量注入。Direct API 走 DirectApiRuntimeAdapter,不进本函数。
+ */
 export function providerEnvironmentForRuntime(
 	runtimeId: RuntimeId,
 	profile: ProviderProfile | undefined,
@@ -75,18 +74,6 @@ export function providerEnvironmentForRuntime(
 	if (profile.secretRef && !secret) {
 		throw new Error(`${profile.displayName} 的 SecretStorage 凭据不可用`);
 	}
-	if (runtimeId === "claude") {
-		return {
-			...(secret ? { ANTHROPIC_API_KEY: secret } : {}),
-			...(profile.endpoint ? { ANTHROPIC_BASE_URL: profile.endpoint } : {}),
-		};
-	}
-	if (runtimeId === "codex") {
-		return {
-			...(secret ? { OPENAI_API_KEY: secret } : {}),
-			...(profile.endpoint ? { OPENAI_BASE_URL: profile.endpoint } : {}),
-		};
-	}
 	return {};
 }
 
@@ -99,17 +86,6 @@ function runtimeInstallationRoot(executable: string): string {
 	if (normalized.startsWith("/opt/homebrew/")) return "/opt/homebrew";
 	if (normalized.startsWith("/usr/local/")) return "/usr/local";
 	return path.dirname(executable);
-}
-
-function claudeQuestionInput(input: Record<string, unknown>): Record<string, unknown> {
-	if (!Array.isArray(input.questions)) return { ...input };
-	const questions: unknown[] = input.questions;
-	return {
-		...input,
-		questions: questions.map((question) => question && typeof question === "object" && !Array.isArray(question) && !("isOther" in question)
-			? { ...question, isOther: true }
-			: question),
-	};
 }
 
 export class DesktopRuntimeFactory {
@@ -154,31 +130,10 @@ export class DesktopRuntimeFactory {
 			input.providerProfile,
 			this.resolveSecret
 		);
-		if (runtimeId === "claude") {
-			const port = new ClaudeSdkQueryPort(input.vaultRoot, probeRuntime, {
-				decide: async (toolName, toolInput, metadata) => {
-					if (toolName === "AskUserQuestion") {
-						const questionInput = claudeQuestionInput(toolInput);
-						const answers = await input.answerQuestion?.(questionInput, metadata) ?? null;
-						return answers
-							? { allow: true, updatedInput: { ...questionInput, answers } }
-							: { allow: false, message: "用户取消回答", interrupt: true };
-					}
-					const decision = await input.approve(toolName, toolInput, metadata);
-					return { allow: decision === "allow" || decision === "allow-always", message: decision === "deny" ? "TT 权限策略拒绝" : undefined };
-				},
-			}, (input.providerProfile?.models ?? []).map((id) => ({
-				id,
-				label: id,
-				providerProfileId: input.providerProfile?.id,
-			})), probe.executable, providerEnvironment);
-			return new ClaudeAgentSdkAdapter(port, () => true);
-		}
 		const home = process.env.HOME ?? "";
 		const runtimeExecutable = await realpath(probe.executable);
 		const packageRoot = runtimeInstallationRoot(runtimeExecutable);
-		const sessionRoot = home ? path.join(home, runtimeId === "codex" ? ".codex" : ".omp") : input.vaultRoot;
-		if (runtimeId === "codex" && !input.configDir) throw new Error("缺少 Vault configDir，Codex 已失败关闭");
+		const sessionRoot = home ? path.join(home, ".omp") : input.vaultRoot;
 		const runtimeTemp = path.join(input.vaultRoot, ".talos", "agent-workbench", "v1", "runtime-tmp", runtimeId);
 		await cleanupRuntimeStatusFiles(runtimeTemp);
 		await Promise.all([mkdir(runtimeTemp, { recursive: true }), mkdir(sessionRoot, { recursive: true })]);
@@ -199,34 +154,23 @@ export class DesktopRuntimeFactory {
 			...providerEnvironment,
 		};
 		try {
-		if (runtimeId === "codex") {
+			const raw = buildOhMyPiLaunch(runtimeExecutable, input.vaultRoot, input.permissionMode ?? "ask", input.model);
 			const launch = await this.sandbox.prepare({
-				executable: runtimeExecutable,
-				args: ["app-server", "--listen", "stdio://"],
-				cwd: input.vaultRoot,
+				...raw,
 				environment,
 				readOnlyRoots: [packageRoot, ...certificateRoots],
 				readWriteRoots: [sessionRoot, runtimeTemp],
 				loopbackProxyPort: proxyPort,
-				deniedVaultSubpaths: codexProtectedVaultSubpaths(input.configDir!),
+				deniedVaultSubpaths: input.configDir ? protectedVaultSubpaths(input.configDir) : undefined,
 				denyDotEnvFiles: true,
 			}, input.vaultRoot);
-			const connection = spawnJsonLineRpc(launch);
+			const connection = spawnOmpRpc(launch);
 			try {
-				await connection.request("initialize", { clientInfo: { name: "talos-agent-workbench", version: "1.0.0" }, capabilities: { experimentalApi: true } });
-				await connection.notify("initialized");
+				await connection.ready();
+				const negotiated = await connection.request<{ protocolVersion: number }>("negotiate_protocol", { protocolVersion: 2 });
+				if (negotiated.protocolVersion !== 2) throw new Error("OhMyPi RPC v2 协商失败");
 			} catch (error) { await connection.close(); throw error; }
-			return new CodexAppServerAdapter(new CodexProcessPort(connection, probeRuntime), () => proxy.close(), runtimeTemp);
-		}
-		const raw = buildOhMyPiLaunch(runtimeExecutable, input.vaultRoot, input.permissionMode ?? "ask", input.model);
-		const launch = await this.sandbox.prepare({ ...raw, environment, readOnlyRoots: [packageRoot, ...certificateRoots], readWriteRoots: [sessionRoot, runtimeTemp], loopbackProxyPort: proxyPort }, input.vaultRoot);
-		const connection = spawnOmpRpc(launch);
-		try {
-			await connection.ready();
-			const negotiated = await connection.request<{ protocolVersion: number }>("negotiate_protocol", { protocolVersion: 2 });
-			if (negotiated.protocolVersion !== 2) throw new Error("OhMyPi RPC v2 协商失败");
-		} catch (error) { await connection.close(); throw error; }
-		return new OhMyPiRpcAdapter(new OhMyPiProcessPort(connection, probeRuntime), () => true, () => proxy.close());
+			return new OhMyPiRpcAdapter(new OhMyPiProcessPort(connection, probeRuntime), () => true, () => proxy.close());
 		} catch (error) {
 			await proxy.close();
 			throw error;

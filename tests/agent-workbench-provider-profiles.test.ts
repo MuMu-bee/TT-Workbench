@@ -26,25 +26,19 @@ const settings = {
 	},
 };
 
-describe("TALOS provider profile projection", () => {
-	it("publishes only API profiles backed by SecretStorage references", () => {
+describe("TT provider profile projection", () => {
+	it("publishes only the Anthropic Messages direct profile backed by SecretStorage", () => {
 		const onlyAnthropic = buildTalosProviderProfiles(
 			settings,
 			(reference) => reference === "talos-anthropic-api-key"
 		);
 		expect(onlyAnthropic).toEqual([
 			expect.objectContaining({
-				id: "anthropic",
-				runtimeId: "claude",
-				protocol: "anthropic-agent",
-				secretRef: "talos-anthropic-api-key",
-				models: ["claude-a", "claude-b", "claude-legacy"],
-			}),
-			expect.objectContaining({
 				id: "anthropic-api",
-				runtimeId: "claude",
+				runtimeId: "ohmypi",
 				protocol: "anthropic-messages",
 				secretRef: "talos-anthropic-api-key",
+				models: ["claude-a", "claude-b", "claude-legacy"],
 			}),
 		]);
 		expect(JSON.stringify(onlyAnthropic)).not.toContain("synthetic-secret-value");
@@ -58,12 +52,18 @@ describe("TALOS provider profile projection", () => {
 		expect(profiles).toEqual([
 			expect.objectContaining({
 				id: "openai-compatible",
-				runtimeId: "codex",
+				runtimeId: "ohmypi",
 				protocol: "openai-chat",
 				endpoint: "https://chat.example.test/v1",
-				models: ["chat-legacy"],
+				models: ["codex-a", "codex-b", "chat-legacy"],
 			}),
 		]);
+	});
+
+	it("never emits a profile for legacy codex-only credentials", () => {
+		expect(
+			buildTalosProviderProfiles(settings, (reference) => reference === "talos-codex-api-key")
+		).toEqual([]);
 	});
 
 	it("prefers the console-selected direct profile and falls back deterministically", () => {
@@ -86,67 +86,45 @@ describe("TALOS provider profile projection", () => {
 });
 
 describe("provider runtime environment", () => {
-	const claudeProfile: ProviderProfile = {
-		id: "anthropic",
-		displayName: "Anthropic API",
-		runtimeId: "claude",
-		protocol: "anthropic-agent",
-		endpoint: "https://anthropic.example.test",
-		models: ["claude-a"],
-		secretRef: "talos-anthropic-api-key",
-		enabled: true,
-	};
-
-	it("injects only the selected profile secret and endpoint", () => {
-		const environment = providerEnvironmentForRuntime(
-			"claude",
-			claudeProfile,
-			(reference) =>
-				reference === "talos-anthropic-api-key"
-					? "synthetic-secret-value"
-					: null
-		);
-		expect(environment).toEqual({
-			ANTHROPIC_API_KEY: "synthetic-secret-value",
-			ANTHROPIC_BASE_URL: "https://anthropic.example.test",
-		});
-		expect(environment).not.toHaveProperty("OPENAI_API_KEY");
-	});
-
-	it("injects the selected Codex Responses API without leaking Anthropic settings", () => {
-		const codexProfile: ProviderProfile = {
-			id: "openai",
-			displayName: "OpenAI Responses API",
-			runtimeId: "codex",
-			protocol: "openai-responses",
-			endpoint: "https://responses.example.test/v1",
-			models: ["codex-a"],
-			secretRef: "talos-codex-api-key",
+	it("returns an empty environment for OhMyPi (keys live in OhMyPi's own config)", () => {
+		const profile: ProviderProfile = {
+			id: "anthropic-api",
+			displayName: "Anthropic Messages · Direct API",
+			runtimeId: "ohmypi",
+			protocol: "anthropic-messages",
+			endpoint: "https://anthropic.example.test",
+			models: ["claude-a"],
+			secretRef: "talos-anthropic-api-key",
 			enabled: true,
 		};
-		expect(
-			providerEnvironmentForRuntime(
-				"codex",
-				codexProfile,
-				() => "synthetic-codex-secret"
-			)
-		).toEqual({
-			OPENAI_API_KEY: "synthetic-codex-secret",
-			OPENAI_BASE_URL: "https://responses.example.test/v1",
-		});
-	});
-
-	it("does not read SecretStorage for native auth and fails closed for a missing API secret", () => {
 		let reads = 0;
 		expect(
-			providerEnvironmentForRuntime("claude", undefined, () => {
+			providerEnvironmentForRuntime("ohmypi", profile, () => {
+				reads += 1;
+				return "synthetic-secret-value";
+			})
+		).toEqual({});
+		expect(
+			providerEnvironmentForRuntime("ohmypi", undefined, () => {
 				reads += 1;
 				return null;
 			})
 		).toEqual({});
-		expect(reads).toBe(0);
+		expect(reads).toBe(1);
+	});
+
+	it("fails closed for a missing API secret and rejects runtime mismatch", () => {
+		const profile: ProviderProfile = {
+			id: "anthropic-api",
+			displayName: "Anthropic Messages · Direct API",
+			runtimeId: "ohmypi",
+			protocol: "anthropic-messages",
+			models: ["claude-a"],
+			secretRef: "talos-anthropic-api-key",
+			enabled: true,
+		};
 		expect(() =>
-			providerEnvironmentForRuntime("claude", claudeProfile, () => null)
+			providerEnvironmentForRuntime("ohmypi", profile, () => null)
 		).toThrow("SecretStorage");
 	});
 });
@@ -155,8 +133,8 @@ describe("provider-scoped native bindings", () => {
 	it("keeps native and API sessions separate while retaining legacy native fallback", async () => {
 		let state: Record<string, unknown> | null = {
 			bindings: {
-				"legacy:codex": {
-					runtimeId: "codex",
+				"legacy:ohmypi": {
+					runtimeId: "ohmypi",
 					sessionId: "legacy-native",
 				},
 			},
@@ -168,24 +146,24 @@ describe("provider-scoped native bindings", () => {
 			},
 		});
 		await store.set("conversation", {
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			sessionId: "native-session",
 		});
 		await store.set("conversation", {
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			sessionId: "api-session",
-			providerProfileId: "openai",
+			providerProfileId: "openai-compatible",
 		});
-		expect(await store.get("conversation", "codex")).toMatchObject({
+		expect(await store.get("conversation", "ohmypi")).toMatchObject({
 			sessionId: "native-session",
 		});
-		expect(await store.get("conversation", "codex", "openai")).toMatchObject({
+		expect(await store.get("conversation", "ohmypi", "openai-compatible")).toMatchObject({
 			sessionId: "api-session",
-			providerProfileId: "openai",
+			providerProfileId: "openai-compatible",
 		});
-		expect(await store.get("legacy", "codex")).toMatchObject({
+		expect(await store.get("legacy", "ohmypi")).toMatchObject({
 			sessionId: "legacy-native",
 		});
-		expect(await store.get("legacy", "codex", "openai")).toBeNull();
+		expect(await store.get("legacy", "ohmypi", "openai-compatible")).toBeNull();
 	});
 });

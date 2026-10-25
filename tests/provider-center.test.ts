@@ -67,13 +67,13 @@ describe("ProviderCenter", () => {
 		// 只保留 codex harness 与两条直连通道的映射。
 		expect(engineProviderSettingForProvider("claude-api")).toBe("claude-api");
 		expect(engineProviderSettingForProvider("openai-compatible")).toBe("codex");
-		expect(engineProviderSettingForProvider("codex")).toBe("codex-cli");
+		expect(engineProviderSettingForProvider("ohmypi")).toBe("codex-cli");
 		expect(engineProviderSettingForProvider("mock-acceptance")).toBe(
 			"mock-acceptance"
 		);
 		expect(providerIdForEngineSetting("claude-api")).toBe("claude-api");
 		expect(providerIdForEngineSetting("codex")).toBe("openai-compatible");
-		expect(providerIdForEngineSetting("codex-cli")).toBe("codex");
+		expect(providerIdForEngineSetting("codex-cli")).toBe("ohmypi");
 		expect(providerIdForEngineSetting("mock-acceptance")).toBe(
 			"mock-acceptance"
 		);

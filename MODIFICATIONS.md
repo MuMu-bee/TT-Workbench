@@ -76,6 +76,46 @@
 | `tests/claudian-sidebar-layout.test.ts` | 源码文本断言同步为 `titleText.textContent = "TT"` |
 | `tests/voice-readonly-policy.test.ts` | 语音只读策略断言同步为 TT 品牌(策略工具清单语义不变) |
 
+## 1.1.0 — 运行时收敛与 Provider/语音重设计(相对 1.0.0)
+
+### 删除(运行时链)
+
+- `src/agent-workbench/adapters/claude/`、`adapters/codex/`:Claude Agent SDK 与 Codex app-server 适配器
+- `transports/claude-sdk-port.ts`、`claude-sdk-entry.ts`、`codex-process-port.ts`、`json-line-rpc-connection.ts`:对应传输层
+- `security/codex-permission-profile.ts`:由 `security/vault-protected-subpaths.ts`(新增)取代并扩展为通用模块
+- `scripts/check-claude-sdk-split.mjs`、`patches/apply-sdk-electron-patch.mjs`:SDK 拆包守卫与 Electron 补丁
+- `@anthropic-ai/claude-agent-sdk` 依赖与 postinstall;esbuild 收敛为单一 main.js 入口
+- `agent-workbench/core/workbench-controller.ts` 及其测试(1.0.0 审查 R3:仅测试引用的旧路径)
+
+### 新增
+
+- `src/quyuan/realtime-provider.ts`:Realtime 语音 Provider 抽象(百炼预设 + OpenAI 兼容,端点校验/密钥引用/白名单单一事实源)
+- `src/agent-workbench/security/vault-protected-subpaths.ts`:通用 Vault 保护区(OhMyPi 沙箱首次启用 deniedVaultSubpaths + denyDotEnvFiles)
+
+### 重设计
+
+- `contracts/runtime-adapter.ts`:RuntimeId 收窄为 "ohmypi"(历史 claude/codex 会话按未知运行时只读降级)
+- `contracts/provider-profile.ts`:校验只接受 ohmypi 运行时
+- `config/talos-provider-profiles.ts`:注册表只产出 anthropic-api / openai-compatible 两个 Direct API profile(均挂 ohmypi)
+- `discovery/desktop-runtime-factory.ts`:删除 claude/codex 构造分支;providerEnvironmentForRuntime 对 ohmypi 返回空环境(密钥由 OhMyPi 自身配置管理)
+- `discovery/runtime-discovery-service.ts`、`node-runtime-probe-host.ts`:仅 OhMyPi 规格
+- `core/agent-workbench-service.ts`、`storage/workbench-settings-store.ts`:默认运行时与出口白名单收敛
+- `ui/talos-agent-workbench.ts`、`ui/model-switcher-presentation.ts`、`ui/runtime-install-card.ts`:运行时切换器/模型展示单运行时化
+- `plugin/provider-runtime.ts`、`ui/provider-center.ts`:Windows Direct API 回退与 engineProvider 映射改指 ohmypi facade
+- `plugin/custom-api-modal.ts`、`config/custom-api.ts`:自定义 API 目标改为 Direct API 语义(openai 走 openaiBaseUrl/openaiApiKey)
+- `plugin/quyuan-voice-tools.ts`:exchangeQuyuanRealtimeSdp 双 Provider 实现(百炼单步 / OpenAI 兼容两步握手,失败关闭)
+- `quyuan/qwen-realtime-voice.ts`:exchangeSdp 传递 voice;qwen 专用 ASR 转写模型条件下发
+- `quyuan/voice-panel.ts`:会话参数解析统一走 realtime-provider;审计 providerId 动态化
+- `settings.ts`:新增 quyuanRealtimeProviderKind/Endpoint/SecretRef 字段与设置 UI;codex 系字段转迁移兼容
+- `jarvis/engine-types.ts`:以本地结构类型取代 @anthropic-ai/claude-agent-sdk 类型导入
+
+### 测试
+
+- 删除:agent-workbench-adapters / agent-workbench-jsonl-rpc / claude-sdk-lazy-load / sdk-electron-patch / agent-workbench-model-switcher(随适配链)
+- 重写:provider-profiles(单运行时注册表契约)、discovery×2(ohmypi 状态覆盖)、settings(同值 selectRuntime 语义)、security/native-runtime-policy(OhMyPi 沙箱防护)、custom-api / provider-center / facade-adapter(ohmypi 目标)、voice-readonly-policy(新密钥读取路径)
+
+**破坏性变更**:Claude 与 Codex 本机运行时不再可用;相关旧设置字段仅作数据迁移兼容,不再参与装配。
+
 ## 刻意保留(合规或合同要求)
 
 1. `LICENSE` / `THIRD-PARTY-NOTICES.md` / `THIRD-PARTY-LICENSES.txt` / `MaShanZheng-*` — 许可证与第三方声明逐字保留(license 第 2 节要求)。

@@ -1,9 +1,18 @@
 import type { ProviderProfile } from "../contracts/provider-profile";
 
+/**
+ * TT工作台 1.1.0:原生运行时收敛为 OhMyPi 后,Provider 注册表只产出
+ * 两类 Direct API profile(全部挂在 ohmypi 运行时上,由插件的 HTTP
+ * 适配器直连,不启动本机 CLI):
+ * - anthropic-api    → Anthropic Messages 协议
+ * - openai-compatible → OpenAI Chat Completions 协议
+ * OhMyPi 本机 CLI(model = provider/model 标识)不依赖本注册表注入密钥,
+ * 其模型目录来自 `get_available_models`。
+ * codexModel / codexBaseUrl / codexApiKey / agentWorkbenchCodexModels
+ * 作为旧版数据兼容字段保留在 settings 类型中,不再参与注册表。
+ */
 export const TALOS_MANAGED_PROVIDER_PROFILE_IDS = [
-	"anthropic",
 	"anthropic-api",
-	"openai",
 	"openai-compatible",
 ] as const;
 
@@ -56,34 +65,23 @@ export function buildTalosProviderProfiles(
 	hasSecret: (reference: string) => boolean
 ): ProviderProfile[] {
 	const profiles: ProviderProfile[] = [];
+
 	const anthropicSecretRef = settings.providerSecretRefs.anthropicApiKey;
 	if (anthropicSecretRef && hasSecret(anthropicSecretRef)) {
-		const models = parseModelCatalog(
-			settings.agentWorkbenchClaudeModels,
-			settings.jarvisModel
-		);
-		profiles.push({
-			id: "anthropic",
-			displayName: "Anthropic Agent API",
-			runtimeId: "claude",
-			protocol: "anthropic-agent",
-			...(settings.anthropicBaseUrl.trim()
-				? { endpoint: settings.anthropicBaseUrl.trim() }
-				: {}),
-			models,
-			headerNames: ["x-api-key", "anthropic-version"],
-			secretRef: anthropicSecretRef,
-			enabled: true,
-		});
 		profiles.push({
 			id: "anthropic-api",
 			displayName: "Anthropic Messages · Direct API",
-			runtimeId: "claude",
+			runtimeId: "ohmypi",
 			protocol: "anthropic-messages",
 			...(settings.anthropicBaseUrl.trim()
 				? { endpoint: settings.anthropicBaseUrl.trim() }
 				: {}),
-			models: models.length > 0 ? models : ["claude-sonnet-4-6"],
+			models: parseModelCatalog(
+				settings.agentWorkbenchClaudeModels,
+				settings.jarvisModel
+			).length > 0
+				? parseModelCatalog(settings.agentWorkbenchClaudeModels, settings.jarvisModel)
+				: ["claude-sonnet-4-6"],
 			headerNames: ["x-api-key", "anthropic-version"],
 			secretRef: anthropicSecretRef,
 			enabled: true,
@@ -95,34 +93,19 @@ export function buildTalosProviderProfiles(
 		profiles.push({
 			id: "openai-compatible",
 			displayName: "OpenAI-compatible · Direct API",
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			protocol: "openai-chat",
 			...(settings.openaiBaseUrl.trim()
 				? { endpoint: settings.openaiBaseUrl.trim() }
 				: {}),
-			models: [settings.openaiModel.trim() || "gpt-4o"],
-			headerNames: ["authorization"],
-			secretRef: openAiSecretRef,
-			enabled: true,
-		});
-	}
-
-	const codexSecretRef = settings.providerSecretRefs.codexApiKey;
-	if (codexSecretRef && hasSecret(codexSecretRef)) {
-		profiles.push({
-			id: "openai",
-			displayName: "OpenAI Responses API",
-			runtimeId: "codex",
-			protocol: "openai-responses",
-			...(settings.codexBaseUrl.trim()
-				? { endpoint: settings.codexBaseUrl.trim() }
-				: {}),
 			models: parseModelCatalog(
 				settings.agentWorkbenchCodexModels,
-				settings.codexModel
-			),
+				settings.openaiModel
+			).length > 0
+				? parseModelCatalog(settings.agentWorkbenchCodexModels, settings.openaiModel)
+				: ["gpt-4o"],
 			headerNames: ["authorization"],
-			secretRef: codexSecretRef,
+			secretRef: openAiSecretRef,
 			enabled: true,
 		});
 	}

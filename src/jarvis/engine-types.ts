@@ -1,4 +1,10 @@
-import type { PermissionResult, PermissionMode } from "@anthropic-ai/claude-agent-sdk";
+// TT 1.1.0:claude-agent-sdk 依赖已随 Claude 运行时移除,权限契约改为本地结构类型
+// (与原 SDK 形状一致:behavior/message/interrupt,消费方只读 behavior 与 message)。
+export type PermissionMode = "default" | "acceptEdits" | "plan" | "bypassPermissions";
+
+export type PermissionResult =
+	| { behavior: "allow"; updatedInput?: Record<string, unknown>; updatedPermissions?: unknown[] }
+	| { behavior: "deny"; message?: string; interrupt?: boolean };
 
 // ============================================================
 // 屈原 · 执行通道统一契约（承重墙）

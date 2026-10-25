@@ -23,10 +23,10 @@ import { recordQuyuanRuntimeError } from "./quyuan-diagnostics";
 
 export async function applyWindowsDirectApiFallback(plugin: TalosPlugin, service: AgentWorkbenchService): Promise<void> {
 	if (process.platform !== "win32" || service.getSelection().providerProfileId) return;
-	const selected = preferredDirectApiProfile([
-		...service.getProviderProfiles("codex"),
-		...service.getProviderProfiles("claude"),
-	], plugin.talosSettings.engineProvider);
+	const selected = preferredDirectApiProfile(
+		service.getProviderProfiles("ohmypi"),
+		plugin.talosSettings.engineProvider,
+	);
 	if (!selected) return;
 	service.selectRuntime(selected.runtimeId);
 	service.selectProviderProfile(selected.id);
@@ -160,8 +160,8 @@ export function getProviderCenterSnapshot(plugin: TalosPlugin): ProviderCenterSn
 		config.providers.push({
 			id: provider.id,
 			name:
-				provider.id === "codex"
-					? "Codex harness · 本机"
+				provider.id === "ohmypi"
+					? "OhMyPi · 本机运行时"
 					: `${provider.id} · 本机 Provider`,
 			kind: provider.kind,
 			endpoint: "local://cli",

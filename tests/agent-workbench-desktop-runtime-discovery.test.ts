@@ -38,11 +38,9 @@ describe("desktop runtime discovery", () => {
 		}
 	});
 
-	it("finds Claude, Codex and OhMyPi in user bins when the GUI PATH is restricted", async () => {
+	it("finds OhMyPi in user bins when the GUI PATH is restricted", async () => {
 		const home = await mkdtemp(path.join(tmpdir(), "talos-runtime-home-"));
 		try {
-			await fakeRuntime(path.join(home, ".local/bin/codex"), "codex-cli 0.147.0");
-			await fakeRuntime(path.join(home, ".local/bin/claude"), "claude 2.1.228");
 			await fakeRuntime(path.join(home, ".bun/bin/omp"), "omp 0.32.1");
 			const service = new RuntimeDiscoveryService(new NodeRuntimeProbeHost({
 				PATH: "/usr/bin:/bin",
@@ -51,14 +49,8 @@ describe("desktop runtime discovery", () => {
 				LANG: "en_US.UTF-8",
 			}));
 
-			const [claude, codex, ohmypi] = await Promise.all([
-				service.probe("claude"),
-				service.probe("codex"),
-				service.probe("ohmypi"),
-			]);
+			const ohmypi = await service.probe("ohmypi");
 
-			expect(claude).toMatchObject({ status: "ready", executable: path.join(home, ".local/bin/claude") });
-			expect(codex).toMatchObject({ status: "ready", executable: path.join(home, ".local/bin/codex") });
 			expect(ohmypi).toMatchObject({ status: "ready", executable: path.join(home, ".bun/bin/omp") });
 		} finally {
 			await rm(home, { recursive: true, force: true });

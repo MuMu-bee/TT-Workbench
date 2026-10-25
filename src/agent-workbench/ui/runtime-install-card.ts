@@ -9,7 +9,7 @@ export interface RuntimeInstallCardModel {
 	canRetry: boolean;
 }
 
-const LABEL: Record<RuntimeId, string> = { claude: "Claude", codex: "Codex", ohmypi: "OhMyPi" };
+const LABEL: Record<RuntimeId, string> = { ohmypi: "OhMyPi" };
 
 export function runtimeInstallCard(probe: RuntimeProbe, installUrl: string): RuntimeInstallCardModel {
 	const unavailable = ["not-installed", "incompatible"].includes(probe.status);

@@ -51,9 +51,12 @@ export interface QwenRealtimeConfig {
 	}>;
 	exchangeSdp(input: {
 		model: string;
+		voice: string;
 		instructions: string;
 		offerSdp: string;
 	}): Promise<{ answerSdp: string }>;
+	/** 转写模型:百炼专用(qwen3-asr-flash-realtime);自定义 Provider 不下发。 */
+	transcriptionModel?: string;
 	executeVaultTool?(
 		name: VoiceVaultToolName,
 		args: Record<string, unknown>,
@@ -567,6 +570,7 @@ export class QwenRealtimeVoiceSession {
 		const result = await this.withTimeout(
 			this.config.exchangeSdp({
 				model: this.config.model,
+				voice: this.config.voice,
 				instructions: this.config.instructions,
 				offerSdp,
 			}),
@@ -1052,9 +1056,7 @@ export class QwenRealtimeVoiceSession {
 				voice: this.config.voice,
 				input_audio_format: "pcm",
 				output_audio_format: "pcm",
-				input_audio_transcription: {
-					model: "qwen3-asr-flash-realtime",
-				},
+				...(this.config.transcriptionModel ? { input_audio_transcription: { model: this.config.transcriptionModel } } : {}),
 				instructions: this.config.instructions,
 				turn_detection: {
 					type: "semantic_vad",

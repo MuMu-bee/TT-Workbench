@@ -19,7 +19,7 @@ export class ConversationService {
 		},
 	) {}
 
-	async create(title = "新会话", runtimeId: RuntimeId = "codex"): Promise<ConversationManifest> {
+	async create(title = "新会话", runtimeId: RuntimeId = "ohmypi"): Promise<ConversationManifest> {
 		const now = this.clock.now();
 		const manifest: ConversationManifest = {
 			schemaVersion: 1,

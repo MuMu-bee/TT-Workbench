@@ -108,7 +108,7 @@ export class QuyuanVoiceDriver {
 			const binding = await runtime.createSession({
 				conversationId,
 				vaultRoot,
-				model: runtimeId === "claude" ? this.config.model || undefined : undefined,
+				model: undefined,
 				initialContext: channel === "voice" ? VOICE_RESPONSE_POLICY : TEXT_RESPONSE_POLICY,
 			});
 			return this.runtimes[channel] = { runtime, binding, conversationId };
@@ -164,7 +164,7 @@ export class QuyuanVoiceDriver {
 				input: [{ type: "text", text: prompt }],
 				text: prompt,
 				history: this.history,
-				model: session.runtime.id === "claude" ? this.config.model || undefined : undefined,
+				model: undefined,
 				reasoning: this.config.effortLevel || undefined,
 				workflow: turn.channel === "voice" ? "plan" : this.plugin.getAgentWorkbenchService().getWorkflowMode(),
 				permissionMode: "ask",

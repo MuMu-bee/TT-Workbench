@@ -5,8 +5,16 @@ import { type QuyuanGovernanceResult, evaluateQuyuanGovernance } from "../quyuan
 import { TFile, requestUrl } from "obsidian";
 import { VOICE_QWEN_WEB_SEARCH_ALLOWED } from "../quyuan/runtime-policy";
 import { type VoiceVaultToolName, executeVoiceVaultTool } from "../quyuan/voice-vault-tools";
+import {
+	DASHSCOPE_REALTIME_MODELS,
+	normalizeRealtimeProviderKind,
+	quyuanRealtimeProviderId,
+	quyuanRealtimeSecretRef,
+	validateRealtimeEndpoint,
+} from "../quyuan/realtime-provider";
 import type TalosPlugin from "../main";
 import { auditQuyuanProviderEgress, recordQuyuanProviderUsage } from "./quyuan-egress-audit";
+import { providerSecretStoreFromApp } from "../ai/provider/secret-storage-runtime";
 
 export async function executeQuyuanVoiceVaultTool(plugin: TalosPlugin, input: {
 		name: VoiceVaultToolName;
@@ -168,34 +176,89 @@ export async function executeQuyuanVoiceWebSearch(plugin: TalosPlugin, input: {
 
 export async function exchangeQuyuanRealtimeSdp(plugin: TalosPlugin, input: {
 		model: string;
+		voice?: string;
 		instructions: string;
 		offerSdp: string;
 	}): Promise<{ answerSdp: string }> {
-	const allowedModels = new Set([
-		"qwen3.5-omni-flash-realtime",
-		"qwen3.5-omni-plus-realtime",
-	]);
-	if (!allowedModels.has(input.model)) {
-		throw new Error("不支持的千问 Realtime 模型");
+	const settings = plugin.talosSettings;
+	const kind = normalizeRealtimeProviderKind(settings.quyuanRealtimeProviderKind);
+	const providerId = quyuanRealtimeProviderId(settings);
+	if (kind === "dashscope") {
+		if (!(DASHSCOPE_REALTIME_MODELS as readonly string[]).includes(input.model)) {
+			throw new Error("不支持的千问 Realtime 模型");
+		}
 	}
 	if (!input.offerSdp.startsWith("v=0")) {
 		throw new Error("无效的 WebRTC Offer SDP");
 	}
-	const workspaceId = plugin.talosSettings.quyuanRealtimeWorkspaceId.trim();
-	if (!/^[A-Za-z0-9][A-Za-z0-9-]{2,127}$/.test(workspaceId)) {
-		throw new Error("请先在设置中填写有效的百炼业务空间 ID");
+
+	// 会话凭据与端点:按 Provider 类型解析(密钥一律只从 SecretStorage 读取)。
+	let endpoint: URL;
+	let bearer: string;
+	if (kind === "dashscope") {
+		const workspaceId = settings.quyuanRealtimeWorkspaceId.trim();
+		if (!/^[A-Za-z0-9][A-Za-z0-9-]{2,127}$/.test(workspaceId)) {
+			throw new Error("请先在设置中填写有效的百炼业务空间 ID");
+		}
+		const region = settings.quyuanRealtimeRegion === "ap-southeast-1"
+			? "ap-southeast-1"
+			: "cn-beijing";
+		const aliyunKey = plugin.readProviderSecret("aliyunApiKey")?.trim();
+		if (!aliyunKey) {
+			throw new Error("请先在设置中安全保存百炼 API Key");
+		}
+		endpoint = new URL(
+			`https://${workspaceId}.${region}.maas.aliyuncs.com/api/v1/webrtc/realtime`
+		);
+		endpoint.searchParams.set("model", input.model);
+		bearer = aliyunKey;
+	} else {
+		const rawEndpoint = settings.quyuanRealtimeEndpoint.trim();
+		if (!rawEndpoint) {
+			throw new Error("请先在设置中填写自定义 Realtime 端点");
+		}
+		const base = validateRealtimeEndpoint(rawEndpoint);
+		const secret = providerSecretStoreFromApp(plugin.app)?.get(quyuanRealtimeSecretRef(settings))?.trim() ?? null;
+		if (!secret) {
+			throw new Error(`请先在 SecretStorage 保存密钥并填写密钥引用(${quyuanRealtimeSecretRef(settings)})`);
+		}
+		// 两步握手:POST /sessions 换取临时凭据 → 以临时凭据完成 SDP 交换。
+		const sessionsUrl = new URL(base.endsWith("/sessions") ? base : `${base}/sessions`);
+		const sessionsResponse = await requestUrl({
+			url: sessionsUrl.toString(),
+			method: "POST",
+			headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
+			body: JSON.stringify({
+				model: input.model,
+				...(input.voice ? { voice: input.voice } : {}),
+			}),
+			throw: false,
+		});
+		if (sessionsResponse.status < 200 || sessionsResponse.status >= 300) {
+			throw new Error(
+				`Realtime 会话建立失败（HTTP ${sessionsResponse.status}）：${sessionsResponse.text.slice(0, 240)}`
+			);
+		}
+		let sessionPayload: Record<string, unknown>;
+		try {
+			sessionPayload = JSON.parse(sessionsResponse.text) as Record<string, unknown>;
+		} catch {
+			throw new Error("Realtime 会话响应无法解析");
+		}
+		const clientSecret = (sessionPayload.client_secret ?? null) as Record<string, unknown> | null;
+		const ephemeralKey = typeof clientSecret?.value === "string" ? clientSecret.value : "";
+		if (!ephemeralKey) {
+			throw new Error("Realtime 会话响应缺少临时凭据(client_secret.value),已失败关闭");
+		}
+		endpoint = new URL(base);
+		endpoint.searchParams.set("model", input.model);
+		bearer = ephemeralKey;
 	}
-	const region = plugin.talosSettings.quyuanRealtimeRegion === "ap-southeast-1"
-		? "ap-southeast-1"
-		: "cn-beijing";
-	const aliyunKey = plugin.readProviderSecret("aliyunApiKey")?.trim();
-	if (!aliyunKey) {
-		throw new Error("请先在设置中安全保存百炼 API Key");
-	}
+
 	const audit = await auditQuyuanProviderEgress(plugin, {
 		namespace: "voice",
 		kind: "voice-audio",
-		providerId: "aliyun-qwen-realtime",
+		providerId,
 		prompt: input.instructions,
 		sourceKinds: ["prompt", "voice-audio"],
 		sessionId: `qwen-realtime-${Date.now()}`,
@@ -203,15 +266,11 @@ export async function exchangeQuyuanRealtimeSdp(plugin: TalosPlugin, input: {
 	if (!audit.allowed) {
 		throw new Error(audit.message || "实时语音出库审计未通过");
 	}
-	const endpoint = new URL(
-		`https://${workspaceId}.${region}.maas.aliyuncs.com/api/v1/webrtc/realtime`
-	);
-	endpoint.searchParams.set("model", input.model);
 	const response = await requestUrl({
 		url: endpoint.toString(),
 		method: "POST",
 		headers: {
-			Authorization: `Bearer ${aliyunKey}`,
+			Authorization: `Bearer ${bearer}`,
 			"Content-Type": "application/sdp",
 		},
 		body: input.offerSdp,
@@ -219,11 +278,11 @@ export async function exchangeQuyuanRealtimeSdp(plugin: TalosPlugin, input: {
 	});
 	if (response.status < 200 || response.status >= 300) {
 		throw new Error(
-			`百炼 WebRTC SDP 交换失败（HTTP ${response.status}）：${response.text.slice(0, 240)}`
+			`Realtime WebRTC SDP 交换失败（HTTP ${response.status}）：${response.text.slice(0, 240)}`
 		);
 	}
 	if (!response.text.trim()) {
-		throw new Error("百炼 WebRTC SDP 交换返回空响应");
+		throw new Error("Realtime WebRTC SDP 交换返回空响应");
 	}
 	return { answerSdp: response.text };
 }
