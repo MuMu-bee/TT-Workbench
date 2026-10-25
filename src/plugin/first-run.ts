@@ -80,11 +80,11 @@ export async function autoDetectVaultSchemaOnFirstRun(plugin: TalosPlugin): Prom
 			: "全部与标准结构一致";
 		new Notice(
 			`TALOS 已自动识别你的库结构：匹配 ${result.matchedCount}/${result.entries.length} 个模块，${detail}。`
-				+ "\n如需调整：设置 → TALOS → 目录映射。",
+				+ "\n如需调整：设置 → TT工作台 → 目录映射。",
 			12000
 		);
 	} catch (error) {
 		recordQuyuanRuntimeError(plugin, "autoDetectVaultSchema", error);
-		console.error("TALOS auto schema detection failed", error);
+		console.error("TT-Workbench auto schema detection failed", error);
 	}
 }

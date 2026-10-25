@@ -427,7 +427,7 @@ export function collectTalosProduct(app: App, paths: VaultPaths): TalosProduct {
 	const consoleMod = modules.find((m) => /控制台/.test(m.name));
 	const metrics: MetricTile[] = [
 		{
-			label: "TALOS 资产",
+			label: "TT 资产",
 			value: String(total),
 			sub: `${modules.length} 个产品分区`,
 			path: `${paths.talosProjectDir}/_README.md`,

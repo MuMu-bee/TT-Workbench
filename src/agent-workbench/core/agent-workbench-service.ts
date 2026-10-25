@@ -144,7 +144,7 @@ export class AgentWorkbenchService {
 
 	async initialize(): Promise<void> {
 		if (this.initialized) return;
-		if (this.disposed) throw new Error("TALOS 智能体工作台已释放");
+		if (this.disposed) throw new Error("TT 智能体工作台已释放");
 		if (this.options.settingsStore) {
 			this.settings = await this.options.settingsStore.load();
 			this.selectedRuntimeId = this.settings.selection.runtimeId;
@@ -168,7 +168,7 @@ export class AgentWorkbenchService {
 	}
 
 	getVaultRoot(): string {
-		if (!this.options.vaultRoot) throw new Error("TALOS 智能体 Vault 根目录未配置");
+		if (!this.options.vaultRoot) throw new Error("TT 智能体 Vault 根目录未配置");
 		return this.options.vaultRoot;
 	}
 
@@ -285,7 +285,7 @@ export class AgentWorkbenchService {
 	}
 
 	private requireExecution(): AgentExecutionCoordinator {
-		if (!this.execution) throw new Error("TALOS 原生执行协调器未配置");
+		if (!this.execution) throw new Error("TT 原生执行协调器未配置");
 		return this.execution;
 	}
 

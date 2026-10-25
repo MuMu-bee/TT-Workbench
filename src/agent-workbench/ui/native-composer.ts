@@ -111,7 +111,7 @@ export class NativeComposer {
 		composer.className = "claudian-input-composer";
 		const textarea = doc.createElement("textarea");
 		textarea.className = "claudian-input";
-		textarea.placeholder = "给 TALOS 发送消息…  使用 @ 添加文件，/ 使用命令";
+		textarea.placeholder = "给 TT 发送消息…  使用 @ 添加文件，/ 使用命令";
 		textarea.rows = 3;
 		textarea.setAttribute("aria-label", "消息输入");
 		composer.appendChild(textarea);

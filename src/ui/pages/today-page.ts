@@ -214,7 +214,7 @@ export function renderTodayPage(view: TalosView, page: HTMLElement, d: Collected
 				},
 				proposal: {
 					title: "刷新统计",
-					provider: "TALOS 本地运行时",
+					provider: "TT 本地运行时",
 					steps: ["重新读取 Vault 统计", "刷新当前控制台"],
 					fileCount: 0,
 					keyDiffs: ["只读动作，不修改文件"],
@@ -232,7 +232,7 @@ export function renderTodayPage(view: TalosView, page: HTMLElement, d: Collected
 				},
 				proposal: {
 					title: "只读 Vault Lint",
-					provider: "TALOS 本地运行时",
+					provider: "TT 本地运行时",
 					steps: ["扫描 Markdown 元数据", "报告结构化检查结果"],
 					fileCount: 0,
 					keyDiffs: ["只读动作，不生成报告文件"],
@@ -255,7 +255,7 @@ export function renderTodayPage(view: TalosView, page: HTMLElement, d: Collected
 						"展示本次外部执行范围",
 						"等待独立批准",
 						"进入 10 秒可取消安全窗口",
-						"批准后调用同一 TALOS runner",
+						"批准后调用同一 TT runner",
 					],
 					fileCount: 1,
 					keyDiffs: [

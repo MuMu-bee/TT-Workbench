@@ -43,6 +43,9 @@ const staticVendorText = {
 };
 
 const banner = `/*
+TT-Workbench (TT工作台) 1.0.0 — customized fork of TALOS v0.4.9.
+Modifications are listed in MODIFICATIONS.md; upstream: github.com/WAINAO-Haaper/talos-plugin
+
 TALOS PERSONAL USE SOURCE LICENSE 1.0
 Copyright (c) 2026 外脑玩家 Haaper.
 Source available for personal, non-commercial use.

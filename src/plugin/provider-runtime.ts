@@ -90,7 +90,7 @@ export function getTalosProviderFacade(plugin: TalosPlugin): ProviderFacade {
 	const governedToolRunner = {
 		async run(): Promise<{ content: string; isError: boolean }> {
 			return {
-				content: "工具请求必须进入 TALOS 任务审批，canonical 入口不直接执行",
+				content: "工具请求必须进入 TT 任务审批，canonical 入口不直接执行",
 				isError: true,
 			};
 		},

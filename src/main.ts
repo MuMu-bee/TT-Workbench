@@ -138,7 +138,7 @@ export default class TalosPlugin extends Plugin {
 			callback: () => void this.activateChatSidebar(),
 		});
 
-		this.addRibbonIcon(TALOS_ICON, "打开 TALOS 控制台", () => {
+		this.addRibbonIcon(TALOS_ICON, "打开 TT工作台控制台", () => {
 			void this.activateTalosView();
 		});
 
@@ -169,7 +169,7 @@ export default class TalosPlugin extends Plugin {
 		});
 		this.addCommand({
 			// Canonical registry contract requires this stable ID verbatim.
-			// eslint-disable-next-line obsidianmd/commands/no-plugin-id-in-command-id
+			// (上游 TALOS 时期的插件 ID 冲突已随 tt-workbench 重命名消除，无需再挂 eslint-disable。)
 			id: "talos-ask",
 			name: "全库问答",
 			callback: () => void this.executeTalosAskCommand(),
@@ -230,7 +230,7 @@ export default class TalosPlugin extends Plugin {
 
 	getConsoleActionRuntime(): ConsoleActionRuntime {
 		if (!this.talosActionRuntime) {
-			throw new Error("TALOS 动作运行时尚未初始化");
+			throw new Error("TT工作台动作运行时尚未初始化");
 		}
 		return this.talosActionRuntime;
 	}
@@ -334,7 +334,7 @@ export default class TalosPlugin extends Plugin {
 
 	getAgentWorkbenchService(): AgentWorkbenchService {
 		if (!this.agentWorkbenchService?.isReady()) {
-			throw new Error(this.quyuanWorkbenchError || "TALOS 智能体工作台仍在初始化");
+			throw new Error(this.quyuanWorkbenchError || "TT 智能体工作台仍在初始化");
 		}
 		return this.agentWorkbenchService;
 	}
@@ -369,7 +369,7 @@ export default class TalosPlugin extends Plugin {
 			if (!leaf) throw new Error("无法在右侧边栏打开 AI 对话");
 		} catch (error) {
 			this.recordQuyuanRuntimeError("activateQuyuanV2View", error);
-			console.error("TALOS AI chat failed to open", error);
+			console.error("TT-Workbench AI chat failed to open", error);
 			const path = await this.writeQuyuanDiagnostics(false);
 			new Notice(`TALOS AI 对话打开失败，诊断已写入：${path}`);
 		}
@@ -380,7 +380,7 @@ export default class TalosPlugin extends Plugin {
 			new Notice(
 				this.quyuanWorkbenchError
 					? `屈原完整工作台加载失败：${this.quyuanWorkbenchError}`
-					: "屈原完整工作台仍在初始化，TALOS 控制台已保持可用。"
+					: "屈原完整工作台仍在初始化，TT工作台控制台已保持可用。"
 			);
 			return;
 		}

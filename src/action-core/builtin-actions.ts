@@ -51,7 +51,7 @@ export function createBuiltinActionRegistry(
 		{
 			id: "refresh-stats",
 			label: "刷新统计",
-			description: "重新读取 Vault 并刷新 TALOS 统计卡片",
+			description: "重新读取 Vault 并刷新 TT 统计卡片",
 			risk: "A",
 			readScope: ["**"],
 			writeScope: [],

@@ -22,7 +22,7 @@ export function buildTalosDataMap(
 		settings.dailyFolder,
 	];
 	if (paths.some((path) => inspectVaultPath(path, { configDir }).blocked)) {
-		throw new Error("TALOS 数据地图包含永久禁区或不安全路径");
+		throw new Error("TT 数据地图包含永久禁区或不安全路径");
 	}
 	return `<talos_data_map>
 以下是 TALOS 仓库数据的读取位置，回答时用读类工具（read/grep/glob/search）查看后再作答；路径不存在就如实说没读到。

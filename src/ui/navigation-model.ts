@@ -71,10 +71,10 @@ export const PRIMARY_NAVIGATION: readonly TalosPrimaryPage[] = [
 		key: "projects",
 		label: "项目",
 		icon: "folder-kanban",
-		subtitle: "项目组合、重点项目与 TALOS 发布闸门",
+		subtitle: "项目组合、重点项目与 TT 发布闸门",
 		children: [
 			{ key: "projects", label: "项目场景", icon: "folder-kanban" },
-			{ key: "talos", label: "TALOS 产品", icon: "filter" },
+			{ key: "talos", label: "TT 产品", icon: "filter" },
 		],
 	},
 	{

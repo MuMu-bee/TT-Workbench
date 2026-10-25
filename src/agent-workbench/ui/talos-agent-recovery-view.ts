@@ -16,7 +16,7 @@ export class TalosAgentRecoveryView extends ItemView {
 	}
 
 	getViewType(): string { return VIEW_TYPE_TALOS_AGENT_RECOVERY; }
-	getDisplayText(): string { return "TALOS AI 对话"; }
+	getDisplayText(): string { return "TT AI 对话"; }
 	getIcon(): string { return "bot-message-square"; }
 
 	async onOpen(): Promise<void> {

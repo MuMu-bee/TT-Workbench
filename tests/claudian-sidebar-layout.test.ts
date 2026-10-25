@@ -33,7 +33,7 @@ describe("Claudian-style sidebar layout", () => {
 
 	it("keeps only the title and runtime status in the header", () => {
 		expect(workbench).toContain('header.className = "claudian-header talos-agent-header"');
-		expect(workbench).toContain('titleText.textContent = "TALOS"');
+		expect(workbench).toContain('titleText.textContent = "TT"');
 		expect(workbench).toContain("headerStatus.appendChild(status);");
 		expect(workbench).not.toContain('className = "talos-agent-controls"');
 	});

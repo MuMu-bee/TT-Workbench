@@ -98,7 +98,7 @@ export class ProviderCenter {
 		const document = this.options.parent.ownerDocument;
 		const root = document.createElement("section");
 		root.className = "talos-provider-center";
-		root.setAttribute("aria-label", "TALOS Provider 中心");
+		root.setAttribute("aria-label", "TT Provider 中心");
 
 		for (const provider of this.options.snapshot.providers) {
 			const row = document.createElement("article");

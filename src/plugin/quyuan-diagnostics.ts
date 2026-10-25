@@ -64,15 +64,15 @@ export async function writeQuyuanVisualDiagnostics(plugin: TalosPlugin): Promise
 
 	const lines: string[] = [
 		"---",
-		'title: "TALOS 屈原页面视觉诊断"',
+		'title: "TT 屈原页面视觉诊断"',
 		`date: ${new Date().toISOString()}`,
-		"tags: [TALOS, 屈原, diagnostics]",
+		"tags: [TT, 屈原, diagnostics]",
 		"status: active",
 		"type: report",
 		'summary: "屈原页白屏的 DOM/样式现场快照。"',
 		"---",
 		"",
-		"# TALOS 屈原页面视觉诊断",
+		"# TT 屈原页面视觉诊断",
 		"",
 	];
 
@@ -198,15 +198,15 @@ export function buildQuyuanDiagnosticsReport(plugin: TalosPlugin, path: string):
 
 	const lines = [
 		"---",
-		'title: "TALOS 屈原诊断报告"',
+		'title: "TT 屈原诊断报告"',
 		`date: ${new Date().toISOString()}`,
-		"tags: [TALOS, 屈原, diagnostics]",
+		"tags: [TT, 屈原, diagnostics]",
 		"status: active",
 		"type: report",
-		'summary: "Obsidian 内 TALOS 屈原模块运行时诊断。"',
+		'summary: "Obsidian 内 TT 屈原模块运行时诊断。"',
 		"---",
 		"",
-		"# TALOS 屈原诊断报告",
+		"# TT 屈原诊断报告",
 		"",
 			`- 报告文件：\`${path}\``,
 			`- 插件版本：\`${plugin.manifest.version}\``,
@@ -226,7 +226,7 @@ export function buildQuyuanDiagnosticsReport(plugin: TalosPlugin, path: string):
 		JSON.stringify(safeWorkbenchSettings, null, 2),
 		"```",
 		"",
-		"## TALOS 设置快照",
+		"## TT 设置快照",
 		"",
 		"```json",
 		JSON.stringify(safeTalosSettings, null, 2),

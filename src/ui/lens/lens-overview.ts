@@ -70,7 +70,7 @@ function focusCard(ctx: LensContext, focus: LensFocus | null): HTMLElement {
 	const { doc } = ctx;
 	if (!focus) {
 		return el(doc, "section", { class: "ov-focus ov-card" },
-			el(doc, "p", { class: "lens-overview-hint" }, ctx.data.peerState === "disabled" ? "TALOS 状态桥已关闭；在设置里开启后显示焦点项目。" : "lili 状态快照尚未生成，暂时没有焦点项目。"));
+			el(doc, "p", { class: "lens-overview-hint" }, ctx.data.peerState === "disabled" ? "TT 状态桥已关闭；在设置里开启后显示焦点项目。" : "lili 状态快照尚未生成，暂时没有焦点项目。"));
 	}
 	const at = stageIndex(focus.status);
 	const priority = /^P[0-4]$/i.test(focus.priority) ? el(doc, "em", { "data-tone": "ink" }, focus.priority.toUpperCase()) : null;

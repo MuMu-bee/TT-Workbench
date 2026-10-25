@@ -86,7 +86,7 @@ export class NativeEventRenderer {
 		welcome.className = "claudian-welcome";
 		const greeting = welcome.ownerDocument.createElement("div");
 		greeting.className = "claudian-welcome-greeting";
-		greeting.textContent = "今天想和 TALOS 一起完成什么？";
+		greeting.textContent = "今天想和 TT 一起完成什么？";
 		welcome.appendChild(greeting);
 		this.container.appendChild(welcome);
 	}
@@ -102,7 +102,7 @@ export class NativeEventRenderer {
 			setIcon(logo, "talos-logo");
 			const name = doc.createElement("span");
 			name.className = "talos-message-role__name";
-			name.textContent = "TALOS";
+			name.textContent = "TT";
 			label.append(logo, name);
 			const runtime = runtimeId ? RUNTIME_LABELS[runtimeId] ?? runtimeId : "";
 			if (runtime) {
@@ -124,7 +124,7 @@ export class NativeEventRenderer {
 		const message = this.container.ownerDocument.createElement("article");
 		message.className = "claudian-message claudian-message-assistant";
 		message.dataset.turnId = turnId;
-		message.setAttribute("aria-label", "TALOS 回复");
+		message.setAttribute("aria-label", "TT 回复");
 		message.appendChild(this.roleLabel(message.ownerDocument, "assistant", runtimeId));
 		const content = message.ownerDocument.createElement("div");
 		content.className = "claudian-message-content claudian-text-block";

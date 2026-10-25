@@ -1,9 +1,9 @@
 {
-	"id": "talos",
-	"name": "TALOS",
-	"version": "0.4.9",
+	"id": "tt-workbench",
+	"name": "TT工作台",
+	"version": "1.0.0",
 	"minAppVersion": "1.11.4",
-	"description": "TALOS — 超级大脑控制台与屈原 AI Agent 工作台。扫全库实时统计、审批治理与语音交互。",
-	"author": "外脑玩家 Haaper",
+	"description": "TT工作台 (TT-Workbench) — 基于 TALOS 定制的个人控制台与 AI Agent 工作台。扫全库实时统计、审批治理与语音交互。",
+	"author": "TT · 原项目作者 外脑玩家 Haaper",
 	"isDesktopOnly": true
 }

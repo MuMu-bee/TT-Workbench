@@ -33,7 +33,7 @@ export async function initializeQuyuanWorkbench(plugin: TalosPlugin): Promise<{ 
 	plugin.quyuanWorkbenchError = "";
 	try {
 		if (!(plugin.app.vault.adapter instanceof FileSystemAdapter)) {
-			throw new Error("TALOS 多智能体本地运行时仅支持桌面 FileSystem Vault");
+			throw new Error("TT 多智能体本地运行时仅支持桌面 FileSystem Vault");
 		}
 		const vaultRoot = plugin.app.vault.adapter.getBasePath();
 		const discovery = new RuntimeDiscoveryService(new NodeRuntimeProbeHost());
@@ -163,7 +163,7 @@ export async function initializeQuyuanWorkbench(plugin: TalosPlugin): Promise<{ 
 		plugin.quyuanWorkbenchError =
 			error instanceof Error ? error.message : String(error);
 		recordQuyuanRuntimeError(plugin, "AgentWorkbenchService.initialize", error);
-		console.error("TALOS Quyuan workbench failed to initialize", error);
+		console.error("TT-Workbench Quyuan workbench failed to initialize", error);
 		throw error;
 	}
 }

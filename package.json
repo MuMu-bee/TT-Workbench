@@ -1,7 +1,7 @@
 {
-  "name": "talos",
-  "version": "0.4.9",
-  "description": "TALOS — Obsidian 原生插件：超级大脑控制台 + 屈原 AI Agent 工作台。",
+  "name": "tt-workbench",
+  "version": "1.0.0",
+  "description": "TT工作台 (TT-Workbench) — 基于 TALOS 定制的 Obsidian 原生插件：个人控制台 + AI Agent 工作台。",
   "main": "main.js",
   "type": "module",
   "scripts": {

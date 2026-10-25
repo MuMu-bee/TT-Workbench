@@ -14,7 +14,7 @@ describe("chat message roles", () => {
 		expect(renderer).toContain('message.appendChild(this.roleLabel(message.ownerDocument, "assistant", runtimeId));');
 		expect(renderer.match(/this\.ensureAssistant\(event\.turnId, event\.runtimeId\)/g)).toHaveLength(2);
 		expect(renderer).toContain('label.textContent = "你";');
-		expect(renderer).toContain('name.textContent = "TALOS";');
+		expect(renderer).toContain('name.textContent = "TT";');
 		expect(renderer).toContain('label.setAttribute("aria-hidden", "true");');
 	});
 

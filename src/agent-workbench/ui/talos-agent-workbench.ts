@@ -121,9 +121,9 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 	}
 
 	async mount(container: HTMLElement, namespace: "chat"): Promise<void> {
-		if (namespace !== "chat") throw new Error("TALOS 智能体只允许 chat 命名空间");
+		if (namespace !== "chat") throw new Error("TT 智能体只允许 chat 命名空间");
 		if (!this.root) this.build(container.ownerDocument);
-		if (!this.root || !this.body) throw new Error("TALOS 智能体展示层未建立");
+		if (!this.root || !this.body) throw new Error("TT 智能体展示层未建立");
 		if (this.root.parentElement !== container) container.appendChild(this.root);
 		await this.native.mount(this.body, namespace);
 		this.placeToolbarControls();
@@ -178,12 +178,12 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		setIcon(logo, "talos-logo");
 		const titleText = doc.createElement("h4");
 		titleText.className = "claudian-title-text";
-		titleText.textContent = "TALOS";
+		titleText.textContent = "TT";
 		title.append(logo, titleText);
 		const headerStatus = doc.createElement("div");
 		headerStatus.className = "talos-agent-header-status";
 		headerStatus.setAttribute("role", "group");
-		headerStatus.setAttribute("aria-label", "TALOS 智能体运行状态");
+		headerStatus.setAttribute("aria-label", "TT 智能体运行状态");
 		header.append(title, headerStatus);
 		const leadingControls: HTMLElement[] = [];
 		const trailingControls: HTMLElement[] = [];

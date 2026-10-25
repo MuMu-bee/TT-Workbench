@@ -27,7 +27,7 @@ class InlineEditModal extends Modal {
 	}
 
 	onOpen(): void {
-		this.setTitle("TALOS 行内编辑");
+		this.setTitle("TT 行内编辑");
 		this.modalEl.addClass("talos-inline-edit-modal");
 		this.instruction = this.contentEl.createEl("textarea", {
 			cls: "claudian-inline-input",
@@ -104,7 +104,7 @@ export function registerInlineEditCommand(host: InlineEditHost): void {
 	host.registerEvent(host.app.workspace.on("editor-menu", (menu: Menu, editor: Editor) => {
 		if (!editor.getSelection().trim()) return;
 		menu.addItem((item) => item
-			.setTitle("TALOS 行内编辑")
+			.setTitle("TT 行内编辑")
 			.setIcon("wand-sparkles")
 			.onClick(() => openInlineEdit(host, editor)));
 	}));

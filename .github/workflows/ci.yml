@@ -57,7 +57,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: talos-build
+          name: tt-workbench-build
           path: |
             main.js
             claude-sdk.cjs

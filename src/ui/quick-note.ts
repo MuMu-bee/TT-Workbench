@@ -29,7 +29,7 @@ function quickNoteContent(text: string, date: Date): string {
 	].join("-");
 	return [
 		"---",
-		"tags: [TALOS, quick-note]",
+		"tags: [TT, quick-note]",
 		"status: inbox",
 		"type: note",
 		`created: ${day}`,

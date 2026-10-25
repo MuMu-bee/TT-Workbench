@@ -148,7 +148,7 @@ export class ClaudeSdkQueryPort implements ClaudeAgentSdkPort {
 			const decision = await this.permissions.decide(toolName, toolInput, { blockedPath: options.blockedPath, reason: options.decisionReason, toolUseId: options.toolUseID, requestId: options.requestId, signal: options.signal });
 			return decision.allow
 				? { behavior: "allow", updatedInput: decision.updatedInput ?? toolInput, toolUseID: options.toolUseID }
-				: { behavior: "deny", message: decision.message ?? "TALOS 权限策略拒绝", toolUseID: options.toolUseID, ...(decision.interrupt ? { interrupt: true } : {}) };
+				: { behavior: "deny", message: decision.message ?? "TT 权限策略拒绝", toolUseID: options.toolUseID, ...(decision.interrupt ? { interrupt: true } : {}) };
 		};
 		const options = {
 			cwd: this.vaultRoot,

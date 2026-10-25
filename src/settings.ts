@@ -8,7 +8,7 @@ import {
 	setIcon,
 } from "obsidian";
 import type TalosPlugin from "./main";
-import { TALOS_SETTINGS_COPYRIGHT_DESC } from "./legal";
+import { TALOS_SETTINGS_COPYRIGHT_DESC, TT_WORKBENCH_FORK_NOTICE } from "./legal";
 import {
 	MODULE_KEYS,
 	SCHEMA_LABELS,
@@ -74,7 +74,7 @@ export interface TalosSettings {
 	eyebrow: string;
 	mainTitle: string;
 	visualTheme: TalosVisualTheme;
-	/** 界面语言：TALOS 经典控制台，或按 TALOS Lens 布局与视觉语言重排的版本。 */
+	/** 界面语言：TT 经典控制台，或按 TT Lens 布局与视觉语言重排的版本。 */
 	uiLanguage: TalosUiLanguage;
 	/** Lens 界面语言的深浅外观（经典界面使用 visualTheme）。 */
 	lensAppearance: "light" | "dark";
@@ -180,7 +180,7 @@ export interface TalosSettings {
 export const DEFAULT_SETTINGS: TalosSettings = {
 	settingsSchemaVersion: TALOS_SETTINGS_SCHEMA_VERSION,
 	eyebrow: "超级大脑 · CONTEXT OS",
-	mainTitle: "TALOS 系统控制台",
+	mainTitle: "TT 系统控制台",
 	visualTheme: "geometric-modern",
 	uiLanguage: "classic",
 	lensAppearance: "light",
@@ -340,7 +340,7 @@ export class TalosSettingTab extends PluginSettingTab {
 
 		const bar = containerEl.createDiv({
 			cls: "talos-settabs",
-			attr: { role: "tablist", "aria-label": "TALOS 设置分类" },
+			attr: { role: "tablist", "aria-label": "TT工作台设置分类" },
 		});
 		const content = containerEl.createDiv({
 			cls: "talos-setcontent",
@@ -349,6 +349,7 @@ export class TalosSettingTab extends PluginSettingTab {
 		// 版权说明不随分类切换，统一放在设置页底部
 		const footer = containerEl.createDiv({ cls: "talos-settings-footer" });
 		footer.createEl("strong", { text: "版权与授权" });
+		footer.createSpan({ text: TT_WORKBENCH_FORK_NOTICE });
 		footer.createSpan({ text: TALOS_SETTINGS_COPYRIGHT_DESC });
 
 		const renderActive = (): void => {
@@ -525,10 +526,10 @@ export class TalosSettingTab extends PluginSettingTab {
 	private renderUi(c: HTMLElement): void {
 		new Setting(c)
 			.setName("界面语言")
-			.setDesc("TALOS 经典控制台，或按 TALOS Lens 的布局与视觉语言重排的版本；两者共用同一份数据，切换立即生效。")
+			.setDesc("TT 经典控制台，或按 TT Lens 的布局与视觉语言重排的版本；两者共用同一份数据，切换立即生效。")
 			.addDropdown((d) =>
 				d
-					.addOption("classic", "TALOS 经典")
+					.addOption("classic", "TT 经典")
 					.addOption("lens", "Lens")
 					.setValue(this.plugin.talosSettings.uiLanguage)
 					.onChange(async (v) => {
@@ -557,7 +558,7 @@ export class TalosSettingTab extends PluginSettingTab {
 		this.textIn(c, "主标题", "今日页标题；Lens 界面用作问候语里的名字", "mainTitle");
 		new Setting(c)
 			.setName("视觉风格")
-			.setDesc("八套 TALOS 视觉风格（经典界面）。")
+			.setDesc("八套 TT 视觉风格（经典界面）。")
 			.addDropdown((d) =>
 				d
 					.addOption("aurora", "Aurora 原版")
@@ -575,12 +576,12 @@ export class TalosSettingTab extends PluginSettingTab {
 						this.plugin.applyViewSettings();
 					})
 			);
-		this.toggleIn(c, "同步到整个库", "侧栏、标签页、编辑器与弹窗跟随 TALOS 主题；关闭即恢复 Obsidian 原主题。", "syncVaultTheme", () => this.plugin.applyViewSettings());
+		this.toggleIn(c, "同步到整个库", "侧栏、标签页、编辑器与弹窗跟随 TT 主题；关闭即恢复 Obsidian 原主题。", "syncVaultTheme", () => this.plugin.applyViewSettings());
 
 		new Setting(c).setName("启动与提示").setHeading();
-		this.toggleIn(c, "启动时作为首页打开", "Obsidian 启动后自动打开 TALOS 控制台。", "openOnStartup");
+		this.toggleIn(c, "启动时作为首页打开", "Obsidian 启动后自动打开 TT工作台控制台。", "openOnStartup");
 		this.toggleIn(c, "开屏彩蛋", "打开控制台时播放头像彩蛋与插件说明。", "welcomeEasterEgg");
-		this.toggleIn(c, "TALOS 状态桥", "只读 lili 生成的本地状态快照，显示当前焦点、主线与下一步。", "talosPeerStatusBridgeEnabled");
+		this.toggleIn(c, "TT 状态桥", "只读 lili 生成的本地状态快照，显示当前焦点、主线与下一步。", "talosPeerStatusBridgeEnabled");
 	}
 
 	private toggleIn(

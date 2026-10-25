@@ -229,7 +229,7 @@ export class LensConsole {
 		const brand = el(doc, "span", { class: "lens-sidebar-brand" });
 		const logo = el(doc, "span", { class: "ta-approved-logo" });
 		setIcon(logo, "talos-logo");
-		brand.append(logo, el(doc, "strong", {}, "TALOS"));
+		brand.append(logo, el(doc, "strong", {}, "TT工作台"));
 		const settingsLink = el(doc, "button", { type: "button", class: "lens-settings-link", ...(this.location.module === "preferences" ? { "aria-current": "page" } : {}) },
 			icon(doc, "settings"), el(doc, "span", {}, "设置"));
 		settingsLink.addEventListener("click", () => this.navigate("preferences"));

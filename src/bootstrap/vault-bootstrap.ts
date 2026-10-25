@@ -40,7 +40,7 @@ export const CANONICAL_REGISTRY_TEMPLATE = `${JSON.stringify({
 		id: "talos-ask",
 		obsidian_command_id: "talos-ask",
 		request_path: ".talos/command-requests/talos-ask.json",
-		summary: "TALOS 原生全库问答入口",
+		summary: "TT工作台 原生全库问答入口",
 		engine_asset: "TALOS中枢/引擎/00-系统种子/.claude/commands/talos-ask.md",
 		claude_wrapper: "vault-template/.claude/commands/talos-ask.md",
 	}],

@@ -27,7 +27,7 @@ export class TalosChatSidebarView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "TALOS 对话";
+		return "TT 对话";
 	}
 
 	getIcon(): string {
@@ -50,7 +50,7 @@ export class TalosChatSidebarView extends ItemView {
 			this.mountError = error instanceof Error ? error.message : String(error);
 			surface.empty();
 			const panel = surface.createDiv({ cls: "talos-chat-sidebar__error" });
-			panel.createEl("strong", { text: "TALOS 对话加载失败" });
+			panel.createEl("strong", { text: "TT 对话加载失败" });
 			panel.createEl("p", { text: this.mountError });
 		}
 	}

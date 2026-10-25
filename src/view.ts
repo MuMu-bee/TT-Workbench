@@ -160,7 +160,7 @@ export class TalosView extends ItemView {
 	}
 
 	getViewType(): string { return VIEW_TYPE_TALOS; }
-	getDisplayText(): string { return "TALOS 控制台"; }
+	getDisplayText(): string { return "TT工作台控制台"; }
 	getIcon(): string { return "talos-logo"; }
 	getState(): Record<string, unknown> {
 		return {
@@ -204,7 +204,7 @@ export class TalosView extends ItemView {
 				});
 			}
 		} catch (error) {
-			console.error("TALOS console view failed to open", error);
+			console.error("TT-Workbench console view failed to open", error);
 			this.renderViewError(error);
 		}
 	}
@@ -319,7 +319,7 @@ export class TalosView extends ItemView {
 			this.jarvis.mount(host);
 			this.jarvisMounted = true;
 		} catch (error) {
-			console.error("TALOS Quyuan voice panel failed to mount in Lens", error);
+			console.error("TT-Workbench Quyuan voice panel failed to mount in Lens", error);
 			this.unmountJarvisSafely();
 			this.jarvis = null;
 			host.empty();
@@ -343,7 +343,7 @@ export class TalosView extends ItemView {
 		const icon = panel.createDiv({ cls: "quyuan-error-icon" });
 		setIcon(icon, "triangle-alert");
 		const copy = panel.createDiv({ cls: "quyuan-error-copy" });
-		copy.createEl("h2", { text: "TALOS 控制台加载失败" });
+		copy.createEl("h2", { text: "TT工作台控制台加载失败" });
 		copy.createEl("p", {
 			text: error instanceof Error ? error.message : "初始化时出现未知错误。",
 		});
@@ -618,7 +618,7 @@ export class TalosView extends ItemView {
 	renderPeerStatusPanel(parent: HTMLElement): void {
 		const status = this.peerStatus ?? { state: "missing" as const };
 		const view = talosPeerStatusDisplay(status);
-		const panel = this.panel(parent, "#76B0FA", "TALOS 状态", "lili 状态桥只读快照 · 不解析控制仓库");
+		const panel = this.panel(parent, "#76B0FA", "TT 状态", "lili 状态桥只读快照 · 不解析控制仓库");
 		panel.setAttribute("data-workbench-section", "peer-status");
 		const body = panel.createDiv({ cls: "talos-peer-status" });
 		const head = body.createDiv({ cls: "talos-peer-status-head" });
@@ -663,7 +663,7 @@ export class TalosView extends ItemView {
 		try {
 			this.jarvis?.unmount();
 		} catch (error) {
-			console.error("TALOS Quyuan voice panel failed to unmount", error);
+			console.error("TT-Workbench Quyuan voice panel failed to unmount", error);
 			this.jarvis = null;
 		} finally {
 			this.jarvisMounted = false;
@@ -891,7 +891,7 @@ export class TalosView extends ItemView {
 	/** 控制台命令按钮：填进右栏 TALOS 对话由用户确认发送；对话不可用时退回复制。 */
 	async sendCommandToChat(command: string): Promise<void> {
 		if (await this.plugin.prefillChatSidebar(command)) {
-			new Notice(`已填入 TALOS 对话：${command}（按回车发送）`);
+			new Notice(`已填入 TT 对话：${command}（按回车发送）`);
 			return;
 		}
 		try {

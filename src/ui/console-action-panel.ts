@@ -32,7 +32,7 @@ export class ConsoleActionPanel {
 		if (this.root) return this.root;
 		const root = this.options.parent.ownerDocument.createElement("section");
 		root.className = "talos-console-actions";
-		root.setAttribute("aria-label", "TALOS 可执行动作");
+		root.setAttribute("aria-label", "TT 可执行动作");
 		this.options.parent.appendChild(root);
 		this.root = root;
 

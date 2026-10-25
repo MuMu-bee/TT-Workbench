@@ -112,7 +112,7 @@ export class AgentExecutionCoordinator {
 	}
 
 	private assertAvailable(): void {
-		if (this.disposed) throw new Error("TALOS 执行协调器已释放");
+		if (this.disposed) throw new Error("TT 执行协调器已释放");
 	}
 
 	private isCurrent(execution: ActiveExecution): boolean {

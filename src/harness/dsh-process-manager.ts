@@ -224,7 +224,7 @@ if (
 	shutdownGraceMs < 10 ||
 	!executable
 ) {
-	console.error("Invalid TALOS dsh supervisor arguments");
+	console.error("Invalid TT-Workbench dsh supervisor arguments");
 	process.exit(64);
 }
 const child = spawn(executable, args, {
@@ -268,7 +268,7 @@ const hostIsAlive = () => {
 };
 child.once("error", (error) => {
 	clearTimers();
-	console.error("TALOS dsh supervisor spawn failed:", error.message);
+	console.error("TT-Workbench dsh supervisor spawn failed:", error.message);
 	process.exit(1);
 });
 child.once("exit", (code, signal) => {

@@ -38,22 +38,22 @@ const EASTER_EGG_SECTIONS: ReadonlyArray<{
 }> = [
 	{
 		title: "这是什么？",
-		body: "本插件是「TALOS 外脑系统」的驾驶舱：一套长在 Obsidian 上的个人数据管理架构，项目、任务、知识、输出全部结构化，由 AI 智能体驱动自动流转。",
+		body: "TT工作台（TT-Workbench）：基于开源项目 TALOS 深度定制的 Obsidian 个人工作台——项目、任务、知识、输出汇总为一个实时控制台，由 AI 智能体驱动自动流转。",
 	},
 	{
-		title: "个性化改造",
-		body: "本插件基于 TALOS 系统架构开发。安装后，可让任意大模型读取代码，并按照你的需求调整目录与功能。",
+		title: "与 TALOS 的关系",
+		body: "本插件基于 外脑玩家 Haaper 的 TALOS v0.4.9 定制，遵循 TALOS Personal Use Source License 1.0 分发，原项目许可证与署名完整保留。",
 	},
 	{
 		title: "为什么有些功能跑不起来？",
-		body: "AI 对话、语音助手、自动化命令等模块都生长在 TALOS 系统架构之上，需要按你的目录结构和工作流单独部署配置，才能真正激活。",
+		body: "AI 对话、语音助手、自动化命令等模块沿袭 TALOS 系统架构，需要按你的目录结构和工作流单独部署配置，才能真正激活。",
 	},
 ];
 
 const CONTACT_LINES: ReadonlyArray<string> = [
-	"全网名称：外脑玩家 Haaper",
-	"微信：wadeonly",
-	"邮箱：han747266@gmail.com",
+	"原项目：TALOS for Obsidian",
+	"原作者：外脑玩家 Haaper",
+	"定制版：TT工作台（TT-Workbench）",
 ];
 
 export interface WelcomeEasterEggOptions {
@@ -112,7 +112,7 @@ export async function showWelcomeEasterEgg(
 
 	const overlay = container.createDiv({ cls: "talos-welcome-overlay" });
 	overlay.setAttribute("role", "dialog");
-	overlay.setAttribute("aria-label", "TALOS 彩蛋");
+	overlay.setAttribute("aria-label", "TT工作台 彩蛋");
 
 	spawnConfetti(overlay);
 
@@ -132,7 +132,7 @@ export async function showWelcomeEasterEgg(
 
 	card.createEl("h2", {
 		cls: "talos-welcome-title",
-		text: "🎁 TALOS 彩蛋｜打造属于你的外脑系统",
+		text: "🎁 TT工作台｜基于 TALOS 打造的个人工作台",
 	});
 
 	for (const section of EASTER_EGG_SECTIONS) {
@@ -142,13 +142,13 @@ export async function showWelcomeEasterEgg(
 	}
 
 	const contact = card.createDiv({ cls: "talos-welcome-contact" });
-	contact.createEl("h3", { text: "想拥有完整版？联系我部署整套 TALOS System" });
+	contact.createEl("h3", { text: "原项目与作者（TALOS）" });
 	const list = contact.createEl("ul", { cls: "talos-welcome-contact-list" });
 	for (const line of CONTACT_LINES) {
 		list.createEl("li", { text: line });
 	}
 	const linkLine = list.createEl("li");
-	linkLine.createSpan({ text: "系统介绍：" });
+	linkLine.createSpan({ text: "上游仓库：" });
 	linkLine.createEl("a", {
 		cls: "talos-welcome-link",
 		text: GITHUB_LABEL,

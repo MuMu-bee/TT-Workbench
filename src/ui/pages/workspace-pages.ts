@@ -38,7 +38,7 @@ export async function renderChatPage(view: TalosView, page: HTMLElement): Promis
 		view.chatMounted = true;
 	} catch (error) {
 		if (view.activePage !== "harness" || !page.isConnected) return;
-		console.error("TALOS harness surface failed to mount", error);
+		console.error("TT-Workbench harness surface failed to mount", error);
 		view.chatMounted = false;
 		page.empty();
 		const panel = page.createDiv({
@@ -53,7 +53,7 @@ export async function renderChatPage(view: TalosView, page: HTMLElement): Promis
 			text: error instanceof Error ? error.message : String(error),
 		});
 		copy.createEl("small", {
-			text: "TALOS 原生恢复视图仍可使用，当前失败不会修改 Vault 内容。",
+			text: "TT 原生恢复视图仍可使用，当前失败不会修改 Vault 内容。",
 		});
 	}
 }
@@ -69,7 +69,7 @@ export function renderSettingsPage(view: TalosView, page: HTMLElement): void {
 	const icon = identity.createSpan({ cls: "talos-inline-settings__icon" });
 	setIcon(icon, "settings");
 	const title = identity.createDiv({ cls: "talos-inline-settings__title" });
-	title.createEl("h1", { text: "TALOS 设置" });
+	title.createEl("h1", { text: "TT工作台设置" });
 	title.createEl("p", {
 		text: "界面、库与数据、对话模型与屈原语音",
 	});
@@ -110,7 +110,7 @@ export async function renderJarvisPage(view: TalosView, page: HTMLElement): Prom
 		view.jarvis.mount(page);
 		view.jarvisMounted = true;
 	} catch (error) {
-		console.error("TALOS Quyuan voice panel failed to mount", error);
+		console.error("TT-Workbench Quyuan voice panel failed to mount", error);
 		view.unmountJarvisSafely();
 		view.jarvis = null;
 		page.empty();
@@ -144,7 +144,7 @@ export async function renderJarvisPage(view: TalosView, page: HTMLElement): Prom
 export function renderTalosPage(view: TalosView, page: HTMLElement, d: Collected): void {
 	const assets =
 		d.talosProduct.metrics.find(
-			(item) => item.label === "TALOS 资产"
+			(item) => item.label === "TT 资产"
 		) || d.talosProduct.metrics[0];
 	const delivery =
 		d.talosProduct.metrics.find(
@@ -159,7 +159,7 @@ export function renderTalosPage(view: TalosView, page: HTMLElement, d: Collected
 	moduleHero(view, page, {
 		ac: "#1D4ED8",
 		icon: "filter",
-		title: "TALOS 产品",
+		title: "TT 产品",
 		desc: "产品分区、发布闸门和交付资产集中巡航，避免产品推进散在不同文件里。",
 		stats: [
 			{
@@ -170,7 +170,7 @@ export function renderTalosPage(view: TalosView, page: HTMLElement, d: Collected
 				tone: d.warRoom.stopTriggered ? "hot" : "good",
 			},
 			{
-				label: assets?.label || "TALOS 资产",
+				label: assets?.label || "TT 资产",
 				value: assets?.value || "0",
 				sub: assets?.sub,
 				path: assets?.path,

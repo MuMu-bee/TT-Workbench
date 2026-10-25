@@ -33,7 +33,7 @@ function runtimeEvents(events: AgentEvent[], runtimeId: RuntimeId): AgentEvent[]
 }
 
 function safeExportName(value: string): string {
-	return value.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, " ").trim().slice(0, 80) || "TALOS 会话";
+	return value.replace(/[\\/:*?"<>|]/g, "-").replace(/\s+/g, " ").trim().slice(0, 80) || "TT 会话";
 }
 
 function approvalDisplayValue(value: unknown, key = ""): unknown {
@@ -119,10 +119,10 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		}
 	}
 	async mount(container: HTMLElement, namespace: "chat"): Promise<void> {
-		if (namespace !== "chat") throw new Error("TALOS 原生对话只允许 chat 命名空间");
-		if (this.destroyed) throw new Error("TALOS 原生对话视图已释放");
+		if (namespace !== "chat") throw new Error("TT 原生对话只允许 chat 命名空间");
+		if (this.destroyed) throw new Error("TT 原生对话视图已释放");
 		if (!this.root) this.build(container.ownerDocument);
-		if (!this.root) throw new Error("TALOS 原生对话外壳未创建");
+		if (!this.root) throw new Error("TT 原生对话外壳未创建");
 		if (this.root.parentElement !== container) container.appendChild(this.root);
 		this.options.service.attachInteractionPort(this);
 		if (!this.mounted) {
@@ -915,7 +915,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 
 	private async exportConversation(manifest: ConversationManifest): Promise<void> {
 		const projection = await this.options.service.loadConversation(manifest.conversationId);
-		const folder = "TALOS Exports";
+		const folder = "TT Exports";
 		if (!(await this.app.vault.adapter.exists(folder))) await this.app.vault.createFolder(folder);
 		let path = normalizePath(`${folder}/${safeExportName(manifest.title)}.md`);
 		if (await this.app.vault.adapter.exists(path)) path = normalizePath(`${folder}/${safeExportName(manifest.title)}-${Date.now()}.md`);

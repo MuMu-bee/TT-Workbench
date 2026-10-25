@@ -107,7 +107,7 @@ export async function decidePendingApproval(
 		title,
 		decision,
 		date: todayStr(),
-		operator: "TALOS",
+		operator: "TT",
 	});
 	if (!result.ok) {
 		new Notice(result.message);
@@ -138,7 +138,7 @@ export async function decidePreferenceCandidate(
 		title,
 		decision,
 		date: todayStr(),
-		operator: "TALOS",
+		operator: "TT",
 	});
 	if (!result.ok) {
 		new Notice(result.message);
@@ -168,7 +168,7 @@ export async function approveAndExecuteApprovalWithMockModel(
 		title,
 		decision: "approve",
 		date: todayStr(),
-		operator: "TALOS",
+		operator: "TT",
 	});
 	if (!approved.ok) {
 		new Notice(approved.message);

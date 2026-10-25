@@ -38,7 +38,7 @@ export class QuyuanVoiceCharacterStage {
 			this.root.addClass("is-ready");
 		} catch (error) {
 			this.root.addClass("is-fallback");
-			console.error("TALOS Quyuan antigravity mark failed to start", error);
+			console.error("TT-Workbench Quyuan antigravity mark failed to start", error);
 		}
 		this.field = field;
 

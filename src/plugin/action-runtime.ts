@@ -97,7 +97,7 @@ export function createTalosActionRuntime(plugin: TalosPlugin): ConsoleActionRunt
 				const content =
 					typeof (input as { content?: unknown }).content === "string"
 						? (input as { content: string }).content
-						: "# TALOS 行动记录\n";
+						: "# TT 行动记录\n";
 				await plugin.app.vault.create(targetPath, content);
 				return { path: targetPath };
 			},

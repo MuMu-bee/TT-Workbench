@@ -165,7 +165,7 @@ export class DesktopRuntimeFactory {
 							: { allow: false, message: "用户取消回答", interrupt: true };
 					}
 					const decision = await input.approve(toolName, toolInput, metadata);
-					return { allow: decision === "allow" || decision === "allow-always", message: decision === "deny" ? "TALOS 权限策略拒绝" : undefined };
+					return { allow: decision === "allow" || decision === "allow-always", message: decision === "deny" ? "TT 权限策略拒绝" : undefined };
 				},
 			}, (input.providerProfile?.models ?? []).map((id) => ({
 				id,

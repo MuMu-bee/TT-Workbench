@@ -25,7 +25,7 @@ export interface InboxTopicRule {
 export const INBOX_TOPIC_RULES: readonly InboxTopicRule[] = [
 	{ name: "Loop / 循环工程", hint: "适合进洞察或素材聚类", pattern: /loop|循环/i, target: "insights", tag: "loop" },
 	{ name: "微信同步", hint: "适合沉淀为自动化模块", pattern: /微信|黑曜石|同步/, target: "assets", tag: "同步" },
-	{ name: "AI 控制台", hint: "适合回流 TALOS 插件", pattern: /控制台|仪表盘|talos/i, target: "projects", tag: "talos" },
+	{ name: "AI 控制台", hint: "适合回流 TT工作台", pattern: /控制台|仪表盘|talos/i, target: "projects", tag: "talos" },
 	{ name: "Agent 工程", hint: "适合进 Claude / Agent 素材", pattern: /agent|claude|工程/i, target: "assets", tag: "agent" },
 ];
 

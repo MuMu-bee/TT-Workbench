@@ -240,7 +240,7 @@ export function buildMain(view: TalosView, main: HTMLElement): void {
 	const orbit = cosmos.createDiv({ cls: "cosmos-orbit" });
 	for (const ring of ["r1", "r2", "r3", "r4"]) orbit.createDiv({ cls: `cosmos-ring ${ring}` });
 	const core = orbit.createDiv({ cls: "cosmos-core" });
-	core.createEl("b", { text: "TALOS" });
+	core.createEl("b", { text: "TT" });
 	core.createSpan({ text: "核心引擎" });
 	core.createEl("i", { text: "运行中" });
 	view.cosmosNodesEl = orbit.createDiv({ cls: "cosmos-nodes" });
@@ -256,7 +256,7 @@ export function buildMain(view: TalosView, main: HTMLElement): void {
 	const titleText = view.plugin.talosSettings.mainTitle;
 	const heroTitle = bt.createEl("h1", { cls: "talos-hero-title" });
 	heroTitle.setAttribute("data-text", titleText);
-	const titleMatch = titleText.match(/^(TALOS)\s*(.*)$/i);
+	const titleMatch = titleText.match(/^(TT工作台|TT|TALOS)\s*(.*)$/iu);
 	if (titleMatch) {
 		heroTitle.createSpan({ cls: "talos-title-latin", text: titleMatch[1] });
 		if (titleMatch[2]) heroTitle.createSpan({ cls: "talos-title-cn", text: titleMatch[2] });
@@ -305,7 +305,7 @@ export function buildMain(view: TalosView, main: HTMLElement): void {
 	});
 
 	const footer = main.createDiv({ cls: "footer" });
-	footer.appendText("TALOS CONSOLE · AURORA EDITION · 数据刷新 ");
+	footer.appendText("TT WORKBENCH · AURORA EDITION · 数据刷新 ");
 	view.stampEl = footer.createSpan({ text: "—" });
 	footer.appendText(" · 原生插件");
 }

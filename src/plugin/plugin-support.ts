@@ -55,7 +55,7 @@ export class TalosAskPromptModal extends Modal {
 	}
 
 	onOpen(): void {
-		this.titleEl.setText("TALOS 全库问答");
+		this.titleEl.setText("TT工作台 全库问答");
 		const textarea = this.contentEl.createEl("textarea", {
 			attr: {
 				rows: "6",

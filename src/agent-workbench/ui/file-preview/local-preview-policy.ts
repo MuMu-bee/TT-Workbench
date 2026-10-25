@@ -90,7 +90,7 @@ export function evaluateDeclaredLocalPreview(
 	declaredBytes: number,
 ): LocalPreviewFormatPolicy | LocalPreviewRejected {
 	const policy = getLocalPreviewPolicy(fileName);
-	if (!policy) return reject("unsupported-format", "该格式不在 TALOS 本地安全预览白名单中。");
+	if (!policy) return reject("unsupported-format", "该格式不在 TT 本地安全预览白名单中。");
 	if (!Number.isSafeInteger(declaredBytes) || declaredBytes < 0 || declaredBytes > policy.maxBytes) {
 		return reject("file-too-large", `文件超过 ${Math.round(policy.maxBytes / 1024 / 1024)} MB 预览上限。`, policy);
 	}
