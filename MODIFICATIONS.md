@@ -18,7 +18,7 @@
 | `src/agent-workbench/core/runtime-supervisor.ts` | `RuntimeSupervisor` 在 src/ 与 tests/ 中零引用 |
 | `src/agent-workbench/security/provider-egress-bridge.ts` | `ProviderEgressBridge` 在 src/ 与 tests/ 中零引用 |
 
-## 修改文件(49)
+## 修改文件(50)
 
 ### 身份与元数据(6)
 
@@ -68,12 +68,13 @@
 - `src/plugin/quyuan-workbench-init.ts` — 平台错误与初始化日志
 - `src/harness/dsh-process-manager.ts` — supervisor 日志
 
-### 测试同步(2)
+### 测试同步(3)
 
 | 文件 | 修改内容 |
 |---|---|
 | `tests/chat-message-roles.test.ts` | 源码文本断言同步为 `name.textContent = "TT";` |
 | `tests/claudian-sidebar-layout.test.ts` | 源码文本断言同步为 `titleText.textContent = "TT"` |
+| `tests/voice-readonly-policy.test.ts` | 语音只读策略断言同步为 TT 品牌(策略工具清单语义不变) |
 
 ## 刻意保留(合规或合同要求)
 

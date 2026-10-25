@@ -91,7 +91,7 @@ describe("voice read-only and bounded Qwen search policy", () => {
 		const webSearch = readSrc("src/quyuan/qwen-web-search.ts");
 		const main = readPluginSource();
 		expect(panel).toContain("executeQuyuanVoiceVaultTool");
-		expect(panel).toContain("与其他 TALOS 智能体同类的库内只读工具");
+		expect(panel).toContain("与其他 TT 智能体同类的库内只读工具");
 		for (const name of [
 			"glob_vault",
 			"read_vault",
