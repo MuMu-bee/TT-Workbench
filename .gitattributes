@@ -36,3 +36,10 @@
 package-lock.json -text
 .gitignore -text
 THIRD-PARTY-LICENSES.txt -text
+
+# 字节级锁定资产:LICENSE(原项目许可证逐字保留)与 vendor 快照
+# (talos-ball 完整性测试对目录内全部文件锁定 SHA-256)禁止任何换行转换
+LICENSE -text
+src/quyuan/talos-ball/runtime/vendor/** -text
+src/quyuan/vendor/** -text
+THIRD-PARTY-NOTICES.md -text
