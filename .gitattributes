@@ -1,0 +1,38 @@
+# TT-Workbench:统一 LF,防止 Windows autocrlf 破坏 vendor 快照的字节级
+# SHA-256 完整性校验(上游在 Windows 上 16 项测试失败的根因,见
+# docs/CODE-REVIEW-TT.md 基线事实节)。
+* text=auto eol=lf
+
+# 源码与文本资产显式声明,不依赖客户端 git 配置
+*.ts text eol=lf
+*.mts text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.cjs text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.json text eol=lf
+*.jsonc text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.svg text eol=lf
+*.html text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.map text eol=lf
+
+# 二进制资产
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.wasm binary
+
+# 上游以 CRLF 字节存储的文件:按字节原样保留(第三方声明逐字保留,不转换)
+package-lock.json -text
+.gitignore -text
+THIRD-PARTY-LICENSES.txt -text
