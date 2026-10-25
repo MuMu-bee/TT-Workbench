@@ -51,6 +51,7 @@
 - 1.0.0 品牌化批次:权威运行 [run 40196315122](https://github.com/MuMu-bee/TT-Workbench/actions/runs/40196315122) @ `758ecbd`:**success**(945 项测试全绿)。首次运行 40195720207 的 2 项文本断言失败已修复(758ecbd)。
 - 1.1.0 运行时收敛批次:推送过程中修复三处 CI 环境问题(① lockfile 失同步→重建;② npm 11 生成 lock 在 CI 触发 EBADPLATFORM→CI 升级 Node 24 与本地工具链一致;③ 许可清单随 lock 过期→重生成),权威运行 @ `4ae5fa4`:**success**,Job "Lint · Typecheck · Test · License · Build" 全部通过。
 - 1.2.0 审查结论落地批次:CI @ `1b872bd`:**success**(Lint/Typecheck/Test/License/Build 全部通过)。
+- 1.3.0 批次三结构重构:CI @ `b2cbd14`:**success**。
 - 交付过程说明:1.0.0 交付期间本地网络对 GitHub 大包上传持续重置,曾启用 git-data API 兜底通道;网络恢复后以完整 `git push` 交付全量历史。1.1.0 与 1.2.0 批次直接 git push 成功。
 
 ## 1.1.0 运行时收敛批次验收(2026-10-25)
