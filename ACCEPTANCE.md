@@ -31,6 +31,20 @@
 | C9 | 五道门:typecheck / lint(0 error 0 warning)/ 测试(867 通过,4 项既有平台差异)/ 许可证审计(100 包)/ 生产构建 | ✅ 本地全绿 |
 | C10 | 行为不变:控制台、对话、语音、审批的用户可见功能未改动 | ✅ 仅内部实现与死代码变更 |
 
+
+## 1.3.0 批次三结构重构验收(2026-10-25)
+
+| # | 验收标准 | 结果 |
+|---|---|---|
+| D1 | F6:adapters 主体不直连 ai/provider,实现经 contracts 端口注入 | ✅ 端口文件 + 默认工厂集中;typecheck 通过 |
+| D2 | F7:permissionMode 契约与实现一致,不再误导 | ✅ 注释说明 ApprovalBroker 为唯一授权层 |
+| D3 | F8:coordinator 之外无 store 直访 | ✅ service 6 处直访全部改为服务方法 |
+| D4 | F1:抽出可独立测试的纯逻辑,行为测试替代文本断言 | ✅ 2 个新模块 + 9 项行为测试 |
+| D5 | F1:voice-panel 单文件 ≤800 行 | ❌ **未达成**(1440 行);剩余为 mount()/buildRealtime() 强耦合块,已如实记入 ROADMAP |
+| D6 | F2/F3/F4(事件表化、build/execute 拆分) | ❌ **未开始** |
+| D7 | 行为不变:无新增测试失败 | ✅ 876 通过(较 1.2.0 的 867 增加 9 项新测试);4 项失败仍为既有平台差异 |
+| D8 | 五道门 | ✅ typecheck / lint(0 error 0 warning)/ 测试 / 100 包许可证审计 / 生产构建 |
+
 ## CI 记录
 
 - 仓库:[MuMu-bee/TT-Workbench](https://github.com/MuMu-bee/TT-Workbench)(public,main)

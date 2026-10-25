@@ -160,6 +160,33 @@
 
 **量化结果**:src 由 232 文件/42,774 行降至 213 文件/38,992 行(净减 19 文件、3,782 行);测试 859→867 通过。
 
+## 1.3.0 — 批次三:结构重构(行为不变,相对 1.2.0)
+
+### 新增
+
+| 文件 | 内容 |
+|---|---|
+| `src/agent-workbench/contracts/provider-port.ts` | Provider 端口契约:ProviderPort / ProviderAskRequest / ProviderSecretPort / ProviderPortFactoryInput / DirectApiProviderFactory |
+| `src/quyuan/voice-panel-labels.ts` | 面板标签与状态纯函数(模型/音色/权限/引擎文案、待机状态推导、Provider 类型) |
+| `src/quyuan/voice-confirm-card.ts` | 破坏性操作二次确认卡自包含组件(原 voice-panel 内联 50 行) |
+| `tests/voice-panel-labels.test.ts` | 9 项行为测试(标签兜底、引擎文案、权限标签、状态推导、确认卡超时/播报开关) |
+
+### 修改
+
+| 文件 | 内容 |
+|---|---|
+| `adapters/api/direct-api-runtime-adapter.ts` | F6:主体不再直连 ai/provider;实现引用集中到末尾默认工厂,`createProvider` 可注入替换;mapEvent 改用 ProviderAskEvent |
+| `contracts/runtime-adapter.ts` | F7:permissionMode 加说明性注释(ApprovalBroker 为唯一授权层),不使用 @deprecated |
+| `core/conversation-service.ts` | F8:新增 patchManifest / updateSelection / loadProjection / listManifests |
+| `core/agent-workbench-service.ts` | F8:6 处 store 直访改为经 ConversationService(create/list/load/switch/persist/fork) |
+| `quyuan/voice-panel.ts` | F1:modelLabel/permissionLabel/ttsLabel/renderEngineBtn/restingState/askConfirm 改为委托新模块;移除不再使用的 import |
+| `tests/agent-workbench-native-ui-contract.test.ts` | switchConversationRuntime 文本断言随 F8 更新为锁定新语义 |
+
+### 未完成(转入 ROADMAP 后续)
+
+- F1 的 "voice-panel ≤800 行" 未达成:剩余主体为 `mount()`(约290行连续 DOM 构建)与 `buildRealtime()`(157行,强耦合面板状态),需面板状态容器方能安全拆分。
+- F2(qwen-realtime-voice 事件表化)、F3/F4(build/execute 拆分)未开始。
+
 ## 刻意保留(合规或合同要求)
 
 1. `LICENSE` / `THIRD-PARTY-NOTICES.md` / `THIRD-PARTY-LICENSES.txt` / `MaShanZheng-*` — 许可证与第三方声明逐字保留(license 第 2 节要求)。

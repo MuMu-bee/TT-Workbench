@@ -21,7 +21,10 @@
 | 失效文档修复 | 审查 R8 | 重写 quyuan/_README.md、jarvis/voiceio.ts:6 注释、talos-ball attribution 路径与日期 | 文档与实现一致(逐条核对) |
 | 重复助手收敛 | 审查 F5 | FrameSubscription/parseEnvBlock/record/stringValue/withTimeout 提取到 shared | 每类助手仅一处定义 |
 
-## 批次三:结构重构(行为不变,测试先行)
+## 批次三:结构重构(行为不变,测试先行)—— 🟡 部分完成(1.3.0)
+
+> 已完成:F6 contracts 端口化(provider-port)、F7 permissionMode 契约注释对齐、F8 service 经 ConversationService 访问 store、F1 部分拆分(labels + confirm-card 抽取,配 9 项行为测试,voice-panel 1470→1440 行)。
+> 未完成:voice-panel ≤800 行(需引入面板状态容器,独立立项)、F2 事件表化、F3/F4 build/execute 拆分。
 
 | 项 | 来源 | 动作 | 验收标准 |
 |---|---|---|---|

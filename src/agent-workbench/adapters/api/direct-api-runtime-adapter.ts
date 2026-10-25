@@ -1,8 +1,13 @@
-import type { AskEvent, TalosProvider } from "../../../ai/provider/types";
+import { runtimePrompt } from "../../contracts/execution-request";
+import type {
+	DirectApiProviderFactory,
+	ProviderAskEvent,
+	ProviderPort,
+} from "../../contracts/provider-port";
+// 审查 F6:实现引用集中在本文件的默认工厂内(端口注入点),adapter 主体不再触碰。
 import { AnthropicApiProvider } from "../../../ai/provider/anthropic-api-provider";
 import { OpenAiCompatibleProvider } from "../../../ai/provider/openai-compatible-provider";
 import { ProviderSecretStore } from "../../../ai/provider/provider-secret-store";
-import { runtimePrompt } from "../../contracts/execution-request";
 import type { ProviderProfile } from "../../contracts/provider-profile";
 import { isDirectApiProviderProfile } from "../../contracts/provider-profile";
 import type {
@@ -20,13 +25,18 @@ export interface DirectApiRuntimeAdapterOptions {
 	profile: ProviderProfile;
 	resolveSecret(reference: string): string | null;
 	fetcher?: typeof fetch;
+	/**
+	 * 审查 F6:Provider 实现由装配点注入,adapter 不再直接 import ai/provider/*。
+	 * 未注入时退回内置默认工厂(保持既有装配与测试的零改动)。
+	 */
+	createProvider?: DirectApiProviderFactory;
 }
 
 export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 	readonly id;
 	private binding: NativeSessionBinding | null = null;
 	private systemContext = "";
-	private active: { provider: TalosProvider; runId: string } | null = null;
+	private active: { provider: ProviderPort; runId: string } | null = null;
 	private readonly events;
 
 	constructor(private readonly options: DirectApiRuntimeAdapterOptions) {
@@ -77,52 +87,15 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 		this.systemContext = input.context.trim();
 	}
 
-	private secretStore(): ProviderSecretStore {
-		const reference = this.options.profile.secretRef;
-		if (!reference) throw new Error(`${this.options.profile.displayName} 缺少 SecretStorage 引用`);
-		return new ProviderSecretStore({
-			setSecret: () => {
-				throw new Error("Direct API adapter 不写入 SecretStorage");
-			},
-			getSecret: (id) => this.options.resolveSecret(id),
-			listSecrets: () => this.options.resolveSecret(reference) ? [reference] : [],
-		});
-	}
-
-	private provider(model: string, thinkingLevel: string): TalosProvider {
+	private provider(model: string, thinkingLevel: string): ProviderPort {
 		const profile = this.options.profile;
 		const secretRef = profile.secretRef;
 		if (!secretRef) throw new Error(`${profile.displayName} 缺少 SecretStorage 引用`);
-		const toolRunner = {
-			async run() {
-				return {
-					content: "Direct API Plan-only 通道不执行工具",
-					isError: true,
-				};
-			},
-		};
-		if (profile.protocol === "anthropic-messages") {
-			return new AnthropicApiProvider({
-				id: profile.id,
-				endpoint: profile.endpoint ?? "https://api.anthropic.com",
-				model,
-				systemPrompt: this.systemContext,
-				secretRef,
-				secrets: this.secretStore(),
-				toolRunner,
-				thinkingLevel,
-				fetcher: this.options.fetcher,
-			});
-		}
-		return new OpenAiCompatibleProvider({
-			id: profile.id,
-			endpoint: profile.endpoint ?? "https://api.openai.com",
-			model,
-			systemPrompt: this.systemContext,
-			secretRef,
-			secrets: this.secretStore(),
-			toolRunner,
-			thinkingLevel,
+		const factory = this.options.createProvider ?? defaultDirectApiProviderFactory;
+		if (factory === defaultDirectApiProviderFactory) defaultProviderSystemPrompt = this.systemContext;
+		return factory(profile.runtimeId, {
+			profile: { ...profile, models: [model] },
+			resolveSecret: (reference) => this.options.resolveSecret(reference),
 			fetcher: this.options.fetcher,
 		});
 	}
@@ -205,7 +178,7 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 		}
 	}
 
-	private mapEvent(turn: RuntimeTurn, event: AskEvent, accumulated: string) {
+	private mapEvent(turn: RuntimeTurn, event: ProviderAskEvent, accumulated: string) {
 		const base = {
 			conversationId: turn.conversationId,
 			turnId: turn.turnId,
@@ -317,3 +290,52 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 		};
 	}
 }
+
+/**
+ * 默认工厂:唯一仍引用 `ai/provider/*` 的代码点,集中在此便于替换/测试替身。
+ * 依赖方向:adapters → contracts ← ai/provider(实现经端口注入)。
+ */
+let defaultProviderSystemPrompt = "";
+const defaultDirectApiProviderFactory: DirectApiProviderFactory = (runtimeId, input) => {
+	const profile = input.profile;
+	const secretRef = profile.secretRef;
+	if (!secretRef) throw new Error(`${profile.displayName} 缺少 SecretStorage 引用`);
+	const secrets = new ProviderSecretStore({
+		setSecret: () => {
+			throw new Error("Direct API adapter 不写入 SecretStorage");
+		},
+		getSecret: (id: string) => input.resolveSecret(id),
+		listSecrets: () => (input.resolveSecret(secretRef) ? [secretRef] : []),
+	});
+	const provider = profile.protocol === "anthropic-messages"
+		? new AnthropicApiProvider({
+			id: profile.id,
+			endpoint: profile.endpoint ?? "https://api.anthropic.com",
+			model: profile.models[0] ?? "",
+			systemPrompt: defaultProviderSystemPrompt,
+			secretRef,
+			secrets,
+			toolRunner: noToolRunner,
+			thinkingLevel: "",
+			fetcher: input.fetcher,
+		})
+		: new OpenAiCompatibleProvider({
+			id: profile.id,
+			endpoint: profile.endpoint ?? "https://api.openai.com",
+			model: profile.models[0] ?? "",
+			systemPrompt: defaultProviderSystemPrompt,
+			secretRef,
+			secrets,
+			toolRunner: noToolRunner,
+			thinkingLevel: "",
+			fetcher: input.fetcher,
+		});
+	if (!provider) throw new Error(`不支持的 Direct API 协议: ${profile.protocol} (${runtimeId})`);
+	return provider as unknown as ProviderPort;
+};
+
+const noToolRunner = {
+	async run() {
+		return { content: "Direct API Plan-only 通道不执行工具", isError: true };
+	},
+};

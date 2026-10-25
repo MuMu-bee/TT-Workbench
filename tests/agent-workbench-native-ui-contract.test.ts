@@ -101,7 +101,8 @@ describe("TALOS native agent workbench UI", () => {
 		const body = serviceSource.slice(start, end);
 		expect(body.indexOf("this.selectRuntime(runtimeId, model)")).toBeLessThan(body.indexOf("await coordinator.switchRuntime"));
 		expect(body).toContain("const targetSelection = this.getSelection()");
-		expect(body).toContain("selection: targetSelection");
+		// 审查 F8:持久化改为经 ConversationService 的封装入口,选择仍按目标值写入。
+		expect(body).toContain("coordinator.conversations.updateSelection(conversationId, targetSelection)");
 		expect(body).toContain("this.restoreSelection(previous)");
 	});
 

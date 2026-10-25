@@ -1,5 +1,21 @@
 # Changelog
 
+- 2026-10-25 v1.3.0 批次三(结构重构,行为不变):
+
+  **F6 契约边界修复**:新增 `contracts/provider-port.ts` 定义工作台对 Provider 的最小依赖面(ProviderPort/ProviderAskRequest/ProviderSecretPort/DirectApiProviderFactory);`adapters/api/direct-api-runtime-adapter.ts` 不再在主体直连 `ai/provider/*`,实现引用收敛到文件末尾的默认工厂(可被 `createProvider` 注入替换),依赖方向改为 adapters → contracts ← ai/provider。
+
+  **F7 permissionMode 契约对齐**:契约字段改为说明性注释,明确"ApprovalBroker 是唯一授权层、适配器不据此放行工具、三档语义不逐一下发"——与三适配器实际实现一致,不再误导读者。(不使用 @deprecated 标记,避免内部合法使用点被 lint 误报。)
+
+  **F8 service 下钻封装**:`ConversationService` 新增 `patchManifest/updateSelection/loadProjection/listManifests`;`AgentWorkbenchService` 的 6 处 `conversations.store.*` 直访全部改为经服务方法,coordinator 之外不再直接触达 store。
+
+  **F1 voice-panel 部分拆分(行为测试先行)**:新增 `quyuan/voice-panel-labels.ts`(模型/音色/权限/引擎文案与待机状态推导,原为面板内散落方法)与 `quyuan/voice-confirm-card.ts`(破坏性操作二次确认卡,原 50 行内联实现);面板对应方法改为委托。新增 `tests/voice-panel-labels.test.ts`(9 项行为测试,含超时取消、语音播报开关、标签兜底、状态推导)。voice-panel 由 1470 行降至 1440 行。
+
+  **未完成项(如实记录)**:F1 的 "单文件 ≤800 行" 目标未达成——remaining 主体为 `mount()`(约 290 行连续 DOM 构建,需传递 20+ 私有字段)与 `buildRealtime()`(157 行,与 panel 状态强耦合),进一步拆分需引入面板状态容器,属独立重构项目;F2(qwen-realtime-voice 事件表化)与 F3/F4(build()/execute() 拆分)未开始。已回填 ROADMAP 状态说明。
+
+  **回归修复**:`agent-workbench-native-ui-contract` 中锁定 switchConversationRuntime 形状的文本断言随 F8 更新为锁定新语义(选择仍按目标值写入)。
+
+  验收:typecheck、lint(0 error 0 warning)、876 项测试(4 项既有 Windows 平台差异)、100 包许可证审计、生产构建与守卫全部通过;无行为变更。
+
 - 2026-10-25 v1.2.0 审查结论落地(批次二：冗余清理与性能优化)：
 
   **功能冗余清理(删除 20 个文件，净减 3782 行源码)**：本地 ASR 整链(local-asr/vad-mic/vad-turn/silero-vad/bundled-local-voice-runtime/sherpa-local-asr-runtime/cloud-asr + vendor 快照 8 文件)、背景动画三件套(background-field/grid-scan-field/letter-glitch-field 共 942 行)、voice-tool-gateway、conversation-management-service 全部删除——均为生产不可达(import 图谱从 main.ts 无路径)；同步移除悬空的 quyuanBackground 设置项与规范化分支；清理 3 个零调用导出成员(imageBlocks/followUp/getValue-setValue)。

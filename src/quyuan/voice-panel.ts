@@ -7,8 +7,16 @@ import {
 	type InteractionChannel,
 	type TalosVoiceRuntimeHost,
 } from "./native-voice-driver";
-import { resolveEffectiveRuntimePolicy } from "./runtime-policy";
 import { quyuanRealtimeProviderId, resolveQuyuanRealtimeSessionConfig } from "./realtime-provider";
+import { showVoiceConfirmCard } from "./voice-confirm-card";
+import {
+	restingVoiceState,
+	voiceEngineAccessibleLabel,
+	voiceEngineVisualLabel,
+	voiceModelLabel,
+	voicePermissionLabel,
+	voiceTtsLabel,
+} from "./voice-panel-labels";
 import { buildTalosDataMap } from "./voice-data-map";
 import { QuyuanVoiceCharacterStage } from "./voice-character-stage";
 import {
@@ -455,15 +463,11 @@ export class QuyuanVoicePanel {
 	}
 
 	private modelLabel(): string {
-		return this.settings.quyuanRealtimeModel?.trim()
-			|| "qwen3.5-omni-flash-realtime";
+		return voiceModelLabel(this.settings);
 	}
 
 	private permissionLabel(): string {
-		return resolveEffectiveRuntimePolicy({
-			channel: "voice",
-			permissionMode: this.settings.jarvisPermissionMode,
-		}).uiLabel;
+		return voicePermissionLabel(this.settings);
 	}
 
 	private openSettings(): void {
@@ -700,7 +704,7 @@ export class QuyuanVoicePanel {
 	}
 
 	private ttsLabel(): string {
-		return `千问 Realtime · ${this.settings.quyuanRealtimeVoice || "Tina"}`;
+		return voiceTtsLabel(this.settings);
 	}
 
 	private renderEngineBtn(): void {
@@ -709,10 +713,8 @@ export class QuyuanVoicePanel {
 		setIcon(this.engBtn.createSpan(), "cpu");
 		this.setControlButtonLabel(
 			this.engBtn,
-			"云端实时",
-			this.settings.quyuanRealtimeProviderKind === "openai-compatible"
-				? "当前使用自定义 OpenAI 兼容 Realtime 端到端语音"
-				: "当前使用百炼 Qwen Omni Realtime 端到端语音"
+			voiceEngineVisualLabel(),
+			voiceEngineAccessibleLabel(this.settings)
 		);
 		this.engBtn.setAttribute("aria-pressed", "true");
 	}
@@ -973,8 +975,10 @@ export class QuyuanVoicePanel {
 	}
 
 	private restingState(): VoiceState {
-		if (!(this.realtime?.isConnected() ?? false)) return "idle";
-		return this.wakeActive ? "listen" : "sleep";
+		return restingVoiceState({
+			connected: this.realtime?.isConnected() ?? false,
+			wakeActive: this.wakeActive,
+		});
 	}
 
 
@@ -1354,54 +1358,19 @@ export class QuyuanVoicePanel {
 		});
 	}
 
-	// 破坏性操作二次确认：弹确认卡 + 朗读问句，确认/取消或 30s 超时自动取消
+	// 破坏性操作二次确认：抽取到 voice-confirm-card(审查 F1),宿主只提供 DOM 与副作用。
 	private askConfirm(toolName: string, description: string): Promise<boolean> {
-		return new Promise<boolean>((resolve) => {
-			if (!this.mounted || !this.confirmHostEl) {
-				resolve(false);
-				return;
-			}
-			const ask = `需要确认：屈原想执行「${description}」。确认吗？`;
-			this.confirmHostEl.empty();
-			const card = this.confirmHostEl.createDiv({
-				cls: "tq-approval-card",
-				attr: { "data-tool": toolName },
-			});
-			card.createDiv({ text: ask });
-			const row = card.createDiv({ cls: "tq-confirm" });
-			const yes = row.createEl("button", {
-				cls: "tq-btn tq-btn--danger tq-btn--sm",
-				attr: { type: "button" },
-			});
-			yes.createSpan({ text: "确认执行" });
-			const no = row.createEl("button", {
-				cls: "tq-btn tq-btn--secondary tq-btn--sm",
-				attr: { type: "button" },
-			});
-			no.createSpan({ text: "取消" });
-			this.setTalosBallState("restricted");
-			if (this.ttsEnabled) {
-				this.tts?.feed(`${ask}请点确认或取消。`);
+		if (!this.mounted || !this.confirmHostEl) return Promise.resolve(false);
+		return showVoiceConfirmCard({
+			host: this.confirmHostEl,
+			toolName,
+			description,
+			speak: this.ttsEnabled,
+			feedSpeech: (text) => {
+				this.tts?.feed(text);
 				this.tts?.flush();
-			}
-			let done = false;
-			let timer: number | null = null;
-			const finish = (v: boolean): void => {
-				if (done) return;
-				done = true;
-				if (timer != null) {
-					window.clearTimeout(timer);
-					timer = null;
-				}
-				yes.disabled = true;
-				no.disabled = true;
-				card.toggleClass("is-resolved", true);
-				this.setTalosBallState(v ? "done" : "stop", 1200);
-				resolve(v);
-			};
-			yes.addEventListener("click", () => finish(true));
-			no.addEventListener("click", () => finish(false));
-			timer = window.setTimeout(() => finish(false), 30000);
+			},
+			onState: (state, resetAfterMs) => this.setTalosBallState(state, resetAfterMs),
 		});
 	}
 

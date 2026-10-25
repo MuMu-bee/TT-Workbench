@@ -290,7 +290,7 @@ export class AgentWorkbenchService {
 	}
 
 	async listConversations(): Promise<ConversationManifest[]> {
-		return this.getConversationCoordinator().conversations.store.list();
+		return this.getConversationCoordinator().conversations.listManifests();
 	}
 
 	async createConversation(title = "新会话"): Promise<ConversationManifest> {
@@ -301,12 +301,11 @@ export class AgentWorkbenchService {
 			selection: this.getSelection(),
 			updatedAt: new Date().toISOString(),
 		};
-		await conversations.store.updateManifest(manifest);
-		return manifest;
+		return conversations.patchManifest(manifest.conversationId, { selection: manifest.selection });
 	}
 
 	async loadConversation(conversationId: string): Promise<ConversationProjection> {
-		return this.getConversationCoordinator().conversations.store.load(conversationId);
+		return this.getConversationCoordinator().conversations.loadProjection(conversationId);
 	}
 
 	async renameConversation(conversationId: string, title: string): Promise<void> {
@@ -332,12 +331,7 @@ export class AgentWorkbenchService {
 		const targetSelection = this.getSelection();
 		try {
 			const handoffCreated = await coordinator.switchRuntime(conversationId, runtimeId);
-			const projection = await coordinator.conversations.store.load(conversationId);
-			await coordinator.conversations.store.updateManifest({
-				...projection.manifest,
-				selection: targetSelection,
-				updatedAt: new Date().toISOString(),
-			});
+			await coordinator.conversations.updateSelection(conversationId, targetSelection);
 			return handoffCreated;
 		} catch (error) {
 			if (JSON.stringify(this.getSelection()) === JSON.stringify(targetSelection)) {
@@ -350,12 +344,7 @@ export class AgentWorkbenchService {
 	async persistConversationSelection(conversationId: string): Promise<void> {
 		const conversations = this.getConversationCoordinator().conversations;
 		const selection = this.getSelection();
-		const projection = await conversations.store.load(conversationId);
-		await conversations.store.updateManifest({
-			...projection.manifest,
-			selection,
-			updatedAt: new Date().toISOString(),
-		});
+		await conversations.updateSelection(conversationId, selection);
 	}
 
 	executeConversationTurn(
@@ -456,7 +445,7 @@ export class AgentWorkbenchService {
 			selection: source.manifest.selection,
 			updatedAt: new Date().toISOString(),
 		};
-		await this.getConversationCoordinator().conversations.store.updateManifest(target);
+		await this.getConversationCoordinator().conversations.patchManifest(target.conversationId, target);
 		for (const message of projectMessages(source.events.filter((event) => event.runtimeId === source.manifest.selection.runtimeId))) {
 			if (message.role === "system") continue;
 			await this.getConversationCoordinator().conversations.append({

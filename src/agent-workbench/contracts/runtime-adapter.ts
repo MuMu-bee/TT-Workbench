@@ -106,6 +106,14 @@ export interface RuntimeTurn {
 	reasoning?: string;
 	serviceTier?: string;
 	workflow: "plan" | "execute";
+	/**
+	 * 注意:授权不由运行时执行。TT工作台 的唯一授权层是 `ApprovalBroker`
+	 * (见 `contracts/approval.ts` 与 `security/approval-broker.ts`):每个工具动作
+	 * 都经 broker 判定并写审计,适配器不据此字段放行工具。
+	 * 该字段仅保留给"运行时自身也要知晓的粗粒度模式"(如 OhMyPi 的 `--approval-mode`
+	 * 启动参数),三档语义不会逐一下发到运行时;不要用它推断实际权限。
+	 * 审查 F7:原契约声明三档却与适配器实现不符,现以此注释对齐(broker 为单一授权层)。
+	 */
 	permissionMode?: "ask" | "scoped" | "vault-full";
 	toolPolicy?: RuntimeToolPolicy;
 	signal?: AbortSignal;

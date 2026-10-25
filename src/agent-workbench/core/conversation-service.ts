@@ -1,5 +1,5 @@
 import { createAgentEvent, type AgentEvent } from "../contracts/agent-events";
-import type { ConversationManifest } from "../contracts/conversation";
+import type { ConversationManifest, ConversationProjection } from "../contracts/conversation";
 import type { RuntimeId } from "../contracts/runtime-adapter";
 import { PortableConversationStore } from "../storage/portable-conversation-store";
 
@@ -61,4 +61,40 @@ export class ConversationService {
 	restore(id: string): Promise<void> { return this.store.setLifecycle(id, "active"); }
 	softDelete(id: string): Promise<void> { return this.store.setLifecycle(id, "deleted"); }
 	discardEmpty(id: string): Promise<boolean> { return this.store.discardEmpty(id); }
+
+	/**
+	 * 审查 F8:上层(service)不再直接触达 store。
+	 * 以"投影 + 补丁"的方式更新 manifest,避免调用方各自 load/store 拼装。
+	 */
+	async patchManifest(
+		id: string,
+		patch: Partial<ConversationManifest>,
+	): Promise<ConversationManifest> {
+		const current = await this.store.load(id);
+		const next: ConversationManifest = {
+			...current.manifest,
+			...patch,
+			updatedAt: this.clock.now(),
+		};
+		await this.store.updateManifest(next);
+		return next;
+	}
+
+	/** 会话选择的持久化入口(原 service 内联的 load+updateManifest 组合)。 */
+	updateSelection(
+		id: string,
+		selection: ConversationManifest["selection"],
+	): Promise<ConversationManifest> {
+		return this.patchManifest(id, { selection });
+	}
+
+	/** 只读投影查询入口,替代外部直接 store.load。 */
+	loadProjection(id: string): Promise<ConversationProjection> {
+		return this.store.load(id);
+	}
+
+	/** 列表入口(替代外部直接 store.list)。 */
+	listManifests(): Promise<ConversationManifest[]> {
+		return this.store.list();
+	}
 }
