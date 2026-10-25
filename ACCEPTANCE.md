@@ -17,7 +17,10 @@
 
 ## CI 记录
 
-- 推送后在本节补记 GitHub Actions run 链接与结论(A8 的权威证据)。
+- 仓库:[MuMu-bee/TT-Workbench](https://github.com/MuMu-bee/TT-Workbench)(public,main)
+- 首次推送运行 [run 40195720207](https://github.com/MuMu-bee/TT-Workbench/actions/runs/40195720207):2 项源码文本断言测试失败(voice-readonly-policy 品牌字符串、release-gate-contract README 声明缺失)→ 已修复(见 commit 758ecbd)。
+- 权威运行 [run 40196315122](https://github.com/MuMu-bee/TT-Workbench/actions/runs/40196315122) @ `758ecbd`:**conclusion = success**,Job "Lint · Typecheck · Test · License · Build" 全部通过(945 项测试全绿),A8 通过。
+- 交付过程说明:交付期间本地网络对 GitHub 大包上传持续重置,曾启用 git-data API 兜底通道(blob 级上传,断点续传);网络恢复后改用完整 `git push` 交付(207 个提交全量历史,含上游 200 个提交),API 兜底产生的引导提交被 force-push 覆盖,远端与本地历史一致(`ls-remote` = `908a3ee` → 后续 `758ecbd`)。
 
 ## 已知平台差异(非缺陷,不在验收排除范围)
 
