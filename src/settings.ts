@@ -433,7 +433,8 @@ export class TalosSettingTab extends PluginSettingTab {
 			this.renderInto(target);
 			return;
 		}
-		this.display();
+		// SettingTab.display 自 1.13.0 弃用;同类内 renderInto 承担同一重渲染职责。
+		this.renderInto(this.containerEl);
 	}
 
 
@@ -715,6 +716,9 @@ export class TalosSettingTab extends PluginSettingTab {
 			.setName("应用到控制台")
 			.setDesc("修改即自动保存；点「刷新」让控制台按新配置重新统计。")
 			.addButton((b) =>
+				// setWarning 虽被标记弃用,但替代 API setDestructive 需 Obsidian 1.13.0(当前 minAppVersion 1.11.4);
+				// 升级最低版本前保留旧 API,并用 eslint-disable 压制弃用告警。
+				// eslint-disable-next-line @typescript-eslint/no-deprecated
 				b.setButtonText("恢复默认目录").setWarning().onClick(async () => {
 					this.plugin.talosSettings.vaultSchema = {};
 					this.syncWriteFolders();
@@ -980,7 +984,6 @@ export class TalosSettingTab extends PluginSettingTab {
 				s
 					.setLimits(0.5, 2, 0.02)
 					.setValue(this.plugin.talosSettings.ttsRate)
-					.setDynamicTooltip()
 					.onChange(async (v) => {
 						this.plugin.talosSettings.ttsRate = v;
 						await this.plugin.saveTalosSettings();
@@ -993,7 +996,6 @@ export class TalosSettingTab extends PluginSettingTab {
 				s
 					.setLimits(0, 2, 0.05)
 					.setValue(this.plugin.talosSettings.ttsPitch)
-					.setDynamicTooltip()
 					.onChange(async (v) => {
 						this.plugin.talosSettings.ttsPitch = v;
 						await this.plugin.saveTalosSettings();
