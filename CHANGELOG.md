@@ -1,5 +1,15 @@
 # Changelog
 
+- 2026-10-25 v1.2.0 审查结论落地(批次二：冗余清理与性能优化)：
+
+  **功能冗余清理(删除 20 个文件，净减 3782 行源码)**：本地 ASR 整链(local-asr/vad-mic/vad-turn/silero-vad/bundled-local-voice-runtime/sherpa-local-asr-runtime/cloud-asr + vendor 快照 8 文件)、背景动画三件套(background-field/grid-scan-field/letter-glitch-field 共 942 行)、voice-tool-gateway、conversation-management-service 全部删除——均为生产不可达(import 图谱从 main.ts 无路径)；同步移除悬空的 quyuanBackground 设置项与规范化分支；清理 3 个零调用导出成员(imageBlocks/followUp/getValue-setValue)。
+
+  **性能优化(全部经测试锁定)**：P1 历史面板搜索加 250ms 防抖 + 以 manifest.updatedAt 为键的会话投影缓存(未变化会话零 IO)；P2 会话索引改为单条读改写，写路径不再 O(会话数) 全目录扫描(索引损坏仍回退全量重建)；P3 @文件建议 200ms 防抖 + Markdown 文件列表 5s TTL 缓存；P4 工具结果缓存改为回合级(回合 finally 统一清理，消除实例存活期无界增长)；P5 三处 JSONL 审计(安全审计/出站审计/用量审计)加 4MB 轮转，超限重命名为 .1 备份且不删除任何记录。
+
+  **可维护性**：修正失效文档(voiceio 的 LocalAsr 注释、quyuan/_README.md 按现行实现重写并单列"已移除"清单)；新增 tests/perf-and-rotation.test.ts 8 项测试锁定 P1–P5 行为。
+
+  验收：typecheck、lint(0 error 0 warning)、867 项测试(4 项为既有 Windows 平台差异)、100 包许可证审计、生产构建与守卫全部通过。行为不变：控制台、对话、语音、审批的用户可见功能未改动。
+
 - 2026-10-25 v1.1.0 运行时收敛与 Provider/语音重设计：多智能体工作台原生运行时收敛为 OhMyPi 单一通道——删除 Claude（claude-agent-sdk 依赖、claude-sdk.cjs 独立 bundle 与 Electron 补丁）与 Codex（app-server 适配器、JSONL RPC 传输）两条适配链及对应守卫脚本，RuntimeId 契约收窄为 "ohmypi"，运行时发现/工厂/UI 切换器/出口白名单同步收敛，历史 Claude/Codex 会话数据按未知运行时降级只读。Provider 层重设计：注册表只产出挂载于 ohmypi 的 Anthropic Messages 与 OpenAI 兼容两类 Direct API profile，Windows Plan-only 回退保留，codex 系设置字段转为迁移兼容。沙箱增强：OhMyPi 启用与原 Codex 分支同级的 Vault 配置目录/.talos 凭据区拒绝与 .env 拒绝（新增 security/vault-protected-subpaths 通用模块）。屈原语音重设计：新增 quyuan/realtime-provider 抽象，Realtime 服务端可插拔——默认百炼 Qwen（白名单/工作空间/地域语义不变），可切换任意 OpenAI 兼容 Realtime WebRTC 端点（POST /sessions 取临时凭据 → SDP 交换两步握手），端点强制 HTTPS/loopback、密钥只走 SecretStorage、出库审计与会话级一次性授权不变；qwen 专用 ASR 转写模型仅百炼下发。验收：typecheck/lint/881 项测试（4 项既有 Windows 平台差异）/100 包许可证审计/生产构建全部通过。为破坏性变更：Claude/Codex 本机运行时不再可用。
 
 - 2026-10-25 v1.0.0 TT工作台 (TT-Workbench) 定制版首发：基于上游 TALOS v0.4.9（commit fb365d0）深度定制。插件 id/包名更名 `tt-workbench`、显示名「TT工作台」；控制台/对话/设置/欢迎页等用户可见文案全面品牌化（vault 数据语境与 TalosBall 资产名按合同保留）；bundle banner 与设置页新增 fork 声明，原 TALOS 许可横幅与版权署名逐字保留；删除两个零引用死文件（runtime-supervisor、provider-egress-bridge）；新增 `.gitattributes` 修复 Windows 换行符破坏 vendor SHA-256 校验的问题；新增基线代码审查报告（docs/CODE-REVIEW-TT.md）、逐文件修改清单（MODIFICATIONS.md）、验收结论（ACCEPTANCE.md）与后续路线（ROADMAP.md）。验收：typecheck、lint、937 项测试（5 项为已知 Windows 平台差异，上游 CI 基线一致）、108 包许可证审计、生产构建全部通过；命令 id `talos-ask` 与 `.talos/` 数据目录按合同保留以兼容既有数据。逐文件修改记录见 MODIFICATIONS.md。

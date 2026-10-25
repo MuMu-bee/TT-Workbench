@@ -3,7 +3,8 @@ import type { TalosSettings } from "../settings";
 // ============================================================
 // 屈原 · 本地语音 I/O
 //   TTS：只使用系统 speechSynthesis，不连接网络服务或读取 Provider 凭据。
-//   STT：旧 WebSpeech 入口保留为失败关闭兼容桩；实际识别只走语音页 LocalAsr。
+//   STT：旧 WebSpeech 入口保留为失败关闭兼容桩；实际识别只走语音页 Qwen Realtime(WebRTC)。
+//   TT 1.2.0：本地 ASR 链路(LocalAsr/VadMic/sherpa)已随审查 R5 删除。
 // ============================================================
 
 type SpeakState = "idle" | "speaking" | "error";

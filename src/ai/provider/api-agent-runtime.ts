@@ -115,6 +115,9 @@ export class ApiAgentRuntime implements TalosProvider {
 		this.resumedSessionId = null;
 		const executed = request.executedToolIds ?? new Set<string>();
 		const toolResultScope = request.sessionId ?? request.runId;
+		// P4:记录本回合写入的缓存键,回合终止时统一清理,消除实例存活期的无界增长;
+		// 回合内语义不变(同回合重复 call.id 仍复用结果)。
+		const scopeCacheKeys: string[] = [];
 		const tools: AgentToolRunner = {
 			run: async (call: ToolCall) => {
 				const cacheKey = `${toolResultScope}\0${call.id}`;
@@ -130,7 +133,7 @@ export class ApiAgentRuntime implements TalosProvider {
 					return { content: "复核模式禁止执行工具", isError: true };
 				}
 				const result = await this.options.toolRunner.run(call);
-				if (!result.isError) this.toolResults.set(cacheKey, result);
+				if (!result.isError) { this.toolResults.set(cacheKey, result); scopeCacheKeys.push(cacheKey); }
 				return result;
 			},
 		};
@@ -175,6 +178,7 @@ export class ApiAgentRuntime implements TalosProvider {
 		void loop
 			.turn({ text: request.text })
 			.finally(() => {
+				for (const key of scopeCacheKeys) this.toolResults.delete(key);
 				this.active.delete(request.runId);
 				queue.push({
 					type: "done",

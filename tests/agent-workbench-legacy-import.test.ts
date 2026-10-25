@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { ConversationManagementService } from "../src/agent-workbench/core/conversation-management-service";
 import { ConversationService } from "../src/agent-workbench/core/conversation-service";
 import { ClaudianReadonlyImporter, type LegacyImportState, type LegacyReadAdapter } from "../src/agent-workbench/legacy/claudian-readonly-importer";
 import { PortableConversationStore, type PortableFileAdapter } from "../src/agent-workbench/storage/portable-conversation-store";
@@ -92,10 +91,11 @@ describe("ClaudianReadonlyImporter", () => {
 	it("manages imported conversations through overlays and exports previews only inside the Vault", async () => {
 		const legacy = syntheticLegacy();
 		const conversations = new ConversationService(new PortableConversationStore(new MemoryPortableFiles()), { now: () => "2026-08-26T00:00:00.000Z", id: () => "generated" });
-		let state: LegacyImportState | null = null; const exports = new Map<string, string>();
+		let state: LegacyImportState | null = null;
 		await new ClaudianReadonlyImporter(legacy, conversations, { read: async () => state, write: async (value) => { state = structuredClone(value); } }).import();
-		const management = new ConversationManagementService(conversations, { write: async (path, content) => { exports.set(path, content); } });
-		const [full] = await management.search("synthetic answer");
+		// TT 1.2.0:ConversationManagementService 已删(审查 R3:仅测试引用);
+		// 覆盖目标改为会话服务自身的生命周期操作。
+		const [full] = (await conversations.store.list()).filter((manifest) => manifest.title === "完整历史");
 		expect(full?.title).toBe("完整历史");
 		if (!full) throw new Error("expected imported full conversation");
 		await conversations.rename(full.conversationId, "新标题");
@@ -103,8 +103,5 @@ describe("ClaudianReadonlyImporter", () => {
 		expect((await conversations.store.load(full.conversationId)).manifest).toMatchObject({ title: "新标题", lifecycle: "archived" });
 		await conversations.restore(full.conversationId); await conversations.softDelete(full.conversationId);
 		expect((await conversations.store.load(full.conversationId)).manifest.lifecycle).toBe("deleted");
-		await management.exportPreview(full.conversationId, "70 输出/synthetic-export.md");
-		expect(exports.get("70 输出/synthetic-export.md")).toContain("synthetic answer");
-		await expect(management.exportPreview(full.conversationId, "/tmp/out.md")).rejects.toThrow("相对路径");
 	});
 });

@@ -152,12 +152,12 @@ export class PortableConversationStore {
 		}
 		await this.atomicWrite(manifestPath(manifest.conversationId), manifest);
 		await this.ensure(eventsPath(manifest.conversationId));
-		await this.writeIndex(await this.rebuildIndex());
+		await this.upsertIndexEntry(manifest);
 	}
 
 	async updateManifest(manifest: ConversationManifest): Promise<void> {
 		await this.atomicWrite(manifestPath(manifest.conversationId), manifest);
-		await this.writeIndex(await this.rebuildIndex());
+		await this.upsertIndexEntry(manifest);
 	}
 
 	async touch(conversationId: string, timestamp: string): Promise<void> {
@@ -216,8 +216,32 @@ export class PortableConversationStore {
 		await this.removeEmptyDirectory(eventsPath(conversationId));
 		await this.files.remove(manifestPath(conversationId));
 		await this.removeEmptyDirectory(conversationPath(conversationId));
-		await this.writeIndex(await this.rebuildIndex());
+		await this.removeIndexEntry(conversationId);
 		return true;
+	}
+
+	/** 读取现有索引;损坏或缺失时回退一次全量重建(索引文件本身即缓存)。 */
+	private async readIndex(): Promise<PortableIndex> {
+		try {
+			const index = JSON.parse(await this.files.read(INDEX)) as PortableIndex;
+			if (index.schemaVersion !== 1 || !index.conversations) throw new Error("index schema");
+			return index;
+		} catch {
+			return await this.rebuildIndex();
+		}
+	}
+
+	// P2:写路径改为索引单条维护——O(1) 读改写,替代原先每次 O(会话数) 的目录扫描。
+	private async upsertIndexEntry(manifest: ConversationManifest): Promise<void> {
+		const index = await this.readIndex();
+		index.conversations[manifest.conversationId] = manifest;
+		await this.writeIndex(index);
+	}
+
+	private async removeIndexEntry(conversationId: string): Promise<void> {
+		const index = await this.readIndex();
+		delete index.conversations[conversationId];
+		await this.writeIndex(index);
 	}
 
 	async rebuildIndex(): Promise<PortableIndex> {
@@ -239,14 +263,7 @@ export class PortableConversationStore {
 	}
 
 	async list(): Promise<ConversationManifest[]> {
-		let index: PortableIndex;
-		try {
-			index = JSON.parse(await this.files.read(INDEX)) as PortableIndex;
-			if (index.schemaVersion !== 1 || !index.conversations) throw new Error("index schema");
-		} catch {
-			index = await this.rebuildIndex();
-			await this.writeIndex(index);
-		}
+		let index = await this.readIndex();
 		return Object.values(index.conversations).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 	}
 

@@ -116,6 +116,50 @@
 
 **破坏性变更**:Claude 与 Codex 本机运行时不再可用;相关旧设置字段仅作数据迁移兼容,不再参与装配。
 
+## 1.2.0 — 审查结论落地(批次二:冗余清理与性能优化,相对 1.1.0)
+
+### 删除文件(20)
+
+**本地 ASR 死链(生产不可达,审查 R5/R6)**
+- `src/quyuan/local-asr.ts`、`cloud-asr.ts`、`vad-mic.ts`、`vad-turn.ts`、`silero-vad.ts`、`bundled-local-voice-runtime.ts`、`sherpa-local-asr-runtime.ts`
+- `src/quyuan/vendor/local-voice-runtime/`(6 文件,138KB 文本快照)
+- `src/quyuan/voice-tool-gateway.ts`
+
+**背景动画三件套(审查 R4,含悬空设置项)**
+- `src/quyuan/background-field.ts`、`grid-scan-field.ts`、`letter-glitch-field.ts`
+
+**仅测试引用的旧路径(审查 R3)**
+- `src/agent-workbench/core/conversation-management-service.ts`
+
+**测试**
+- `tests/local-voice-supply-chain.test.ts`、`tests/voice-mode-fallback.test.ts`
+
+### 修改
+
+| 文件 | 内容 |
+|---|---|
+| `settings.ts` / `main.ts` | 移除 `quyuanBackground` 字段、类型与规范化分支(悬空 UI 选项) |
+| `ui/native-conversation-view.ts` | P1:搜索输入 250ms 防抖;`cachedHistoryProjection` 以 updatedAt 为键缓存投影(上限 256 条);destroy 清理定时器与缓存 |
+| `storage/portable-conversation-store.ts` | P2:新增 `readIndex/upsertIndexEntry/removeIndexEntry`;create/updateManifest/discardEmpty/list 改单条索引维护,不再每次 rebuildIndex |
+| `ui/native-composer.ts` | P3:输入 200ms 防抖;`cachedMarkdownFiles` 5s TTL 缓存;删除零调用 getValue/setValue |
+| `ai/provider/api-agent-runtime.ts` | P4:`scopeCacheKeys` 记录回合内缓存键,回合 finally 统一清理 toolResults |
+| `ai/privacy/provider-egress-audit-store.ts`、`provider-usage-audit-store.ts`、`agent-workbench/security/jsonl-security-audit-sink.ts` | P5:接入轮转(4MB → `.1` 备份,不删记录) |
+| `contracts/execution-request.ts`、`adapters/ohmypi/ohmypi-rpc-adapter.ts` | 删除零调用导出 imageBlocks / followUp |
+| `jarvis/voiceio.ts`、`quyuan/_README.md` | R8:修正失效文档,README 按现行实现重写并列出"已移除"清单 |
+
+### 新增
+
+- `src/ai/privacy/audit-rotation.ts`:审计文件轮转模块(纯函数 + 可注入 IO,便于测试)
+- `tests/perf-and-rotation.test.ts`:8 项测试锁定 P1–P5(含"写 manifest 不触发全目录 list"的可量化断言)
+
+### 测试调整
+
+- `tests/voice-lifecycle.test.ts`:移除依赖死链的两个 describe(麦克风生命周期、本地 ASR 序列化)与相关夹具
+- `tests/voice-readonly-policy.test.ts`:ASR 不可达断言改为"文件不存在"
+- `tests/agent-workbench-legacy-import.test.ts`:会话管理用例改由 ConversationService 原生 API 覆盖
+
+**量化结果**:src 由 232 文件/42,774 行降至 213 文件/38,992 行(净减 19 文件、3,782 行);测试 859→867 通过。
+
 ## 刻意保留(合规或合同要求)
 
 1. `LICENSE` / `THIRD-PARTY-NOTICES.md` / `THIRD-PARTY-LICENSES.txt` / `MaShanZheng-*` — 许可证与第三方声明逐字保留(license 第 2 节要求)。

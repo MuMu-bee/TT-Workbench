@@ -15,6 +15,22 @@
 | A9 | 修改文件逐文件可追溯 | `MODIFICATIONS.md` 由 `git diff --name-status fb365d0 HEAD` 生成:2 新增 / 2 删除 / 49 修改,与实际 diff 一致 | ✅ 通过 |
 | A10 | 分发不施加额外限制、不收费 | README"许可"章节明确:同一许可、无新增限制、无任何费用;仓库无付费入口 | ✅ 通过 |
 
+
+## 1.2.0 审查结论落地批次验收(2026-10-25)
+
+| # | 验收标准 | 结果 |
+|---|---|---|
+| C1 | 功能冗余清理:本地 ASR 整链、背景动画三件套、voice-tool-gateway、conversation-management-service 全部删除,且构建/测试通过 | ✅ 删除 20 文件;src 232→213 文件、42,774→38,992 行 |
+| C2 | 悬空设置项 `quyuanBackground` 及其规范化分支移除,设置页无失效选项 | ✅ 代码检索 0 残留 |
+| C3 | P1:历史搜索防抖(250ms)+ 会话投影缓存,未变化会话不再重复读取事件 | ✅ 测试锁定 `historyDebounce`/`cachedHistoryProjection` |
+| C4 | P2:写 manifest 不再触发全目录扫描(可量化断言 list 调用数为 0),索引损坏仍能回退重建 | ✅ perf-and-rotation 测试 3 项 |
+| C5 | P3:@文件建议防抖(200ms)+ 文件列表 TTL 缓存(5s) | ✅ 代码断言锁定 |
+| C6 | P4:工具结果缓存回合级清理,消除实例存活期无界增长 | ✅ 源码断言锁定 finally 清理 |
+| C7 | P5:三处 JSONL 审计 4MB 轮转,超限转 .1 备份且不删除记录 | ✅ 轮转纯函数 3 项测试 |
+| C8 | R7 零调用导出清理(imageBlocks/followUp/getValue/setValue);R8 失效文档修复 | ✅ 代码检索 0 引用;quyuan/_README.md 重写 |
+| C9 | 五道门:typecheck / lint(0 error 0 warning)/ 测试(867 通过,4 项既有平台差异)/ 许可证审计(100 包)/ 生产构建 | ✅ 本地全绿 |
+| C10 | 行为不变:控制台、对话、语音、审批的用户可见功能未改动 | ✅ 仅内部实现与死代码变更 |
+
 ## CI 记录
 
 - 仓库:[MuMu-bee/TT-Workbench](https://github.com/MuMu-bee/TT-Workbench)(public,main)

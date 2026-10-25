@@ -1,4 +1,5 @@
 import type { App } from "obsidian";
+import { rotateIfOversized } from "./audit-rotation";
 import type { ProviderEgressAudit } from "./provider-egress-gate";
 
 export interface ProviderEgressAuditPersistence {
@@ -99,6 +100,20 @@ export function createVaultProviderEgressAuditStore(
 				await adapter.mkdir(AUDIT_DIRECTORY);
 			}
 		},
-		append: (path, value) => adapter.append(path, value),
+		append: async (path, value) => {
+			// P5:超过上限时先轮转为 .1 备份,再追加,避免文件无界增长。
+			await rotateIfOversized(path, {
+				size: async (target) => {
+					try {
+						const stat = await adapter.stat(target);
+						return stat ? stat.size : null;
+					} catch {
+						return null;
+					}
+				},
+				rename: (from, to) => adapter.rename(from, to),
+			});
+			await adapter.append(path, value);
+		},
 	});
 }

@@ -1,6 +1,6 @@
 import { MarkdownView, Modal, Notice, normalizePath, setIcon, type App, type WorkspaceLeaf } from "obsidian";
 import { createAgentEvent, type AgentEvent } from "../contracts/agent-events";
-import type { ConversationManifest } from "../contracts/conversation";
+import type { ConversationManifest, ConversationProjection } from "../contracts/conversation";
 import { executionText } from "../contracts/execution-request";
 import type { RuntimeId } from "../contracts/runtime-adapter";
 import type {
@@ -70,6 +70,9 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 	private readonly pendingUserEvents = new Map<string, AgentEvent>();
 	private openRequestVersion = 0;
 	private historyRequestVersion = 0;
+	private historyDebounce: number | null = null;
+	// 以 manifest.updatedAt 为键的会话投影缓存:搜索按键复用未变化会话的投影,免去每键全量事件 IO。
+	private readonly historyProjections = new Map<string, { updatedAt: string; projection: ConversationProjection }>();
 	private newConversationRequest: Promise<void> | null = null;
 	private readonly pendingInteractionCancels = new Map<string, Set<() => void>>();
 
@@ -233,7 +236,14 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		search.type = "search";
 		search.placeholder = "搜索会话";
 		search.setAttribute("aria-label", "搜索会话");
-		search.addEventListener("input", () => void this.renderHistory(search.value));
+		// P1:输入防抖 250ms,避免每个按键触发全量会话事件加载。
+		search.addEventListener("input", () => {
+			if (this.historyDebounce !== null) window.clearTimeout(this.historyDebounce);
+			this.historyDebounce = window.setTimeout(() => {
+				this.historyDebounce = null;
+				void this.renderHistory(search.value);
+			}, 250);
+		});
 		const list = doc.createElement("div");
 		list.className = "claudian-history-list";
 		history.append(header, search, list);
@@ -774,6 +784,19 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		this.pendingInteractionCancels.clear();
 	}
 
+	private async cachedHistoryProjection(manifest: ConversationManifest): Promise<ConversationProjection> {
+		const cached = this.historyProjections.get(manifest.conversationId);
+		if (cached && cached.updatedAt === manifest.updatedAt) return cached.projection;
+		const projection = await this.options.service.loadConversation(manifest.conversationId);
+		this.historyProjections.set(manifest.conversationId, { updatedAt: manifest.updatedAt, projection });
+		// 上限防长期驻留;历史面板一次加载通常远小于该值。
+		if (this.historyProjections.size > 256) {
+			const oldest = this.historyProjections.keys().next().value;
+			if (oldest !== undefined) this.historyProjections.delete(oldest);
+		}
+		return projection;
+	}
+
 	private async renderHistory(query = ""): Promise<void> {
 		if (!this.historyList) return;
 		const requestVersion = ++this.historyRequestVersion;
@@ -787,7 +810,7 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 			.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 		const entries = await Promise.all(manifests.map(async (manifest) => ({
 			manifest,
-			projection: await this.options.service.loadConversation(manifest.conversationId),
+			projection: await this.cachedHistoryProjection(manifest),
 		})));
 		if (this.destroyed || requestVersion !== this.historyRequestVersion || !this.historyList) return;
 		this.historyList.replaceChildren();
@@ -933,6 +956,8 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 	async suspend(): Promise<void> { this.root?.remove(); }
 
 	async destroy(): Promise<void> {
+		if (this.historyDebounce !== null) { window.clearTimeout(this.historyDebounce); this.historyDebounce = null; }
+		this.historyProjections.clear();
 		if (this.destroyed) return;
 		this.destroyed = true;
 		this.dismissPendingInteractions();

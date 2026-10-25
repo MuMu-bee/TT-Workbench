@@ -159,7 +159,14 @@ export class NativeComposer {
 		root.appendChild(fileInput);
 		this.fileInput = fileInput;
 
-		textarea.addEventListener("input", () => this.updateSuggestions());
+		// P3:输入防抖 200ms;菜单打开等即时路径仍直接调用 updateSuggestions()。
+		textarea.addEventListener("input", () => {
+			if (this.suggestionDebounce !== null) window.clearTimeout(this.suggestionDebounce);
+			this.suggestionDebounce = window.setTimeout(() => {
+				this.suggestionDebounce = null;
+				this.updateSuggestions();
+			}, 200);
+		});
 		textarea.addEventListener("keydown", (event) => {
 			if (event.key === "Enter" && !event.shiftKey) {
 				event.preventDefault();
@@ -263,6 +270,20 @@ export class NativeComposer {
 		}
 	}
 
+	// P3:Markdown 文件列表 TTL 缓存(5s),避免每个按键全量请求 vault 文件枚举。
+	private markdownFileCache: { at: number; files: TFile[] } | null = null;
+	private suggestionDebounce: number | null = null;
+	private static readonly FILE_CACHE_TTL_MS = 5_000;
+
+	private cachedMarkdownFiles(): TFile[] {
+		const now = Date.now();
+		if (this.markdownFileCache && now - this.markdownFileCache.at < NativeComposer.FILE_CACHE_TTL_MS) {
+			return this.markdownFileCache.files;
+		}
+		this.markdownFileCache = { at: now, files: this.options.app.vault.getMarkdownFiles() };
+		return this.markdownFileCache.files;
+	}
+
 	private updateSuggestions(): void {
 		const before = this.textarea.value.slice(0, this.textarea.selectionStart);
 		if (/^\/[^\s]*$/.test(before)) {
@@ -275,7 +296,7 @@ export class NativeComposer {
 		const match = /(?:^|\s)@([^\s@]*)$/.exec(before);
 		if (!match) { this.closeDropdown(); return; }
 		const query = (match[1] ?? "").toLocaleLowerCase();
-		const files = this.options.app.vault.getMarkdownFiles()
+		const files = this.cachedMarkdownFiles()
 			.filter((file) => file.path.toLocaleLowerCase().includes(query))
 			.slice(0, 12);
 		this.renderFileSuggestions(files, match.index + match[0].indexOf("@"), this.textarea.selectionStart);
@@ -531,8 +552,6 @@ export class NativeComposer {
 	}
 
 	focus(): void { this.textarea.focus(); }
-	getValue(): string { return this.textarea.value; }
-	setValue(value: string): void { this.textarea.value = value; }
 
 	/** 填入文本、刷新命令提示并把光标放到末尾；不触发发送。 */
 	prefill(value: string): void {

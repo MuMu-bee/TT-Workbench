@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { functionSource, pluginSource as readPluginSource } from "./helpers/source-text";
@@ -119,13 +120,14 @@ describe("voice read-only and bounded Qwen search policy", () => {
 	it("keeps legacy cloud ASR, WebSpeech, and serial online TTS unreachable", () => {
 		const panel = readSrc("src/quyuan/voice-panel.ts");
 		const main = readPluginSource();
-		const cloudAsr = readSrc("src/quyuan/cloud-asr.ts");
 		const voiceIo = readSrc("src/jarvis/voiceio.ts");
 		const settings = readSrc("src/settings.ts");
 		expect(panel).not.toContain("new CloudAsr");
 		expect(main).not.toContain("new MicStt");
-		expect(cloudAsr).not.toContain("requestUrl");
-		expect(cloudAsr).not.toContain("dashscope.aliyuncs.com");
+		// TT 1.2.0:本地/云端 ASR 死链已整体删除(审查 R5/R6)——文件不存在是最强的不可达。
+		expect(existsSync(join(projectRoot, "src/quyuan/cloud-asr.ts"))).toBe(false);
+		expect(existsSync(join(projectRoot, "src/quyuan/local-asr.ts"))).toBe(false);
+		expect(existsSync(join(projectRoot, "src/quyuan/voice-tool-gateway.ts"))).toBe(false);
 		expect(voiceIo).not.toContain("requestUrl");
 		expect(voiceIo).not.toContain("WebSocket");
 		expect(voiceIo).not.toContain("https://");

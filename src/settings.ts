@@ -49,7 +49,6 @@ export function normalizeUiLanguage(value: unknown): TalosUiLanguage {
 export const TALOS_SETTINGS_SCHEMA_VERSION = 1;
 
 /** 屈原语音舞台背景效果（独立于全局 visualTheme） */
-export type QuyuanBackgroundType = "letter-glitch" | "grid-scan";
 
 export function normalizeVisualTheme(value: unknown): TalosVisualTheme {
 	if (value === "cosmos-dark") return "cosmos-dark";
@@ -150,7 +149,6 @@ export interface TalosSettings {
 	quyuanRealtimeRegion: string; // cn-beijing | ap-southeast-1
 	quyuanRealtimeModel: string; // Realtime 模型（百炼白名单内，或自定义端点的自由配置）
 	quyuanRealtimeVoice: string; // Realtime 音色
-	quyuanBackground: QuyuanBackgroundType; // 屈原舞台背景效果：letter-glitch | grid-scan
 	quyuanVoiceRecognitionEnabled: boolean; // 屈原语音识别模式：false 时释放麦克风且不监听唤醒词
 	quyuanVoiceInputMode: "continuous" | "push-to-talk"; // 默认持续监听；失败时降级为点击说话
 	quyuanVoiceSessionJson: string; // 独立 voice namespace 会话，不与 TALOS 文字对话会话混用
@@ -254,7 +252,6 @@ export const DEFAULT_SETTINGS: TalosSettings = {
 	quyuanRealtimeRegion: "cn-beijing",
 	quyuanRealtimeModel: "qwen3.5-omni-flash-realtime",
 	quyuanRealtimeVoice: "Tina",
-	quyuanBackground: "letter-glitch",
 	quyuanVoiceRecognitionEnabled: true,
 	quyuanVoiceInputMode: "continuous",
 	quyuanVoiceSessionJson: "",
@@ -277,7 +274,6 @@ type FreeTextSettingKey = Exclude<
 	| "visualTheme"
 	| "uiLanguage"
 	| "lensAppearance"
-	| "quyuanBackground"
 	| "quyuanVoiceInputMode"
 	| "quyuanVoiceSessionJson"
 >;

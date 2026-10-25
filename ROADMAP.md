@@ -2,7 +2,9 @@
 
 > 依据 `docs/CODE-REVIEW-TT.md` 的审查结论排期。原则:每批次独立可验收,行为不变者优先,高风险重写置后并单独立项。
 
-## 批次二:冗余清理与性能优化(行为不变)
+## 批次二:冗余清理与性能优化(行为不变)—— ✅ 已于 1.2.0 完成
+
+> 完成情况:死链删除(本地ASR整链/背景动画三件套/voice-tool-gateway/conversation-management-service)、悬空 quyuanBackground 设置项、P1 历史搜索防抖+投影缓存、P2 索引增量维护、P3 @建议防抖+TTL缓存、P4 回合级工具结果清理、P5 审计轮转、R7 零调用导出、R8 失效文档全部落地;新增 tests/perf-and-rotation.test.ts 锁定。上游测试 Windows 兼容化未做(与本次定制无关,仍为平台差异)。
 
 | 项 | 来源 | 动作 | 验收标准 |
 |---|---|---|---|
