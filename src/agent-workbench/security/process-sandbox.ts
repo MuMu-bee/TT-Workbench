@@ -17,7 +17,7 @@ export interface SandboxLaunchSpec {
 export interface SandboxProbeHost { available(executable: string): Promise<boolean>; }
 
 export type { SandboxAvailability, SandboxBackend, ApprovalOnlyPreference } from "./sandbox-availability";
-import type { ApprovalOnlyPreference, SandboxAvailability, SandboxBackend } from "./sandbox-availability";
+import type { ApprovalOnlyPreference, SandboxAvailability } from "./sandbox-availability";
 
 export class NodeSandboxProbeHost implements SandboxProbeHost {
 	async available(executable: string): Promise<boolean> { try { await access(executable, constants.X_OK); return true; } catch { return false; } }

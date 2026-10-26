@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { ProcessSandbox, NodeSandboxProbeHost } from "../src/agent-workbench/security/process-sandbox";
+import { describe, expect, it } from "vitest";
+import { ProcessSandbox } from "../src/agent-workbench/security/process-sandbox";
 import type { SandboxProbeHost } from "../src/agent-workbench/security/process-sandbox";
 import { auditRecord } from "../src/agent-workbench/security/security-audit";
 import type { ActionRequest } from "../src/agent-workbench/contracts/approval";
@@ -34,7 +34,7 @@ describe("Windows 无隔离执行后端(审批模式)", () => {
 			args: ["--mode", "rpc"],
 			cwd: "C:\\vault",
 			environment: { PATH: "x" },
-			deniedVaultSubpaths: [".obsidian"],
+			deniedVaultSubpaths: ["private-config"],
 			denyDotEnvFiles: true,
 		};
 		const prepared = await sandbox.prepare(runtime, "C:\\vault");
