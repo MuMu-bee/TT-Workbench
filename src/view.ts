@@ -599,7 +599,7 @@ export class TalosView extends ItemView {
 
 
 	// ---------- 页 ----------
-	// ---------- TALOS 状态桥（只读消费 lili 派生缓存） ----------
+	// ---------- TT 状态桥（只读消费 lili 派生缓存） ----------
 	private async refreshPeerStatus(): Promise<void> {
 		try {
 			const vaultRoot = resolveVaultRootFromAdapter(this.app.vault.adapter);
@@ -888,7 +888,7 @@ export class TalosView extends ItemView {
 
 
 
-	/** 控制台命令按钮：填进右栏 TALOS 对话由用户确认发送；对话不可用时退回复制。 */
+	/** 控制台命令按钮：填进右栏 TT 对话由用户确认发送；对话不可用时退回复制。 */
 	async sendCommandToChat(command: string): Promise<void> {
 		if (await this.plugin.prefillChatSidebar(command)) {
 			new Notice(`已填入 TT 对话：${command}（按回车发送）`);

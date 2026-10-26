@@ -91,8 +91,7 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 		const profile = this.options.profile;
 		const secretRef = profile.secretRef;
 		if (!secretRef) throw new Error(`${profile.displayName} 缺少 SecretStorage 引用`);
-		const factory = this.options.createProvider ?? defaultDirectApiProviderFactory;
-		if (factory === defaultDirectApiProviderFactory) defaultProviderSystemPrompt = this.systemContext;
+		const factory = this.options.createProvider ?? makeDefaultDirectApiProviderFactory(this.systemContext);
 		return factory(profile.runtimeId, {
 			profile: { ...profile, models: [model] },
 			resolveSecret: (reference) => this.options.resolveSecret(reference),
@@ -295,8 +294,8 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
  * 默认工厂:唯一仍引用 `ai/provider/*` 的代码点,集中在此便于替换/测试替身。
  * 依赖方向:adapters → contracts ← ai/provider(实现经端口注入)。
  */
-let defaultProviderSystemPrompt = "";
-const defaultDirectApiProviderFactory: DirectApiProviderFactory = (runtimeId, input) => {
+/** 默认工厂按 systemPrompt 柯里化:每次实例化使用自己的上下文,不共享模块级状态。 */
+const makeDefaultDirectApiProviderFactory = (systemPrompt: string): DirectApiProviderFactory => (runtimeId, input) => {
 	const profile = input.profile;
 	const secretRef = profile.secretRef;
 	if (!secretRef) throw new Error(`${profile.displayName} 缺少 SecretStorage 引用`);
@@ -312,7 +311,7 @@ const defaultDirectApiProviderFactory: DirectApiProviderFactory = (runtimeId, in
 			id: profile.id,
 			endpoint: profile.endpoint ?? "https://api.anthropic.com",
 			model: profile.models[0] ?? "",
-			systemPrompt: defaultProviderSystemPrompt,
+			systemPrompt,
 			secretRef,
 			secrets,
 			toolRunner: noToolRunner,
@@ -323,7 +322,7 @@ const defaultDirectApiProviderFactory: DirectApiProviderFactory = (runtimeId, in
 			id: profile.id,
 			endpoint: profile.endpoint ?? "https://api.openai.com",
 			model: profile.models[0] ?? "",
-			systemPrompt: defaultProviderSystemPrompt,
+			systemPrompt,
 			secretRef,
 			secrets,
 			toolRunner: noToolRunner,

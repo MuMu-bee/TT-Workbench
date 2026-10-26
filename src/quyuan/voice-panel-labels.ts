@@ -58,3 +58,29 @@ export function restingVoiceState(input: {
 export function realtimeProviderKindOf(settings: VoicePanelLabelSettings): QuyuanRealtimeProviderKind {
 	return normalizeRealtimeProviderKind(settings.quyuanRealtimeProviderKind ?? "dashscope");
 }
+
+/** 语音启动提示:按 Realtime 服务商给出对应文案。 */
+export function voiceRealtimeLaunchHint(settings: VoicePanelLabelSettings): string {
+	return normalizeRealtimeProviderKind(settings.quyuanRealtimeProviderKind ?? "dashscope")
+		=== "openai-compatible"
+		? "点击「开启语音」连接自定义 Realtime 端点；连接后可随时说「屈原」唤醒。"
+		: "点击「开启语音」连接百炼实时语音；连接后可随时说「屈原」唤醒。";
+}
+
+/** 语音启动失败时的配置指引(无配置问题返回空串)。 */
+export function voiceRealtimeSetupHint(
+	settings: VoicePanelLabelSettings & {
+		quyuanRealtimeEndpoint?: string;
+		quyuanRealtimeWorkspaceId?: string;
+	},
+): string {
+	if (normalizeRealtimeProviderKind(settings.quyuanRealtimeProviderKind ?? "dashscope")
+		=== "openai-compatible") {
+		return settings.quyuanRealtimeEndpoint?.trim()
+			? ""
+			: "请先在设置中填写 Realtime 端点与密钥引用";
+	}
+	return settings.quyuanRealtimeWorkspaceId?.trim()
+		? ""
+		: "请先在设置中填写百炼业务空间 ID 与 API Key";
+}

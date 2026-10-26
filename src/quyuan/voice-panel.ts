@@ -9,6 +9,7 @@ import {
 } from "./native-voice-driver";
 import { quyuanRealtimeProviderId, resolveQuyuanRealtimeSessionConfig } from "./realtime-provider";
 import { showVoiceConfirmCard } from "./voice-confirm-card";
+import { voiceRealtimeLaunchHint, voiceRealtimeSetupHint } from "./voice-panel-labels";
 import {
 	restingVoiceState,
 	voiceEngineAccessibleLabel,
@@ -691,7 +692,9 @@ export class QuyuanVoicePanel {
 		this.wakeStatusEl?.setText("点击开启持续监听");
 		this.controlStatusEl?.setText("麦克风等待操作；已授权后会自动恢复");
 		if (this.overlayReply) {
-			this.setOverlayMessage("点击「开启语音」连接千问实时语音；连接后可随时说「屈原」唤醒。");
+			this.setOverlayMessage(
+				voiceRealtimeLaunchHint(this.settings)
+			);
 		}
 		if (this.mounted) this.setState("idle");
 	}
@@ -700,7 +703,9 @@ export class QuyuanVoicePanel {
 		this.realtime?.stop();
 		this.settings.quyuanVoiceRecognitionEnabled = false;
 		this.renderVoiceRecognitionOff();
-		this.controlStatusEl?.setText(`实时语音未启动 · ${reason}`);
+		// TT 1.3.1:按所选 Realtime 服务商给出可操作的配置指引,不再统一提示百炼。
+		const hint = voiceRealtimeSetupHint(this.settings);
+		this.controlStatusEl?.setText(`实时语音未启动 · ${reason}${hint ? `; ${hint}` : ""}`);
 	}
 
 	private ttsLabel(): string {

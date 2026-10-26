@@ -45,6 +45,26 @@
 | D7 | 行为不变:无新增测试失败 | ✅ 876 通过(较 1.2.0 的 867 增加 9 项新测试);4 项失败仍为既有平台差异 |
 | D8 | 五道门 | ✅ typecheck / lint(0 error 0 warning)/ 测试 / 100 包许可证审计 / 生产构建 |
 
+
+## 1.3.1 实机验收(Obsidian 1.14.5 + computer use,2026-10-25)
+
+**验收环境**:独立测试库 `C:UsersTTDocuments	t-workbench-test`(不触碰用户既有 knowledge-vault / Obsidian Vault),插件部署至 `.obsidian/plugins/tt-workbench`,Obsidian 1.14.5,Windows x64。
+
+| # | 检查项 | 方法 | 结果 |
+|---|---|---|---|
+| E1 | 插件被 Obsidian 正确识别 | 设置→第三方插件 | ✅ 显示「TT工作台」,描述「TT工作台 (TT-Workbench) — 基于 TALOS 定制…」,作者「TT · 原项目作者 外脑玩家 Haaper」,版本 v1.3.1 |
+| E2 | 控制台可打开且标题正确 | 命令面板 | ✅ 视图标题「TT工作台控制台」,标签页同名 |
+| E3 | 命令前缀品牌化 | 命令面板搜索「TT工作台」 | ✅ 全部命令显示「TT工作台: 打开设置 / 打开今日 / 全库问答…」 |
+| E4 | 界面无 TALOS 自指残留 | AX 树全文检索 | ✅ TALOS 残留 0 处(修复 1.3.1 后);合规署名与 vault 数据结构按预期保留 |
+| E5 | 页脚/面板品牌 | AX 树 | ✅「TT WORKBENCH · AURORA EDITION」「TT 状态」「TT 可执行动作」「TT 系统控制台」 |
+| E6 | AI 对话单运行时收敛 | 打开助手→AI 对话 | ✅ 仅显示 `OhMyPi · 部分可用 · 18.2.8`,无 Claude/Codex |
+| E7 | Windows 失败关闭语义 | 同 E6 | ✅ 显示「Windows 当前缺少可验证的 CLI 隔离,本机智能体 Execute 已失败关闭…」,与 README 平台边界一致 |
+| E8 | 语音页 Realtime Provider 抽象 | 打开助手→语音 | ✅ 显示「实时音频发送至已配置的 Realtime 服务商」;「千问 Realtime」;语音硬只读;麦克风已关闭 |
+| E9 | Provider 感知提示 | 触发语音启动失败 | ✅ 1.3.1 后按服务商提示(百炼→业务空间 ID+Key;自定义→端点+密钥引用),不再一律指向百炼 |
+| E10 | 空库降级正常 | 测试库无数据 | ✅ 各卡片显示「暂无…/未找到」等空态,无崩溃、无 JS 报错 |
+
+**未覆盖(需真实环境,如实记录)**:AI 对话实际收发消息(需 OhMyPi 本机 CLI 或已配置 Direct API 密钥;Windows 上本机 Execute 按设计关闭);语音实际连接(需百炼业务空间 ID 或 OpenAI Realtime 密钥);审批执行流(需真实待审批项)。
+
 ## CI 记录
 
 - 仓库:[MuMu-bee/TT-Workbench](https://github.com/MuMu-bee/TT-Workbench)(public,main)

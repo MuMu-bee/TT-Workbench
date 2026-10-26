@@ -1,4 +1,4 @@
-// TALOS 控制台模块头图、模块选择与按钮内容；由 TalosView 委托调用。
+// TT工作台控制台模块头图、模块选择与按钮内容；由 TalosView 委托调用。
 import { type ModuleHeroOptions, type OverviewAttention, SELECTABLE_MODULES } from "./talos-view-model";
 import { openFile } from "../actions";
 import { renderTalosPageHeader } from "./page-primitives";
@@ -11,7 +11,7 @@ export const COMMAND_ACTION_ICON = "message-square-text";
 
 /** 命令按钮统一的说明：点击填入对话、右键复制。 */
 export function commandActionHint(command: string): string {
-	return `填入 TALOS 对话「${command}」，按回车发送 · 右键复制`;
+	return `填入 TT 对话「${command}」，按回车发送 · 右键复制`;
 }
 
 export function addActionButtonContent(view: TalosView, button: HTMLElement, label: string, variant: "" | "compact" | "mini" = ""): void {

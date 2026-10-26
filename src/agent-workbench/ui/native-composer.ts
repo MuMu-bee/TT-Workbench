@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, setIcon, TFile, type App } from "obsidian";
+import { MarkdownView, Notice, setIcon, TFile, type App, type EventRef } from "obsidian";
 import type {
 	RuntimeExecutionContext,
 	RuntimeInputBlock,
@@ -273,9 +273,25 @@ export class NativeComposer {
 	// P3:Markdown 文件列表 TTL 缓存(5s),避免每个按键全量请求 vault 文件枚举。
 	private markdownFileCache: { at: number; files: TFile[] } | null = null;
 	private suggestionDebounce: number | null = null;
+	/** vault 变更时立即失效(新建笔记后不应等 TTL 过期才可被 @ 到)。 */
+	private readonly invalidateFileCache = (): void => {
+		this.markdownFileCache = null;
+	};
+	private vaultCacheEventsRegistered = false;
+	private readonly vaultCacheRefs: EventRef[] = [];
 	private static readonly FILE_CACHE_TTL_MS = 5_000;
 
 	private cachedMarkdownFiles(): TFile[] {
+		if (!this.vaultCacheEventsRegistered) {
+			this.vaultCacheEventsRegistered = true;
+			const vault = this.options.app.vault;
+			this.vaultCacheRefs.push(
+				vault.on("create", () => this.invalidateFileCache()),
+				vault.on("delete", () => this.invalidateFileCache()),
+				vault.on("rename", () => this.invalidateFileCache()),
+				vault.on("modify", () => this.invalidateFileCache()),
+			);
+		}
 		const now = Date.now();
 		if (this.markdownFileCache && now - this.markdownFileCache.at < NativeComposer.FILE_CACHE_TTL_MS) {
 			return this.markdownFileCache.files;
@@ -564,6 +580,15 @@ export class NativeComposer {
 	destroy(): void {
 		if (this.disposed) return;
 		this.disposed = true;
+		if (this.suggestionDebounce !== null) {
+			window.clearTimeout(this.suggestionDebounce);
+			this.suggestionDebounce = null;
+		}
+		if (this.vaultCacheEventsRegistered) {
+			this.vaultCacheEventsRegistered = false;
+			for (const ref of this.vaultCacheRefs.splice(0)) this.options.app.vault.offref(ref);
+		}
+		this.markdownFileCache = null;
 		this.root.remove();
 		this.selectedFiles = [];
 		this.images = [];

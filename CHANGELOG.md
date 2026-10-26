@@ -1,5 +1,22 @@
 # Changelog
 
+- 2026-10-25 v1.3.1 实机验收修复(computer use 验证驱动):
+
+  在独立测试库(tt-workbench-test)用 Obsidian 1.14.5 实机加载插件做端到端验收,发现并修复两类真实缺陷:
+
+  **品牌化漏项(用户可见)**:
+  - 命令按钮提示 `填入 TALOS 对话「…」` → `填入 TT 对话「…」`(ui/view-modules.ts,原仅在注释中已改、字符串漏改)
+  - 6 处源码注释残留 TALOS(view.ts / main.ts / chat-sidebar-view.ts / settings.ts / welcome-easter-egg.ts)
+  - 修复后实机复查:控制台标题「TT工作台控制台」、页脚「TT WORKBENCH · AURORA EDITION」、命令面板全部「TT工作台: …」、可执行动作面板「TT 可执行动作」,**TALOS 自指文案 0 处残留**(合规署名 `TALOS Personal Use Source License 1.0` 与 `TALOS v0.4.9 定制` 按许可证要求保留;vault 数据目录 `TALOS中枢/`、`TALOS系统/` 为用户数据结构不属品牌)。
+
+  **Provider 感知缺陷(功能)**:
+  - 语音页在 OpenAI 兼容模式下仍提示"请先在设置中填写有效的**百炼**业务空间 ID",误导用户。
+  - 新增 `voiceRealtimeLaunchHint` / `voiceRealtimeSetupHint`:按所选 Realtime 服务商给出可操作指引 —— 百炼模式提示业务空间 ID + API Key,自定义模式提示 Realtime 端点 + 密钥引用,且自定义模式提示中不再出现"百炼"字样。
+
+  **实机验收新增结论**:OhMyPi 18.2.8 被正确识别;Windows 上本机 Execute 按设计失败关闭并给出可操作指引(「Windows 当前缺少可验证的 CLI 隔离…请在"智能体与模型"中选择已配置的 API Provider」),与 README 平台边界一致。
+
+  验收:typecheck、lint(0 error 0 warning)、878 项测试(4 项既有 Windows 平台差异)、100 包许可证审计、生产构建与守卫全部通过;新增 2 项 Provider 提示测试。
+
 - 2026-10-25 v1.3.0 批次三(结构重构,行为不变):
 
   **F6 契约边界修复**:新增 `contracts/provider-port.ts` 定义工作台对 Provider 的最小依赖面(ProviderPort/ProviderAskRequest/ProviderSecretPort/DirectApiProviderFactory);`adapters/api/direct-api-runtime-adapter.ts` 不再在主体直连 `ai/provider/*`,实现引用收敛到文件末尾的默认工厂(可被 `createProvider` 注入替换),依赖方向改为 adapters → contracts ← ai/provider。

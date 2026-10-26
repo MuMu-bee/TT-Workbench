@@ -1,7 +1,7 @@
 import type { App } from "obsidian";
 
 /**
- * 开屏欢迎彩蛋：用户打开 TALOS 控制台时，头像带长条彩带弹跳入场，
+ * 开屏欢迎彩蛋：用户打开 TT工作台控制台时，头像带长条彩带弹跳入场，
  * 展示插件说明与作者信息，引导用户部署完整 TALOS 系统。
  * 每次打开视图播放一次；「不再显示」按钮通过 onNeverShow 永久关闭。
  * 头像优先使用插件目录下的 avatar.png / avatar.jpg / avatar.jpeg / avatar.webp，

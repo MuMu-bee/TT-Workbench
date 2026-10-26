@@ -118,6 +118,22 @@ function orderEvents(events: AgentEvent[]): void {
 }
 
 export class PortableConversationStore {
+	/**
+	 * 索引写队列:read-modify-write 必须串行,否则并发 touch/updateManifest 会
+	 * 各自读到旧快照并互相覆盖(丢失更新)。原全量重建实现不受影响,改为
+	 * 单条维护后必须显式串行化。
+	 */
+	private indexWriteQueue: Promise<unknown> = Promise.resolve();
+
+	private withIndexLock<T>(operation: () => Promise<T>): Promise<T> {
+		const next = this.indexWriteQueue.then(operation, operation);
+		this.indexWriteQueue = next.then(
+			() => undefined,
+			() => undefined,
+		);
+		return next;
+	}
+
 	constructor(private readonly files: PortableFileAdapter) {}
 
 	private async ensure(path: string): Promise<void> {
@@ -232,16 +248,20 @@ export class PortableConversationStore {
 	}
 
 	// P2:写路径改为索引单条维护——O(1) 读改写,替代原先每次 O(会话数) 的目录扫描。
-	private async upsertIndexEntry(manifest: ConversationManifest): Promise<void> {
-		const index = await this.readIndex();
-		index.conversations[manifest.conversationId] = manifest;
-		await this.writeIndex(index);
+	private upsertIndexEntry(manifest: ConversationManifest): Promise<void> {
+		return this.withIndexLock(async () => {
+			const index = await this.readIndex();
+			index.conversations[manifest.conversationId] = manifest;
+			await this.writeIndex(index);
+		});
 	}
 
-	private async removeIndexEntry(conversationId: string): Promise<void> {
-		const index = await this.readIndex();
-		delete index.conversations[conversationId];
-		await this.writeIndex(index);
+	private removeIndexEntry(conversationId: string): Promise<void> {
+		return this.withIndexLock(async () => {
+			const index = await this.readIndex();
+			delete index.conversations[conversationId];
+			await this.writeIndex(index);
+		});
 	}
 
 	async rebuildIndex(): Promise<PortableIndex> {

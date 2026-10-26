@@ -8,6 +8,8 @@ import {
 	voiceModelLabel,
 	voicePermissionLabel,
 	voiceTtsLabel,
+	voiceRealtimeLaunchHint,
+	voiceRealtimeSetupHint,
 } from "../src/quyuan/voice-panel-labels";
 import { confirmationQuestion, showVoiceConfirmCard } from "../src/quyuan/voice-confirm-card";
 import { createMiniHost, MiniElement } from "./helpers/mini-dom";
@@ -140,5 +142,28 @@ describe("voice confirm card", () => {
 			expect(feedSpeech).not.toHaveBeenCalled();
 			await expect(promise).resolves.toBe(false);
 		}
+	});
+});
+
+describe("provider-aware voice hints", () => {
+	it("points Bailian users at workspace id and key", () => {
+		expect(voiceRealtimeSetupHint({})).toContain("百炼业务空间 ID");
+		expect(voiceRealtimeSetupHint({ quyuanRealtimeWorkspaceId: "ws-1" })).toBe("");
+		expect(voiceRealtimeLaunchHint({})).toContain("百炼实时语音");
+	});
+
+	it("points OpenAI-compatible users at endpoint and key ref, never Bailian", () => {
+		const hint = voiceRealtimeSetupHint({ quyuanRealtimeProviderKind: "openai-compatible" });
+		expect(hint).toContain("Realtime 端点");
+		expect(hint).not.toContain("百炼");
+		expect(
+			voiceRealtimeSetupHint({
+				quyuanRealtimeProviderKind: "openai-compatible",
+				quyuanRealtimeEndpoint: "https://api.openai.com/v1/realtime",
+			}),
+		).toBe("");
+		expect(
+			voiceRealtimeLaunchHint({ quyuanRealtimeProviderKind: "openai-compatible" }),
+		).toContain("自定义 Realtime 端点");
 	});
 });

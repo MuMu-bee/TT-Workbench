@@ -1,4 +1,4 @@
-// 右侧边栏的 TALOS 对话视图：与 Claudian 一样常驻右栏，主区页面保持不动。
+// 右侧边栏的 TT 对话视图：与 Claudian 一样常驻右栏，主区页面保持不动。
 // 工作台实例独立于控制台主视图，只在本视图内挂载，关闭视图即释放。
 import { ItemView, type WorkspaceLeaf } from "obsidian";
 import type { ChatSurfaceWorkbench } from "../quyuan/chat-surface";
