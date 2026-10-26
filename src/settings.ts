@@ -128,6 +128,12 @@ export interface TalosSettings {
 	harnessExecutable: string; // dsh CLI 路径，留空自动探测 PATH
 	harnessPort: number; // dsh web 仅监听 127.0.0.1，默认 3180
 	harnessSurface: string; // D-TLP-015 对话页通道：dsh（默认）| codex，由切换块写入
+	/**
+	 * Windows 无隔离执行开关(默认关闭)。
+	 * 开启后本机 CLI 可在 Windows 上运行,但**没有操作系统级隔离**:
+	 * 每个工具动作仍经审批卡确认并写审计。仅在用户明确接受风险时开启。
+	 */
+	windowsApprovalOnlyExecution: boolean;
 	jarvisPermissionMode: string; // default | acceptEdits | plan | bypassPermissions
 	jarvisSttEngine: string; // 固定 off；旧 WebSpeech 入口失败关闭
 	jarvisSttApiKey: string; // STT API key（阿里云 Paraformer 等）
@@ -231,6 +237,7 @@ export const DEFAULT_SETTINGS: TalosSettings = {
 	harnessExecutable: "",
 	harnessPort: DEFAULT_DSH_PORT,
 	harnessSurface: "dsh",
+	windowsApprovalOnlyExecution: false,
 	jarvisPermissionMode: "default",
 	jarvisSttEngine: "off",
 	jarvisSttApiKey: "",
@@ -591,7 +598,12 @@ export class TalosSettingTab extends PluginSettingTab {
 		c: HTMLElement,
 		name: string,
 		desc: string,
-		key: "syncVaultTheme" | "openOnStartup" | "welcomeEasterEgg" | "talosPeerStatusBridgeEnabled",
+		key:
+			| "syncVaultTheme"
+			| "openOnStartup"
+			| "welcomeEasterEgg"
+			| "talosPeerStatusBridgeEnabled"
+			| "windowsApprovalOnlyExecution",
 		after?: () => void
 	): void {
 		new Setting(c)
@@ -804,6 +816,14 @@ export class TalosSettingTab extends PluginSettingTab {
 							await this.plugin.saveTalosSettings();
 						})
 				);
+		}
+		if (process.platform === "win32") {
+			this.toggleIn(
+				c,
+				"Windows 无隔离执行（每条命令审批）",
+				"开启后本机 CLI 可在 Windows 运行，但【没有操作系统级隔离】：智能体可见并改动本机文件、可发起网络请求。每个工具动作仍会弹出审批卡，并在 .talos 写入含完整命令行的审计记录。仅在你能接受该风险时开启；需要真隔离请使用 macOS 或 Direct API Provider（Plan-only）。",
+				"windowsApprovalOnlyExecution"
+			);
 		}
 	}
 

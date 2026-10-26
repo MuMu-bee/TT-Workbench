@@ -107,6 +107,13 @@ export class DesktopRuntimeFactory {
 				reason: isolation.message,
 			};
 		}
+		if (isolation.backend === "windows-approval-only") {
+			// 无 OS 隔离:可执行,但必须持续显示事实,不能省略。
+			return {
+				...probe,
+				sandboxNote: "无操作系统级隔离 · 每条命令经审批并写审计",
+			};
+		}
 		return probe;
 	}
 

@@ -1,5 +1,26 @@
 # Changelog
 
+- 2026-10-25 v1.4.0 Windows 无隔离执行后端(用户显式授权):
+
+  用户明确表示本机无可损失资产、接受风险并要求 Windows 能真正运行本机 CLI。据此新增 **windows-approval-only** 后端。它不伪装成沙盒,而是把事实和边界写清楚:
+
+  **行为**
+  - 默认**关闭**:未开启时 Windows 仍失败关闭,状态栏给出开启路径与风险提示。
+  - 仅在设置「智能体与模型」中显式开启后可用(macOS 永不走此后端,不能降级掉 Seatbelt;Linux 也不支持)。
+  - 不构造任何假隔离:`prepare()` 原样返回启动参数,不改写为 sandbox-exec 之类的包装。
+  - `SandboxAvailability` 增加 `osIsolation` 字段,该后端恒为 `false`;UI 状态栏持续显示「无操作系统级隔离 · 每条命令经审批并写审计」,不沿用"沙盒"措辞。
+
+  **审计补强(关键)**
+  - 原审计只存目标 SHA-256 摘要,不足以事后追溯无隔离模式下实际执行了什么。
+  - 新增 `SecurityAuditRecord.plainCommand`,在各案为 `command` 的动作上记录完整 `executable/args/cwd`。
+  - **仅当** 无隔离后端启用时写入(`includePlainCommand`);有隔离后端保持默认脱敏,行为完全不变。
+
+  **测试锁定(9 项)**
+  - 默认关闭 / 显式开启 / osIsolation=false / macOS 不降级 / Linux 不支持 / 无 sandbox-exec 仍失败关闭;
+  - 明文审计:默认不写、开启时写全字段、无 command 时不产生空字段。
+
+  验收:typecheck、lint(0 error 0 warning)、890 项测试、100 包许可证审计、生产构建全绿。实机验证:默认状态下状态栏显示"未开启 CLI 执行"及开启指引。
+
 - 2026-10-25 v1.3.2 部署到真实库时发现并修复升级路径缺陷:
 
   按用户要求把插件部署到真实工作库 `knowledge-vault`(内含上游 TALOS 0.4.6 及 226 篇笔记),实机加载后暴露出三个只在"从上游升级"场景才出现的缺陷:

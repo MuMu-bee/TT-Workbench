@@ -23,6 +23,11 @@ export interface RuntimeProbe {
 	version?: string;
 	reason?: string;
 	executable?: string;
+	/**
+	 * 隔离事实说明。当后端是"无 OS 隔离、仅审批"时为非空,
+	 * UI 必须原样展示,不得省略或改写成"沙盒"措辞。
+	 */
+	sandboxNote?: string;
 }
 
 export interface ModelDescriptor {

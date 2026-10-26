@@ -34,9 +34,11 @@ describe("Windows platform compatibility", () => {
 			},
 		}, "win32");
 
+		// TT 1.4.0:Windows 默认仍失败关闭;reason 改为 approval-only-disabled,
+		// 因为用户可在设置中显式开启「无隔离执行(每条命令审批)」。
 		await expect(sandbox.availability()).resolves.toMatchObject({
 			available: false,
-			reason: "unsupported-platform",
+			reason: "approval-only-disabled",
 			platform: "win32",
 		});
 		expect(probes).toBe(0);
@@ -44,7 +46,7 @@ describe("Windows platform compatibility", () => {
 			executable: "C:\\tools\\codex.exe",
 			args: [],
 			cwd: "C:\\vault",
-		}, "C:\\vault")).rejects.toThrow("API Provider");
+		}, "C:\\vault")).rejects.toThrow("无隔离执行");
 	});
 
 	it("keeps file durability through a writable handle and skips only directory fsync", () => {

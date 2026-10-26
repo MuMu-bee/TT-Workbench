@@ -13,11 +13,29 @@ export interface SecurityAuditRecord {
 	reasonCode: string;
 	ruleId?: string;
 	timestamp: string;
+	/**
+	 * 无 OS 隔离后端下的明文取证字段(仅 kind === "command" 且传入 command 时写入)。
+	 * 有隔离的后端不需要:隔离本身即边界,摘要足以脱敏。
+	 * 无隔离时摘要不足以事后追溯,必须留下实际执行的完整命令行。
+	 */
+	plainCommand?: { executable: string; args: string[]; cwd: string };
 }
 
 export interface SecurityAuditSink { append(record: SecurityAuditRecord): Promise<void>; }
 
-export function auditRecord(request: ActionRequest, decision: ApprovalDecision): SecurityAuditRecord {
+export interface AuditRecordOptions {
+	/**
+	 * 是否记录明文命令行。仅在无 OS 隔离后端(Windows 审批模式)下由调用方置为 true;
+	 * 默认 false,保持既有脱敏行为完全不变。
+	 */
+	includePlainCommand?: boolean;
+}
+
+export function auditRecord(
+	request: ActionRequest,
+	decision: ApprovalDecision,
+	options: AuditRecordOptions = {},
+): SecurityAuditRecord {
 	return {
 		actionId: request.actionId,
 		runtimeId: request.runtimeId,
@@ -30,5 +48,8 @@ export function auditRecord(request: ActionRequest, decision: ApprovalDecision):
 		reasonCode: decision.reasonCode ?? "legacy-decision",
 		ruleId: decision.ruleId,
 		timestamp: new Date().toISOString(),
+		...(options.includePlainCommand && request.command
+			? { plainCommand: { executable: request.command.executable, args: [...request.command.args], cwd: request.command.cwd } }
+			: {}),
 	};
 }

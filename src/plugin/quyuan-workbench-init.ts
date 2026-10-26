@@ -40,7 +40,9 @@ export async function initializeQuyuanWorkbench(plugin: TalosPlugin): Promise<{ 
 		const secretStore = providerSecretStoreFromApp(plugin.app);
 		const runtimeFactory = new DesktopRuntimeFactory(
 			discovery,
-			new ProcessSandbox(new NodeSandboxProbeHost()),
+			new ProcessSandbox(new NodeSandboxProbeHost(), process.platform, {
+				enabled: plugin.talosSettings.windowsApprovalOnlyExecution === true,
+			}),
 			(reference) => secretStore?.get(reference) ?? null,
 			TRUSTED_PROVIDER_FETCH,
 		);
@@ -59,11 +61,16 @@ export async function initializeQuyuanWorkbench(plugin: TalosPlugin): Promise<{ 
 			read: () => portableStorage.readJson(`${workbenchStateRoot}/permission-rules.json`),
 			write: (rules) => portableStorage.writeJsonAtomic(`${workbenchStateRoot}/permission-rules.json`, rules),
 		});
+		// 无 OS 隔离(Windows 审批模式)时,审计必须落明文命令行以便事后追溯。
+		const auditOptions = process.platform === "win32" && plugin.talosSettings.windowsApprovalOnlyExecution === true
+			? { includePlainCommand: true }
+			: {};
 		const approvalBroker = new ApprovalBroker(
 			new VaultBoundary(vaultRoot, undefined, 20, plugin.app.vault.configDir),
 			permissionRules,
 			new ExternalAccessGrantStore(),
 			new JsonlSecurityAuditSink(vaultRoot),
+			auditOptions,
 		);
 		const workbenchSettings = new WorkbenchSettingsStore({
 			read: () => portableStorage.readJson(`${workbenchStateRoot}/settings.json`),

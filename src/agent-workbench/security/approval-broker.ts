@@ -1,7 +1,7 @@
 import type { ActionRequest, ApprovalDecision, PermissionMode, WorkflowMode } from "../contracts/approval";
 import { ExternalAccessGrantStore } from "./external-access-grant";
 import { PermissionRuleStore } from "./permission-rule-store";
-import { auditRecord, type SecurityAuditSink } from "./security-audit";
+import { auditRecord, type AuditRecordOptions, type SecurityAuditSink } from "./security-audit";
 import { VaultBoundary } from "./vault-boundary";
 
 export interface ApprovalContext {
@@ -62,6 +62,11 @@ export class ApprovalBroker {
 		private readonly rules: PermissionRuleStore,
 		private readonly grants: ExternalAccessGrantStore,
 		private readonly audit: SecurityAuditSink,
+		/**
+		 * 审计记录选项。无 OS 隔离后端(Windows 审批模式)必须开启明文命令行,
+		 * 以便事后追溯实际执行内容;有隔离后端保持默认脱敏。
+		 */
+		private readonly auditOptions: AuditRecordOptions = {},
 	) {}
 
 	async evaluate(request: ActionRequest, context: ApprovalContext): Promise<ApprovalDecision> {
@@ -87,7 +92,7 @@ export class ApprovalBroker {
 			decision = result(request, "deny", `边界检查失败：${error instanceof Error ? error.message : "unknown"}`, "boundary-error");
 		}
 		try {
-			await this.audit.append(auditRecord(request, decision));
+			await this.audit.append(auditRecord(request, decision, this.auditOptions));
 			return decision;
 		} catch {
 			return result(request, "deny", "审计写入失败，已失败关闭", "audit-write-failed");

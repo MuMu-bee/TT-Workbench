@@ -853,7 +853,7 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		const probe = await this.options.service.probeRuntime(runtimeId);
 		if (refreshVersion !== this.refreshVersion || !this.status || !this.model || !this.provider || !this.install) return;
 		this.status.dataset.state = probe.status;
-		this.status.textContent = `${RUNTIME_PRESENTATION.find((runtime) => runtime.id === runtimeId)?.label ?? runtimeId} · ${RUNTIME_HEALTH_LABELS[probe.status]}${probe.version ? ` · ${probe.version}` : ""}${probe.reason ? ` · ${probe.reason}` : ""}`;
+		this.status.textContent = `${RUNTIME_PRESENTATION.find((runtime) => runtime.id === runtimeId)?.label ?? runtimeId} · ${RUNTIME_HEALTH_LABELS[probe.status]}${probe.version ? ` · ${probe.version}` : ""}${probe.sandboxNote ? ` · ${probe.sandboxNote}` : ""}${probe.reason ? ` · ${probe.reason}` : ""}`;
 		this.install.hidden = probe.status !== "not-installed" && probe.status !== "incompatible";
 		if (!this.install.hidden) {
 			const urls: Record<RuntimeId, string> = { ohmypi: "https://github.com/can1357/oh-my-pi" };
