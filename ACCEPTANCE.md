@@ -65,12 +65,32 @@
 
 **未覆盖(需真实环境,如实记录)**:AI 对话实际收发消息(需 OhMyPi 本机 CLI 或已配置 Direct API 密钥;Windows 上本机 Execute 按设计关闭);语音实际连接(需百炼业务空间 ID 或 OpenAI Realtime 密钥);审批执行流(需真实待审批项)。
 
+
+## 1.4.0 Windows 无隔离执行后端验收(2026-10-25)
+
+**前提**:用户明确表示本机无可损失资产、接受风险,要求 Windows 能运行本机 CLI。
+
+| # | 验收标准 | 结果 |
+|---|---|---|
+| F1 | 默认关闭:未开启时 Windows 仍失败关闭,并给出开启路径与风险提示 | ✅ 单元测试 + 实机状态栏验证 |
+| F2 | 仅设置中显式开启后可用 | ✅ `windowsApprovalOnlyExecution` 默认 false |
+| F3 | macOS 永不降级到无隔离后端(不能丢掉 Seatbelt) | ✅ 测试:darwin+enabled → macos-seatbelt/osIsolation=true |
+| F4 | Linux 不支持该后端 | ✅ 测试:linux+enabled → available=false |
+| F5 | 不构造假隔离:prepare() 原样返回启动参数 | ✅ 测试断言 executable/args 未被改写 |
+| F6 | 隔离事实暴露给 UI,不沿用"沙盒"措辞 | ✅ `osIsolation` 字段 + 状态栏「无操作系统级隔离 · 每条命令经审批并写审计」 |
+| F7 | 无隔离时审计记录完整命令行(SHA-256 摘要不足以追溯) | ✅ `plainCommand:{executable,args,cwd}`,仅该后端写入 |
+| F8 | 有隔离后端行为完全不变(默认脱敏) | ✅ 测试:默认不产生 plainCommand |
+| F9 | 五道门 + 实机验证 | ✅ typecheck/lint(0 error 0 warning)/890 tests/100 包 license/build;CI @ `a041d24` success |
+
+**风险边界(如实记录)**:该后端**没有操作系统级隔离**。智能体以当前用户权限运行,可读写本机任意文件、发起网络请求。审批卡与明文审计是唯一控制手段,不是隔离。需要真隔离请用 macOS 或 Direct API Provider(Plan-only)。
+
 ## CI 记录
 
 - 仓库:[MuMu-bee/TT-Workbench](https://github.com/MuMu-bee/TT-Workbench)(public,main)
 - 1.0.0 品牌化批次:权威运行 [run 40196315122](https://github.com/MuMu-bee/TT-Workbench/actions/runs/40196315122) @ `758ecbd`:**success**(945 项测试全绿)。首次运行 40195720207 的 2 项文本断言失败已修复(758ecbd)。
 - 1.1.0 运行时收敛批次:推送过程中修复三处 CI 环境问题(① lockfile 失同步→重建;② npm 11 生成 lock 在 CI 触发 EBADPLATFORM→CI 升级 Node 24 与本地工具链一致;③ 许可清单随 lock 过期→重生成),权威运行 @ `4ae5fa4`:**success**,Job "Lint · Typecheck · Test · License · Build" 全部通过。
-- 1.2.0 审查结论落地批次:CI @ `1b872bd`:**success**(Lint/Typecheck/Test/License/Build 全部通过)。
+- 1.2.0 审查结论落地批次:CI @ `1b872bd`:**success**。
+- 1.3.x/1.4.0 真实库部署与 Windows 后端:CI @ `a041d24`:**success**。
 - 1.3.0 批次三结构重构:CI @ `b2cbd14`:**success**。
 - 交付过程说明:1.0.0 交付期间本地网络对 GitHub 大包上传持续重置,曾启用 git-data API 兜底通道;网络恢复后以完整 `git push` 交付全量历史。1.1.0 与 1.2.0 批次直接 git push 成功。
 
