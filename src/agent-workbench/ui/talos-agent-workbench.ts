@@ -828,7 +828,9 @@ export class TalosAgentWorkbench implements ChatSurfaceWorkbench {
 		}
 	}
 
-	private async refreshRuntime(runtimeId: RuntimeId): Promise<void> {
+	private async refreshRuntime(requestedRuntimeId: RuntimeId): Promise<void> {
+		// 旧版遗留的 runtimeId(codex/hermes 等)不应出现在 UI:统一归一到唯一运行时。
+		const runtimeId: RuntimeId = requestedRuntimeId === "ohmypi" ? requestedRuntimeId : "ohmypi";
 		if (!this.status || !this.model || !this.provider || !this.install) return;
 		const refreshVersion = ++this.refreshVersion;
 		this.updateRuntimeButtons(runtimeId);

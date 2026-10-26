@@ -1,5 +1,21 @@
 # Changelog
 
+- 2026-10-25 v1.3.2 部署到真实库时发现并修复升级路径缺陷:
+
+  按用户要求把插件部署到真实工作库 `knowledge-vault`(内含上游 TALOS 0.4.6 及 226 篇笔记),实机加载后暴露出三个只在"从上游升级"场景才出现的缺陷:
+
+  **1) 旧 runtimeId 导致对话视图整体加载失败**:磁盘 `.talos/agent-workbench/v1/settings.json` 里存着 `runtimeId: "codex"` / `"hermes"` 的 provider profile 与 selection,1.1.0 收窄为单一运行时后 `validateProviderProfile` 直接抛错,UI 显示「TT 对话加载失败」。修复:加载时静默迁移 runtimeId 到 `ohmypi`,**保留** protocol/endpoint/models 与用户配置的 executablePath,workflow/permission 原样保留。
+
+  **2) 不支持的旧协议导致同样失败**:用户装有自定义 `hermes-agent` 协议 provider,不在本版允许列表内。修复:改为**逐条容错**——丢弃无法迁移的那一条 profile 并继续,保留其余可用配置,不能让单条历史记录拖垮整个视图。
+
+  **3) UI 残留旧运行时名**:selection 指向已丢弃的 profile 时,状态栏仍显示「hermes · 检测中」。修复:`refreshRuntime` 对非 ohmypi 的入参统一归一到唯一运行时;selection 的无效 providerProfileId 由 `restoreSelection` 清空。
+
+  另修复:语音页在 OpenAI 兼容模式下提示"百炼业务空间 ID"(1.3.1 已修,本版随上游一并验证)。
+
+  **实机验收(knowledge-vault,真实数据)**:控制台标题「TT工作台控制台」;收件箱积压 23 篇 / 最老 80 天 / 1 项需要处理等统计**读取真实库**;TT 对话可正常打开(会话 tab、输入框、授权模式「库内读写自动」、工作流「可执行/只规划」);智能体状态「OhMyPi · 部分可用 · 18.2.8」+ Windows 失败关闭提示;无「加载失败」、无 hermes 残留。
+
+  验收:typecheck、lint(0 error 0 warning)、881 项测试(新增 3 项升级路径回归)、100 包许可证审计、生产构建全绿。
+
 - 2026-10-25 v1.3.1 实机验收修复(computer use 验证驱动):
 
   在独立测试库(tt-workbench-test)用 Obsidian 1.14.5 实机加载插件做端到端验收,发现并修复两类真实缺陷:

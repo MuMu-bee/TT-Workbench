@@ -143,3 +143,79 @@ describe("P1/P3 输入防抖", () => {
 		expect(composer).toContain("cachedMarkdownFiles");
 	});
 });
+
+describe("旧版工作台设置迁移(升级路径)", () => {
+	it("把上游 claude/codex/hermes 的 runtimeId 静默迁移到 ohmypi,而不是抛错", async () => {
+		const { WorkbenchSettingsStore } = await import("../src/agent-workbench/storage/workbench-settings-store");
+		let stored: unknown = {
+			schemaVersion: 1,
+			runtimes: [{ id: "codex-local", runtimeId: "codex", executablePath: "/synthetic/codex" }],
+			providers: [
+				{
+					id: "openai-compatible",
+					displayName: "OpenAI-compatible · Direct API",
+					runtimeId: "codex",
+					protocol: "openai-chat",
+					endpoint: "https://api.example.test/v1",
+					models: ["step-5-preview"],
+					secretRef: "talos-openai-api-key",
+					enabled: true,
+				},
+			],
+			selection: { runtimeId: "hermes", providerProfileId: "hermes" },
+			workflow: "execute",
+			permission: "vault-full",
+		};
+		const store = new WorkbenchSettingsStore(
+			{ read: async () => structuredClone(stored), write: async (v) => { stored = structuredClone(v); } },
+			{ has: () => true },
+		);
+		const loaded = await store.load();
+		expect(loaded.providers).toHaveLength(1);
+		expect(loaded.providers[0]?.runtimeId).toBe("ohmypi");
+		expect(loaded.providers[0]?.protocol).toBe("openai-chat");
+		expect(loaded.providers[0]?.models).toEqual(["step-5-preview"]);
+		expect(loaded.selection.runtimeId).toBe("ohmypi");
+		// workflow / permission 不属于运行时,必须原样保留
+		expect(loaded.workflow).toBe("execute");
+		expect(loaded.permission).toBe("vault-full");
+		// runtime profile 保留(用户的可执行路径不丢),仅 runtimeId 归一到 ohmypi
+		expect(loaded.runtimes).toHaveLength(1);
+		expect(loaded.runtimes[0]).toMatchObject({ runtimeId: "ohmypi", executablePath: "/synthetic/codex" });
+	});
+
+	it("缺失或损坏的 selection 回落到默认运行时而不抛错", async () => {
+		const { WorkbenchSettingsStore } = await import("../src/agent-workbench/storage/workbench-settings-store");
+		const store = new WorkbenchSettingsStore(
+			{
+				read: async () => ({ schemaVersion: 1, runtimes: [], providers: [], selection: null, workflow: "plan", permission: "ask" }),
+				write: async () => undefined,
+			},
+			{ has: () => false },
+		);
+		await expect(store.load()).resolves.toMatchObject({ selection: { runtimeId: "ohmypi" } });
+	});
+	it("丢弃本版不支持的旧协议 profile,保留其余可用配置", async () => {
+		const { WorkbenchSettingsStore } = await import("../src/agent-workbench/storage/workbench-settings-store");
+		const store = new WorkbenchSettingsStore(
+			{
+				read: async () => ({
+					schemaVersion: 1,
+					runtimes: [],
+					providers: [
+						{ id: "openai-compatible", displayName: "OK", runtimeId: "codex", protocol: "openai-chat", endpoint: "https://api.example.test/v1", models: ["m1"], secretRef: "r1", enabled: true },
+						{ id: "hermes", displayName: "Hermes", runtimeId: "hermes", protocol: "hermes-agent", models: ["hermes-agent"], secretRef: "r2", enabled: true },
+					],
+					selection: { runtimeId: "ohmypi" },
+					workflow: "plan",
+					permission: "ask",
+				}),
+				write: async () => undefined,
+			},
+			{ has: () => true },
+		);
+		const loaded = await store.load();
+		expect(loaded.providers.map((p) => p.id)).toEqual(["openai-compatible"]);
+		expect(loaded.providers[0]?.runtimeId).toBe("ohmypi");
+	});
+});
