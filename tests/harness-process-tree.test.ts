@@ -36,7 +36,22 @@ const directories: string[] = [];
 afterEach(async () => {
 	while (directories.length > 0) {
 		const directory = directories.pop();
-		if (directory) await rm(directory, { recursive: true, force: true });
+		if (!directory) continue;
+		// win32 上子进程被 SIGKILL 后，句柄释放比进程退出更慢；紧接着 rmdir 会偶发
+		// EBUSY。这属于清理时序而非产品行为，重试几次再兜底放弃，避免把测试标红。
+		for (let attempt = 0; attempt < 5; attempt += 1) {
+			try {
+				await rm(directory, { recursive: true, force: true });
+				break;
+			} catch (error) {
+				if (attempt === 4) {
+					// 清理失败不影响断言结论，但也别静默吞掉：留一条可检索的痕迹。
+					console.warn(`[harness-process-tree] 临时目录清理失败：${String(error)}`);
+					break;
+				}
+				await nodeSetTimeout(50 * (attempt + 1));
+			}
+		}
 	}
 });
 
