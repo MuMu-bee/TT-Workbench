@@ -398,15 +398,15 @@
 .talos-console .cap-actions > span:hover { color: #fff; border-color: var(--ac); background: color-mix(in srgb,var(--ac) 12%,transparent); }
 
 /* overview */
-.talos-console[data-talos-page="overview"] .app {
+.talos-console[data-talos-page="today"] .app {
 	grid-template-columns: 236px minmax(0,1fr);
 }
-.talos-console[data-talos-page="overview"] .clock-card,
-.talos-console[data-talos-page="overview"] .action-card,
-.talos-console[data-talos-page="overview"] .approval-card {
+.talos-console[data-talos-page="today"] .clock-card,
+.talos-console[data-talos-page="today"] .action-card,
+.talos-console[data-talos-page="today"] .approval-card {
 	display: none;
 }
-.talos-console[data-talos-page="overview"] .page-content {
+.talos-console[data-talos-page="today"] .page-content {
 	display: flex;
 	flex-direction: column;
 	gap: 14px;
@@ -811,7 +811,7 @@
 	--star-soft-opacity: .42;
 	transition: background-color .45s ease, color .28s ease;
 }
-.talos-console.theme-cosmos-dark[data-talos-page="overview"] {
+.talos-console.theme-cosmos-dark[data-talos-page="today"] {
 	--page-a: #20D9FF;
 	--page-b: #2F7BFF;
 	--page-c: #A855F7;
@@ -1486,9 +1486,9 @@
 
 @media (max-width: 1100px) {
 	.talos-console .app { grid-template-columns: 1fr; }
-	.talos-console[data-talos-page="overview"] .app { grid-template-columns: 1fr; }
+	.talos-console[data-talos-page="today"] .app { grid-template-columns: 1fr; }
 	.talos-console .sidebar { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
-	.talos-console[data-talos-page="overview"] .sidebar { display: block; }
+	.talos-console[data-talos-page="today"] .sidebar { display: block; }
 	.talos-console .hero-head { grid-template-columns: minmax(0,1fr) 118px; }
 	.talos-console .logo-module { width: 112px; height: 102px; }
 	.talos-console .logo-module .logo { width: 66px; height: 66px; }
@@ -1599,19 +1599,19 @@
 }
 
 /* 宇宙中控只服务首页；其他页面保留动态星云底和轻量页头，避免遮挡正文信息。 */
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .hero {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .hero {
 	min-height: 0;
 	padding: 0;
 	overflow: hidden;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .hero::before,
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .hero::after {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .hero::before,
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .hero::after {
 	display: none;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-scene {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-scene {
 	min-height: 0;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-top {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-top {
 	position: relative;
 	align-items: center;
 	min-height: 76px;
@@ -1627,7 +1627,7 @@
 		inset 0 1px 0 color-mix(in srgb,#fff 52%,transparent);
 	backdrop-filter: blur(20px) saturate(1.16);
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-top::before {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-top::before {
 	content: "";
 	position: absolute;
 	inset: -60% -10%;
@@ -1639,39 +1639,39 @@
 	animation: tl-detail-rail 14s ease-in-out infinite;
 	pointer-events: none;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-title,
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-status {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-title,
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-status {
 	position: relative;
 	z-index: 1;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-title h1 {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-title h1 {
 	font-size: 24px;
 	line-height: 1.08;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-sub {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-sub {
 	margin-top: 5px;
 	font-size: 12px;
 	letter-spacing: .12em;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-status {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-status {
 	min-height: 34px;
 	padding: 6px 11px;
 	border-radius: 999px;
 	font-size: 11px;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-clock {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-clock {
 	padding-left: 8px;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-orbit,
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-commandbar {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-orbit,
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-commandbar {
 	display: none;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .bg-fx::before {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .bg-fx::before {
 	width: min(52vw, 520px);
 	height: min(52vw, 520px);
 	opacity: .46;
 }
-.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .bg-fx::after {
+.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .bg-fx::after {
 	top: 76px;
 	height: 330px;
 	opacity: .42;
@@ -1681,13 +1681,13 @@
 	50% { transform: translate3d(22px,0,0) rotate(calc(var(--orbit-tilt) + 3deg)); opacity: .70; }
 }
 @media (max-width: 680px) {
-	.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-top {
+	.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-top {
 		flex-direction: column;
 		align-items: stretch;
 		min-height: 0;
 		padding: 13px;
 	}
-	.talos-console.theme-cosmos-dark:not([data-talos-page="overview"]) .cosmos-title h1 {
+	.talos-console.theme-cosmos-dark:not([data-talos-page="today"]) .cosmos-title h1 {
 		font-size: 22px;
 	}
 }
@@ -3723,7 +3723,7 @@
 
 /* ===================== 总览 Hero 作用域 ===================== */
 /* TALOS 系统控制台总览只属于导航首页；所有子页面从自己的内容区开始。 */
-.talos-console:not([data-talos-page="overview"]) .main > .hero {
+.talos-console:not([data-talos-page="today"]) .main > .hero {
 	display: none !important;
 }
 
@@ -4878,86 +4878,86 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 }
 
 @media (min-width: 1101px) {
-	.talos-console[data-talos-page="overview"] .app {
+	.talos-console[data-talos-page="today"] .app {
 		grid-template-columns: 296px minmax(0,1fr);
 	}
 }
 
 	/* 总览 Hero 统一内容骨架：七主题共享尺寸与层级，各主题继续负责材质、色彩和装饰。 */
-	.talos-console[data-talos-page="overview"] .hero {
+	.talos-console[data-talos-page="today"] .hero {
 		min-height: 210px;
 		padding: 24px 28px;
 		overflow: hidden;
 	}
-.talos-console[data-talos-page="overview"] .hero-head {
+.talos-console[data-talos-page="today"] .hero-head {
 	display: grid;
 }
-.talos-console[data-talos-page="overview"] .hero-head {
+.talos-console[data-talos-page="today"] .hero-head {
 	grid-template-columns: minmax(0,1fr) 86px;
 	gap: 18px;
 	align-items: center;
 }
-	.talos-console[data-talos-page="overview"] .hero .brand-text h1 {
+	.talos-console[data-talos-page="today"] .hero .brand-text h1 {
 		max-width: 940px;
 		margin: 3px 0 8px;
 		font-size: 64px;
 		line-height: .92;
 	}
-.talos-console[data-talos-page="overview"] .hero .sub {
+.talos-console[data-talos-page="today"] .hero .sub {
 	font-size: 13px;
 	line-height: 1.45;
 }
-	.talos-console[data-talos-page="overview"] .hero .logo-module {
+	.talos-console[data-talos-page="today"] .hero .logo-module {
 		width: 74px;
 		height: 66px;
 	}
-	.talos-console[data-talos-page="overview"] .hero .logo-module .logo,
-	.talos-console.theme-geometric-modern[data-talos-page="overview"] .hero .logo-module .logo {
+	.talos-console[data-talos-page="today"] .hero .logo-module .logo,
+	.talos-console.theme-geometric-modern[data-talos-page="today"] .hero .logo-module .logo {
 		width: 48px;
 		height: 48px;
 		border-radius: 12px;
 	}
-	.talos-console[data-talos-page="overview"] .hero .logo-module .logo svg {
+	.talos-console[data-talos-page="today"] .hero .logo-module .logo svg {
 		width: 38px;
 		height: 38px;
 	}
 
-	.talos-console[data-talos-page="overview"] .hero .quote {
+	.talos-console[data-talos-page="today"] .hero .quote {
 		min-height: 58px;
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
 }
-	.talos-console[data-talos-page="overview"] .hero .quote strong {
+	.talos-console[data-talos-page="today"] .hero .quote strong {
 		font-size: 17px;
 		line-height: 1.35;
 	}
 
 	@media (max-width: 1100px) {
-		.talos-console[data-talos-page="overview"] .hero .brand-text h1 {
+		.talos-console[data-talos-page="today"] .hero .brand-text h1 {
 			font-size: 48px;
 		}
 	}
 
 /* 宇宙主题回到统一 Hero 内容结构，轨道与星云仍作为本主题的背景语言。 */
-.talos-console.theme-cosmos-dark[data-talos-page="overview"] .hero {
+.talos-console.theme-cosmos-dark[data-talos-page="today"] .hero {
 	background:
 		linear-gradient(135deg,color-mix(in srgb,var(--surface) 94%,transparent),color-mix(in srgb,var(--page-a) 8%,var(--surface)));
 	border: 1px solid var(--line);
 	box-shadow: 0 18px 44px rgba(0,0,0,.4);
 	backdrop-filter: blur(10px);
 }
-.talos-console.theme-cosmos-dark[data-talos-page="overview"] .cosmos-scene {
+.talos-console.theme-cosmos-dark[data-talos-page="today"] .cosmos-scene {
 	display: none;
 }
-.talos-console.theme-cosmos-dark[data-talos-page="overview"] .hero::before {
+.talos-console.theme-cosmos-dark[data-talos-page="today"] .hero::before {
 	left: 42%;
 	right: -6%;
 	top: -94px;
 	height: 330px;
 	opacity: .48;
 }
-.talos-console.theme-cosmos-dark[data-talos-page="overview"] .hero::after {
+.talos-console.theme-cosmos-dark[data-talos-page="today"] .hero::after {
 	left: 48%;
 	right: 3%;
 	top: 28px;
@@ -4976,70 +4976,70 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 
 /* 总览窄屏：导航保留完整能力，但不再占掉首屏。 */
 @media (max-width: 680px) {
-	.talos-console[data-talos-page="overview"] .hero {
+	.talos-console[data-talos-page="today"] .hero {
 		min-height: 0;
 		padding: 20px;
 	}
 
-	.talos-console[data-talos-page="overview"] .hero-head {
+	.talos-console[data-talos-page="today"] .hero-head {
 		grid-template-columns: 1fr;
 	}
-	.talos-console[data-talos-page="overview"] .hero .brand-text h1 {
+	.talos-console[data-talos-page="today"] .hero .brand-text h1 {
 		font-size: 31px;
 	}
-	.talos-console[data-talos-page="overview"] .hero .logo-module {
+	.talos-console[data-talos-page="today"] .hero .logo-module {
 		justify-self: start;
 	}
 }
 
 /* 总览贴边铺满：直接消除模块之间的黑色缝隙。 */
-.talos-console[data-talos-page="overview"] .app,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .app,
-.talos-console.theme-data-stream[data-talos-page="overview"] .app,
-.talos-console.theme-soft-relief[data-talos-page="overview"] .app {
+.talos-console[data-talos-page="today"] .app,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .app,
+.talos-console.theme-data-stream[data-talos-page="today"] .app,
+.talos-console.theme-soft-relief[data-talos-page="today"] .app {
 	gap: 0;
 	padding: 0;
 }
-.talos-console[data-talos-page="overview"] .sidebar,
-.talos-console[data-talos-page="overview"] .main,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .sidebar,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .main {
+.talos-console[data-talos-page="today"] .sidebar,
+.talos-console[data-talos-page="today"] .main,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .sidebar,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .main {
 	gap: 0;
 }
-.talos-console[data-talos-page="overview"] .page-content {
+.talos-console[data-talos-page="today"] .page-content {
 	gap: 0;
 }
-.talos-console[data-talos-page="overview"] .card,
-.talos-console[data-talos-page="overview"] .panel,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .card,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .hero,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .panel {
+.talos-console[data-talos-page="today"] .card,
+.talos-console[data-talos-page="today"] .panel,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .card,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .hero,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .panel {
 	box-shadow: none;
 }
-.talos-console[data-talos-page="overview"] .card,
-.talos-console[data-talos-page="overview"] .panel {
+.talos-console[data-talos-page="today"] .card,
+.talos-console[data-talos-page="today"] .panel {
 	padding: 10px;
 }
-.talos-console[data-talos-page="overview"] .card:hover,
-.talos-console[data-talos-page="overview"] .panel:hover,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .card:hover,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .panel:hover {
+.talos-console[data-talos-page="today"] .card:hover,
+.talos-console[data-talos-page="today"] .panel:hover,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .card:hover,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .panel:hover {
 	box-shadow: none;
 }
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .card,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .hero,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .panel {
+.talos-console.theme-geometric-modern[data-talos-page="today"] .card,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .hero,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .panel {
 	border-width: 2px;
 }
-.talos-console[data-talos-page="overview"] .hero {
+.talos-console[data-talos-page="today"] .hero {
 	min-height: 252px;
 	padding: 20px 22px 28px;
 }
 
-.talos-console[data-talos-page="overview"] .hero .quote {
+.talos-console[data-talos-page="today"] .hero .quote {
 	min-height: 48px;
 }
-.talos-console[data-talos-page="overview"] .talos-hero-title {
+.talos-console[data-talos-page="today"] .talos-hero-title {
 	position: relative;
 	display: flex;
 	align-items: baseline;
@@ -5048,19 +5048,19 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	isolation: isolate;
 	letter-spacing: 0;
 }
-.talos-console[data-talos-page="overview"] .talos-title-latin {
+.talos-console[data-talos-page="today"] .talos-title-latin {
 	display: inline-block;
 	font-size: 1.24em;
 	line-height: .88;
 	letter-spacing: .015em;
 }
-.talos-console[data-talos-page="overview"] .talos-title-cn {
+.talos-console[data-talos-page="today"] .talos-title-cn {
 	display: inline-block;
 	font-size: .76em;
 	line-height: 1;
 	letter-spacing: 0;
 }
-.talos-console[data-talos-page="overview"] .talos-hero-title::before {
+.talos-console[data-talos-page="today"] .talos-hero-title::before {
 	content: "";
 	position: absolute;
 	left: 0;
@@ -5077,7 +5077,7 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	clip-path: inset(0 100% 0 0);
 	animation: tl-title-pixel-scan 7.2s steps(24,end) infinite;
 }
-.talos-console[data-talos-page="overview"] .talos-hero-title::after {
+.talos-console[data-talos-page="today"] .talos-hero-title::after {
 	content: "";
 	position: absolute;
 	top: 6%;
@@ -5220,13 +5220,13 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	--pixel-face: var(--gm-paper);
 	--pixel-glow: rgba(32,82,184,.24);
 }
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .talos-hero-title::before {
+.talos-console.theme-geometric-modern[data-talos-page="today"] .talos-hero-title::before {
 	background: linear-gradient(90deg,var(--gm-blue),var(--gm-red),var(--gm-yellow));
 	-webkit-background-clip: border-box;
 	background-clip: border-box;
 	-webkit-text-fill-color: currentColor;
 }
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .talos-hero-title::after {
+.talos-console.theme-geometric-modern[data-talos-page="today"] .talos-hero-title::after {
 	mix-blend-mode: multiply;
 }
 @keyframes tl-pixel-patrol {
@@ -5273,19 +5273,19 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 }
 
 @media (min-width: 1101px) {
-	.talos-console[data-talos-page="overview"] .app {
+	.talos-console[data-talos-page="today"] .app {
 		grid-template-columns: 286px minmax(0,1fr);
 	}
 }
 @media (max-width: 680px) {
-	.talos-console[data-talos-page="overview"] .app,
-.talos-console.theme-geometric-modern[data-talos-page="overview"] .app,
-.talos-console.theme-data-stream[data-talos-page="overview"] .app,
-.talos-console.theme-soft-relief[data-talos-page="overview"] .app {
+	.talos-console[data-talos-page="today"] .app,
+.talos-console.theme-geometric-modern[data-talos-page="today"] .app,
+.talos-console.theme-data-stream[data-talos-page="today"] .app,
+.talos-console.theme-soft-relief[data-talos-page="today"] .app {
 		gap: 0;
 		padding: 0;
 	}
-	.talos-console[data-talos-page="overview"] .hero {
+	.talos-console[data-talos-page="today"] .hero {
 		padding: 14px;
 	}
 	.talos-console:not([data-talos-page="jarvis"]) .talos-pixel-patrol {
@@ -5299,19 +5299,19 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	.talos-console:not([data-talos-page="jarvis"]) .talos-pixel-eye,
 	.talos-console:not([data-talos-page="jarvis"]) .talos-pixel-body,
 	.talos-console:not([data-talos-page="jarvis"]) .talos-pixel-shadow,
-	.talos-console[data-talos-page="overview"] .talos-hero-title::before,
-	.talos-console[data-talos-page="overview"] .talos-hero-title::after {
+	.talos-console[data-talos-page="today"] .talos-hero-title::before,
+	.talos-console[data-talos-page="today"] .talos-hero-title::after {
 		animation: none !important;
 	}
-	.talos-console[data-talos-page="overview"] .talos-hero-title::before,
-	.talos-console[data-talos-page="overview"] .talos-hero-title::after {
+	.talos-console[data-talos-page="today"] .talos-hero-title::before,
+	.talos-console[data-talos-page="today"] .talos-hero-title::after {
 		display: none;
 	}
 }
 
 /* ===================== 业务模块首屏优化（2026-07-08）===================== */
 /* 作用域：所有非总览、非屈原的业务页共用；数据层仍由各页面原逻辑提供。 */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero {
 	--module-title-ac: var(--ac);
 	--module-unified-ac: var(--rose);
 	display: grid;
@@ -5322,10 +5322,10 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	overflow: hidden;
 	background: color-mix(in srgb,var(--surface) 94%, transparent);
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero::before {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero::before {
 	background: linear-gradient(90deg, transparent, var(--module-unified-ac), transparent);
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main {
 	display: flex;
 	align-items: flex-start;
 	gap: 14px;
@@ -5341,7 +5341,7 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	box-shadow: 6px 6px 0 color-mix(in srgb,var(--line) 84%,transparent);
 	transition: border-color .18s, background .18s, box-shadow .18s, transform .18s;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main:hover {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main:hover {
 	border-color: color-mix(in srgb,var(--module-title-ac) 78%,var(--line));
 	background:
 		linear-gradient(135deg,color-mix(in srgb,var(--module-title-ac) 34%,transparent),transparent 62%),
@@ -5349,7 +5349,7 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	box-shadow: 8px 8px 0 color-mix(in srgb,var(--line) 84%,transparent), 0 0 26px color-mix(in srgb,var(--module-title-ac) 26%,transparent);
 	transform: translateY(-2px);
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-icon {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-icon {
 	display: grid;
 	place-items: center;
 	flex: 0 0 auto;
@@ -5363,19 +5363,19 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	box-shadow: none;
 	transition: border-color .18s, background .18s, transform .18s;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main:hover .module-hero-icon {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main:hover .module-hero-icon {
 	border-color: color-mix(in srgb,var(--ac) 62%,transparent);
 	background: color-mix(in srgb,var(--ac) 26%,transparent);
 	transform: translateY(-1px);
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-icon svg {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-icon svg {
 	width: 22px;
 	height: 22px;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy {
 	min-width: 0;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy small {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy small {
 	display: block;
 	color: color-mix(in srgb,var(--module-title-ac) 78%,var(--muted));
 	font-family: var(--mono);
@@ -5383,14 +5383,14 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	line-height: 1.4;
 	letter-spacing: 0;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
 	margin: 4px 0 5px;
 	color: var(--ink);
 	font-size: 24px;
 	line-height: 1.18;
 	letter-spacing: 0;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy p {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy p {
 	max-width: 760px;
 	margin: 0;
 	color: var(--muted);
@@ -5398,14 +5398,14 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	line-height: 1.65;
 	letter-spacing: 0;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stats {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stats {
 	display: grid;
 	grid-template-columns: repeat(2,minmax(0,1fr));
 	gap: 14px 18px;
 	min-width: 0;
 	align-self: start;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat {
 	--stat-ac: var(--module-unified-ac);
 	display: flex;
 	flex-direction: column;
@@ -5421,7 +5421,7 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	overflow: hidden;
 	transition: border-color .18s, background .18s, box-shadow .18s, transform .18s;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat::before {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat::before {
 	content: "";
 	position: absolute;
 	left: 0;
@@ -5433,10 +5433,10 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	opacity: .72;
 	transition: opacity .18s, width .18s;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat.is-clickable {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat.is-clickable {
 	cursor: pointer;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat:hover {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat:hover {
 	border-color: color-mix(in srgb,var(--module-unified-ac) 72%,var(--line));
 	background:
 		linear-gradient(135deg,color-mix(in srgb,var(--module-unified-ac) 24%,transparent),transparent 62%),
@@ -5444,29 +5444,29 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	box-shadow: 8px 8px 0 color-mix(in srgb,var(--line) 84%,transparent), 0 0 24px color-mix(in srgb,var(--module-unified-ac) 24%,transparent);
 	transform: translateY(-2px);
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat:hover::before {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat:hover::before {
 	opacity: 1;
 	width: 5px;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat.tone-hot,
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat.tone-warn,
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat.tone-good {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat.tone-hot,
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat.tone-warn,
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat.tone-good {
 	--stat-ac: var(--module-unified-ac);
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat span,
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat b,
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat span,
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat b,
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
 	display: block;
 	min-width: 0;
 	letter-spacing: 0;
 	overflow-wrap: anywhere;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
 	color: var(--muted);
 	font-size: 11px;
 	line-height: 1.35;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
 	margin: 5px 0 3px;
 	color: var(--ink);
 	font-family: var(--mono);
@@ -5474,12 +5474,12 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	line-height: 1.12;
 	text-shadow: none;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
 	color: var(--faint);
 	font-size: 10.5px;
 	line-height: 1.4;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-actions {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-actions {
 	grid-column: 1 / -1;
 	display: flex;
 	justify-content: flex-start;
@@ -5488,7 +5488,7 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	min-width: 0;
 	padding-top: 0;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -5508,103 +5508,103 @@ body[data-talos-vault-theme="geometric-modern"] :is(.markdown-source-view.mod-cm
 	cursor: pointer;
 	transition: border-color .16s, background .16s, transform .16s, box-shadow .16s;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action:hover {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action:hover {
 	border-color: color-mix(in srgb,var(--module-unified-ac) 76%,var(--line));
 	background: color-mix(in srgb,var(--module-unified-ac) 28%,var(--surface-2));
 	box-shadow: 0 0 22px color-mix(in srgb,var(--module-unified-ac) 24%,transparent);
 	transform: translateY(-1px);
 }
-body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action {
+body[data-talos-vault-theme] .talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action {
 	background: color-mix(in srgb,var(--module-unified-ac) 10%,var(--surface-2)) !important;
 	color: var(--ink) !important;
 	border-color: color-mix(in srgb,var(--module-unified-ac) 32%,var(--line)) !important;
 	border-radius: 8px !important;
 }
-body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action:hover {
+body[data-talos-vault-theme] .talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action:hover {
 	background: color-mix(in srgb,var(--module-unified-ac) 28%,var(--surface-2)) !important;
 	border-color: color-mix(in srgb,var(--module-unified-ac) 76%,var(--line)) !important;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action span:last-child {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action span:last-child {
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action-icon {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action-icon {
 	display: grid;
 	place-items: center;
 	flex: 0 0 auto;
 	color: var(--module-unified-ac);
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action-icon svg {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action-icon svg {
 	width: 15px;
 	height: 15px;
 }
 
 @media (max-width: 1100px) {
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero {
 		grid-template-columns: 1fr;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-actions {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-actions {
 		justify-content: flex-start;
 	}
 }
 
 @media (max-width: 680px) {
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero {
 		padding: 13px;
 		gap: 12px;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main {
 		align-items: flex-start;
 		min-height: auto;
 		padding: 12px;
 		box-shadow: none;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-icon {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-icon {
 		width: 44px;
 		height: 44px;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-icon svg {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-icon svg {
 		width: 22px;
 		height: 22px;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
 		font-size: 20px;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy p {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy p {
 		font-size: 12.5px;
 		line-height: 1.55;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stats {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stats {
 		grid-template-columns: 1fr;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat {
 		min-height: 76px;
 		box-shadow: none;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
 		font-size: 20px;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action {
 		flex: 1 1 128px;
 		min-width: 0;
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero,
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main,
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-icon,
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat,
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero,
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main,
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-icon,
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat,
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action {
 		animation: none;
 		transition: none;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main:hover,
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main:hover .module-hero-icon,
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat:hover,
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action:hover {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main:hover,
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main:hover .module-hero-icon,
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat:hover,
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action:hover {
 		transform: none;
 	}
 }
@@ -6055,26 +6055,26 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
    ③ 标题/描述拉开层级。等 specificity 后置覆盖上方基础规则，
    各主题的颜色/hover 覆盖因 specificity 更高不受影响。
    ============================================================ */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero {
 	grid-template-columns: minmax(300px,.9fr) minmax(440px,1.1fr);
 	align-items: stretch;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stats {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stats {
 	grid-template-columns: repeat(auto-fit,minmax(150px,1fr));
 	gap: 12px 14px;
 	align-self: stretch;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat {
 	min-height: 132px;
 	justify-content: center;
 	padding: 14px 16px;
 }
 /* 文字层级：label 克制、数字锚点、说明弱化 */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
 	font-size: 11px;
 	font-weight: 500;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
 	margin: 4px 0 3px;
 	font-size: 32px;
 	font-weight: 700;
@@ -6082,14 +6082,14 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
 	color: var(--stat-ac, var(--ink));
 	text-shadow: none;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
 	font-size: 10.5px;
 }
 /* 主卡：标题加重、描述收敛，避免与数字抢层级 */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
 	font-size: 26px;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy p {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy p {
 	font-size: 12.5px;
 	max-width: 62ch;
 }
@@ -6097,16 +6097,16 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
 /* 窄屏兜底：本段在 8527 媒体查询之后，须重申断点内的小尺寸，
    否则上面的 32px 数字会穿透到移动端单列布局 */
 @media (max-width: 680px) {
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stats {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stats {
 		grid-template-columns: 1fr;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat {
 		min-height: 76px;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
 		font-size: 24px;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy h2 {
 		font-size: 20px;
 	}
 }
@@ -6267,7 +6267,7 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
    批次 1 的舞台改挂到每页 module-hero 内（统计卡与操作按钮之间整行）。
    总览页仍用共享 Hero 里的原始舞台，不受影响。
    ============================================================ */
-.talos-console:not([data-talos-page="overview"]) .module-hero .talos-pixel-patrol.in-module-hero {
+.talos-console:not([data-talos-page="today"]) .module-hero .talos-pixel-patrol.in-module-hero {
 	position: relative;
 	grid-column: 1 / -1;
 	left: auto;
@@ -6279,7 +6279,7 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
 	--pixel-scale: 1.2;
 	--pixel-ac: var(--ac);
 }
-.talos-console:not([data-talos-page="overview"]) .module-hero .talos-pixel-patrol .talos-pixel-bot {
+.talos-console:not([data-talos-page="today"]) .module-hero .talos-pixel-patrol .talos-pixel-bot {
 	top: 10px;
 }
 
@@ -6318,20 +6318,20 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
 }
 
 /* --- 2. 舞台尺寸与首页一致（1.55 / 64px / top 4px） --- */
-.talos-console:not([data-talos-page="overview"]) .module-hero .talos-pixel-patrol.in-module-hero {
+.talos-console:not([data-talos-page="today"]) .module-hero .talos-pixel-patrol.in-module-hero {
 	height: 64px;
 	--pixel-scale: 1.55;
 }
-.talos-console:not([data-talos-page="overview"]) .module-hero .talos-pixel-patrol .talos-pixel-bot {
+.talos-console:not([data-talos-page="today"]) .module-hero .talos-pixel-patrol .talos-pixel-bot {
 	top: 4px;
 }
 
 /* --- 3. 页面标题 h1（首页同款字体）布局适配 + 主卡比例 --- */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-copy h1.module-hero-title {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-copy h1.module-hero-title {
 	margin: 4px 0 8px;
 	max-width: none;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main {
 	min-height: 172px;
 	align-items: center;
 }
@@ -6352,7 +6352,7 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
    2. 统计副卡等比缩小 ~25%（高度/数字/内边距同步收敛），
       主卡（大标题 + 描述）为绝对主角，副卡退为辅助信息。
    ============================================================ */
-.talos-console.theme-geometric-modern:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-icon {
+.talos-console.theme-geometric-modern:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-icon {
 	border: 2px solid var(--gm-ink);
 	border-radius: 50%;
 	background: var(--gm-third);
@@ -6360,19 +6360,19 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
 }
 
 /* --- 副卡等比缩小，分清主次 --- */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat {
 	min-height: 104px;
 	padding: 10px 12px;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
 	margin: 3px 0 2px;
 	font-size: 24px;
 	line-height: 1.1;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
 	font-size: 10.5px;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat small {
 	font-size: 10px;
 }
 
@@ -6388,38 +6388,38 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
    ============================================================ */
 
 /* 主卡：跨两行，绝对主角 */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main {
 	grid-column: 1;
 	grid-row: 1 / 3;
 	align-self: stretch;
 }
 /* 操作按钮：右上，小尺寸横排 */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-actions {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-actions {
 	grid-column: 2;
 	grid-row: 1;
 	justify-content: flex-end;
 	align-content: start;
 }
 /* 副卡组：右下，再次等比缩小（数字 20px / 高 88px），与主卡拉开量级 */
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stats {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stats {
 	grid-column: 2;
 	grid-row: 2;
 	align-self: end;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat {
 	min-height: 88px;
 	padding: 8px 10px;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat b {
 	font-size: 20px;
 	margin: 2px 0;
 }
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat span {
 	font-size: 10px;
 }
 
 /* 小人舞台：全宽页脚轨道，负 margin 抵消 panel padding，轨道贴 hero 下边框 */
-.talos-console:not([data-talos-page="overview"]) .module-hero .talos-pixel-patrol.in-module-hero {
+.talos-console:not([data-talos-page="today"]) .module-hero .talos-pixel-patrol.in-module-hero {
 	grid-column: 1 / -1;
 	grid-row: 3;
 	height: 58px;           /* track 位于 54–58px，恰好压在舞台底边 = panel 下边框 */
@@ -6429,26 +6429,26 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
 
 /* --- 响应式重申（本段在既有媒体查询之后，必须在断点内复原布局） --- */
 @media (max-width: 1100px) {
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main {
 		grid-column: 1;
 		grid-row: 1;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-actions {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-actions {
 		grid-column: 1;
 		grid-row: 2;
 		justify-content: flex-start;
 	}
-	.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stats {
+	.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stats {
 		grid-column: 1;
 		grid-row: 3;
 	}
-	.talos-console:not([data-talos-page="overview"]) .module-hero .talos-pixel-patrol.in-module-hero {
+	.talos-console:not([data-talos-page="today"]) .module-hero .talos-pixel-patrol.in-module-hero {
 		grid-column: 1;
 		grid-row: 4;
 	}
 }
 @media (max-width: 680px) {
-	.talos-console:not([data-talos-page="overview"]) .module-hero .talos-pixel-patrol.in-module-hero {
+	.talos-console:not([data-talos-page="today"]) .module-hero .talos-pixel-patrol.in-module-hero {
 		margin: 8px -13px -13px;  /* 680px 断点 panel padding 为 13px */
 	}
 }
@@ -7254,7 +7254,7 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
 
 /* reduced-motion：图形符呼吸灯关闭，底纹本为静态不受影响 */
 @media (prefers-reduced-motion: reduce) {
-	.talos-console:not([data-talos-page="overview"]) .section-title::before {
+	.talos-console:not([data-talos-page="today"]) .section-title::before {
 		animation: none !important;
 	}
 }
@@ -7268,23 +7268,23 @@ body[data-talos-vault-theme] .talos-console:not([data-talos-page="overview"]):no
    颜色维持各卡 accent（用户要求「统一粗细」）；主卡左侧
    6px 强调条在 2px 主题下保留，soft-relief 下随边框一起去掉。
    ============================================================ */
-.talos-console.theme-geometric-modern:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat,
-.talos-console.theme-geometric-modern:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action,
-.talos-console.theme-executive-brief:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat,
-.talos-console.theme-executive-brief:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action,
-.talos-console.theme-paper-ink:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat,
-.talos-console.theme-paper-ink:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action {
+.talos-console.theme-geometric-modern:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat,
+.talos-console.theme-geometric-modern:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action,
+.talos-console.theme-executive-brief:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat,
+.talos-console.theme-executive-brief:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action,
+.talos-console.theme-paper-ink:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat,
+.talos-console.theme-paper-ink:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action {
 	border-width: 2px;
 }
-.talos-console.theme-geometric-modern:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main,
-.talos-console.theme-executive-brief:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main,
-.talos-console.theme-paper-ink:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main {
+.talos-console.theme-geometric-modern:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main,
+.talos-console.theme-executive-brief:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main,
+.talos-console.theme-paper-ink:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main {
 	border-width: 2px;
 	border-left-width: 6px;
 }
-.talos-console.theme-soft-relief:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-main,
-.talos-console.theme-soft-relief:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-stat,
-.talos-console.theme-soft-relief:not([data-talos-page="overview"]):not([data-talos-page="jarvis"]) .module-hero-action {
+.talos-console.theme-soft-relief:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-main,
+.talos-console.theme-soft-relief:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-stat,
+.talos-console.theme-soft-relief:not([data-talos-page="today"]):not([data-talos-page="jarvis"]) .module-hero-action {
 	border-width: 0;
 }
 

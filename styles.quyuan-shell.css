@@ -998,7 +998,16 @@ body[data-talos-vault-theme] .talos-quyuan-shell
   overflow: visible;
 }
 
-.talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
+  .main {
+  min-width: 0;
+  padding: 18px !important;
+}
+
+/* Hero 所在页的页面作用域从 never-produced 的 overview 改成 today 后，
+   今日页不再被上面的 :not(today) 命中；这里把原由它继承到的 padding 显式补回，
+   避免出现未经声明的布局变更。 */
+.talos-console[data-talos-page="today"]
   .main {
   min-width: 0;
   padding: 18px !important;
@@ -1841,7 +1850,12 @@ body[data-talos-vault-theme] .talos-console .tq-voice
     width: 260px;
   }
 
-  .talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+  .talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
+    .main {
+    padding: 14px !important;
+  }
+
+  .talos-console[data-talos-page="today"]
     .main {
     padding: 14px !important;
   }
@@ -1879,7 +1893,12 @@ body[data-talos-vault-theme] .talos-console .tq-voice
     min-height: 44px;
   }
 
-  .talos-console:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+  .talos-console:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
+    .main {
+    padding: 10px !important;
+  }
+
+  .talos-console[data-talos-page="today"]
     .main {
     padding: 10px !important;
   }

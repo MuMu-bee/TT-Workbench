@@ -107,10 +107,38 @@ export function buildLensData(app: App, collected: Collected, peer: TalosPeerSta
 	};
 }
 
-/** 目录下的 Markdown 笔记（按修改时间倒序），供收集 / 知识 / 身份等模块的卡片列表使用。 */
-export function listNotes(app: App, folder: string, options: { skipReadme?: boolean } = {}): LensNote[] {
+/**
+ * Q-PER9：listNotes 是全库 getMarkdownFiles + 排序 + 逐篇 getAllTags。
+ * 同一次数据快照（同一个 capturedAt 代际）内的重建结果完全相同，按目录缓存起来；
+ * setData 刷新出新的 capturedAt 时整个缓存作废。
+ */
+const notesCache = new Map<string, LensNote[]>();
+let notesCacheGeneration: number | null = null;
+
+/**
+ * 目录下的 Markdown 笔记（按修改时间倒序），供收集 / 知识 / 身份等模块的卡片列表使用。
+ * 传 `generation`（调用方用 capturedAt）时按代际缓存：代际一变就整体失效。
+ */
+export function listNotes(
+	app: App,
+	folder: string,
+	options: { skipReadme?: boolean; generation?: number } = {}
+): LensNote[] {
+	const generation = options.generation;
+	// 不传 generation 就完全不缓存：默认行为保持每次重读，避免无代际键的调用方读到永久旧数据。
+	const useCache = typeof generation === "number";
+	const cacheKey = `${folder}|${options.skipReadme ? "1" : "0"}`;
+	if (useCache) {
+		if (generation !== notesCacheGeneration) {
+			notesCache.clear();
+			notesCacheGeneration = generation;
+		}
+		const hit = notesCache.get(cacheKey);
+		// 交副本：调用方对返回值就地排序也不会污染缓存。
+		if (hit) return hit.slice();
+	}
 	const prefix = folder.replace(/\/+$/, "") + "/";
-	return app.vault.getMarkdownFiles()
+	const notes = app.vault.getMarkdownFiles()
 		.filter((file) => file.path.startsWith(prefix) && !(options.skipReadme && file.basename === "_README"))
 		.sort((a, b) => b.stat.mtime - a.stat.mtime)
 		.map((file) => {
@@ -125,6 +153,8 @@ export function listNotes(app: App, folder: string, options: { skipReadme?: bool
 				tags,
 			};
 		});
+	if (useCache) notesCache.set(cacheKey, notes);
+	return notes.slice();
 }
 
 export function moduleDir(paths: VaultPaths, key: Parameters<VaultPaths["dir"]>[0]): string {

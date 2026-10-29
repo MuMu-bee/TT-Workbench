@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, pluginSource as readPluginSource } from "./helpers/source-text";
+import { expectSourceContains, functionSource, pluginSource as readPluginSource } from "./helpers/source-text";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const readSrc = (rel: string): string =>
@@ -102,7 +102,15 @@ describe("voice read-only and bounded Qwen search policy", () => {
 			expect(realtime).toContain(`name: "${name}"`);
 		}
 		expect(realtime).toContain('type: "function_call_output"');
-		expect(realtime).toContain('type === "response.function_call_arguments.done"');
+		// Q-ARC12 / ROADMAP.md:32 的事件表化：`response.function_call_arguments.done`
+		// 不再以 `if (type === ...)` 形式内联在长函数里，而是作为事件表的一个键存在，
+		// 且必须仍然分派到 `handleFunctionCall`（这条比原来只锁事件名的断言更强：
+		// 它同时锁住「事件被登记」和「登记到的处理器仍是工具调用」）。
+		// 走受限入口 expectSourceContains（先剔除 import 块），import 行无法满足（Q-TES5）。
+		expectSourceContains("src/quyuan/qwen-realtime-voice.ts",
+			'"response.function_call_arguments.done": "onFunctionCallArgumentsDone"');
+		expectSourceContains("src/quyuan/qwen-realtime-voice.ts",
+			"void this.handleFunctionCall(event);");
 		expect(main).toContain('input.kind === "vault-snippet"');
 		expect(main).toContain('sourceKinds: ["vault-snippet"]');
 		expect(realtime).not.toContain('name: "write_vault"');

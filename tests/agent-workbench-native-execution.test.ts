@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { createAgentEvent, type AgentEvent } from "../src/agent-workbench/contracts/agent-events";
 import type {
@@ -41,13 +42,14 @@ function fixtures(
 	send: AgentRuntimeAdapter["send"],
 	preflightEgress?: ConstructorParameters<typeof AgentExecutionCoordinator>[0]["preflightEgress"],
 	runtimeOverrides: Partial<AgentRuntimeAdapter> = {},
+	storeOverrides: { writeBindings?: (value: Record<string, unknown>) => Promise<void> } = {},
 ) {
 	const files = new MemoryFiles();
 	const conversations = new ConversationService(new PortableConversationStore(files));
 	let bindings: Record<string, unknown> = {};
 	const coordinator = new WorkbenchConversationCoordinator(conversations, new RuntimeBindingStore({
 		read: async () => bindings,
-		write: async (value) => { bindings = structuredClone(value); },
+		write: storeOverrides.writeBindings ?? (async (value) => { bindings = structuredClone(value); }),
 	}));
 	let ledgerState: Awaited<ReturnType<ConversationInputLedgerAdapter["read"]>> = null;
 	const ledger = new ConversationInputLedger({
@@ -81,6 +83,56 @@ async function takeEvent(iterator: AsyncGenerator<AgentEvent>): Promise<AgentEve
 	const result = await iterator.next();
 	if (result.done) throw new Error("expected another agent event");
 	return result.value;
+}
+
+/** 按 Store 的落盘布局直接写事件文件，用来构造「旧运行时遗留」的历史状态。 */
+async function writeStoredEvent(
+	files: MemoryFiles,
+	conversationId: string,
+	event: Record<string, unknown>,
+): Promise<void> {
+	const digest = createHash("sha256").update(String(event.eventId)).digest("hex");
+	await files.write(
+		`.talos/agent-workbench/v1/conversations/${conversationId}/events/${digest}.json`,
+		`${JSON.stringify(event, null, 2)}\n`,
+	);
+}
+
+/**
+ * Service 级装配：`conversationCoordinator` + `inputLedger` + `vaultRoot` 三者齐备，
+ * 才让 `AgentWorkbenchService` 真的建出 `execution`（agent-workbench-service.ts:85）。
+ */
+function serviceFixture(send: AgentRuntimeAdapter["send"]) {
+	const files = new MemoryFiles();
+	const conversations = new ConversationService(new PortableConversationStore(files));
+	let bindings: Record<string, unknown> = {};
+	const conversationCoordinator = new WorkbenchConversationCoordinator(conversations, new RuntimeBindingStore({
+		read: async () => bindings,
+		write: async (value) => { bindings = structuredClone(value); },
+	}));
+	let ledgerState: Awaited<ReturnType<ConversationInputLedgerAdapter["read"]>> = null;
+	const inputLedger = new ConversationInputLedger({
+		read: async () => structuredClone(ledgerState),
+		write: async (value) => { ledgerState = structuredClone(value); },
+	});
+	const runtime: AgentRuntimeAdapter = {
+		id: "ohmypi",
+		probe: async () => ({ runtimeId: "ohmypi", status: "ready" }),
+		listModels: async () => [],
+		createSession: async (_input: CreateSessionInput) => ({ runtimeId: "ohmypi", sessionId: "native-1" }),
+		resumeSession: async () => undefined,
+		send,
+		cancel: async () => undefined,
+		dispose: async () => undefined,
+		capabilities: unavailableCapabilities,
+	};
+	const service = new AgentWorkbenchService({
+		conversationCoordinator,
+		inputLedger,
+		vaultRoot: "/synthetic/vault",
+		createRuntime: async () => runtime,
+	});
+	return { files, conversations, service };
 }
 
 describe("TALOS native execution coordinator", () => {
@@ -369,14 +421,17 @@ describe("TALOS native execution coordinator", () => {
 		const switchGate = new Promise<void>((resolve) => { releaseSwitch = resolve; });
 		vi.spyOn(coordinator, "switchRuntime").mockImplementation(async () => { await switchGate; return false; });
 		const service = new AgentWorkbenchService({ conversationCoordinator: coordinator });
-		const switching = service.switchConversationRuntime(conversation.conversationId, "claude", "claude-test");
-		expect(service.getSelectedRuntimeId()).toBe("claude");
+		// RuntimeId 已收窄为 "ohmypi"，无法再用两个不同运行时名区分「切换目标」与
+		// 「另一个标签页的选择」；这里改用同一运行时下的不同 model 保持原断言强度：
+		// 落盘 selection 必须冻结成切换目标那一刻的快照，而服务当前选择仍是后设的值。
+		const switching = service.switchConversationRuntime(conversation.conversationId, "ohmypi", "target-model");
+		expect(service.getSelection()).toEqual({ runtimeId: "ohmypi", model: "target-model" });
 		service.selectRuntime("ohmypi", "pi-test");
 		releaseSwitch();
 		await switching;
 		expect((await conversations.store.load(conversation.conversationId)).manifest.selection).toEqual({
-			runtimeId: "claude",
-			model: "claude-test",
+			runtimeId: "ohmypi",
+			model: "target-model",
 		});
 		expect(service.getSelection()).toEqual({ runtimeId: "ohmypi", model: "pi-test" });
 	});
@@ -502,5 +557,205 @@ describe("TALOS native execution coordinator", () => {
 
 		expect(emitted.filter((event) => event.type === "assistant.final")).toHaveLength(1);
 		expect((await fixture.conversations.store.load(conversation.conversationId)).events.filter((event) => event.type === "assistant.final")).toHaveLength(1);
+	});
+
+	it("rejects compact while a turn is in flight without disposing the live runtime", async () => {
+		let releaseSend!: () => void;
+		let sending = false;
+		const sendGate = new Promise<void>((resolve) => { releaseSend = resolve; });
+		const dispose = vi.fn(async () => undefined);
+		const compact = vi.fn(async () => undefined);
+		const fixture = fixtures(async function* (turn) {
+			sending = true;
+			yield createAgentEvent({
+				eventId: "accepted-delta",
+				conversationId: turn.conversationId,
+				turnId: turn.turnId,
+				runtimeId: "ohmypi",
+				type: "assistant.delta",
+				timestamp: new Date().toISOString(),
+				payload: { text: "working" },
+			});
+			await sendGate;
+			yield createAgentEvent({
+				eventId: "finished-after-compact",
+				conversationId: turn.conversationId,
+				turnId: turn.turnId,
+				runtimeId: "ohmypi",
+				type: "turn.finished",
+				timestamp: new Date().toISOString(),
+				payload: {},
+			});
+		}, undefined, { dispose, compact });
+		const conversation = await fixture.conversations.create();
+		const running = (async () => {
+			for await (const event of fixture.execution.execute(conversation, {
+				conversationId: conversation.conversationId,
+				input: [{ type: "text", text: "long turn" }],
+				workflow: "plan",
+				permissionMode: "ask",
+				toolPolicy: { kind: "read-only" },
+			})) void event;
+		})();
+		await vi.waitFor(() => expect(sending).toBe(true));
+
+		// 回合在飞：compact 不得复用租约，必须返回 false 且一次 dispose 都不发生。
+		await expect(fixture.execution.compact(conversation.conversationId)).resolves.toBe(false);
+		expect(compact).not.toHaveBeenCalled();
+		expect(dispose).toHaveBeenCalledTimes(0);
+
+		releaseSend();
+		await running;
+		// 回合正常收尾后该租约才被 dispose，且整轮只 dispose 一次（没有被 compact 提前摘走）。
+		expect(dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it("disposes the runtime when native session creation fails", async () => {
+		const dispose = vi.fn(async () => undefined);
+		const createSession = vi.fn(async () => { throw new Error("OhMyPi 新会话已取消"); });
+		const fixture = fixtures(async function* () {
+			yield createAgentEvent({
+				eventId: "unexpected",
+				conversationId: "unexpected",
+				turnId: "unexpected",
+				runtimeId: "ohmypi",
+				type: "turn.finished",
+				timestamp: new Date().toISOString(),
+				payload: {},
+			});
+		}, undefined, { createSession, dispose });
+		const conversation = await fixture.conversations.create();
+		await expect(async () => {
+			for await (const event of fixture.execution.execute(conversation, {
+				conversationId: conversation.conversationId,
+				input: [{ type: "text", text: "spawn then fail" }],
+				workflow: "plan",
+				permissionMode: "ask",
+				toolPolicy: { kind: "read-only" },
+			})) throw new Error(`unexpected event: ${event.type}`);
+		}).rejects.toThrow("OhMyPi 新会话已取消");
+
+		expect(createSession).toHaveBeenCalledTimes(1);
+		expect(dispose).toHaveBeenCalledTimes(1);
+		// 辅助断言：修前修后都是 false，不作为判别依据。
+		expect(fixture.execution.hasActiveTurn(conversation.conversationId)).toBe(false);
+	});
+
+	it("disposes the runtime when the native binding cannot be persisted", async () => {
+		const dispose = vi.fn(async () => undefined);
+		const fixture = fixtures(async function* () {
+			yield createAgentEvent({
+				eventId: "unexpected",
+				conversationId: "unexpected",
+				turnId: "unexpected",
+				runtimeId: "ohmypi",
+				type: "turn.finished",
+				timestamp: new Date().toISOString(),
+				payload: {},
+			});
+		}, undefined, { dispose }, {
+			writeBindings: async () => { throw new Error("binding 写盘失败"); },
+		});
+		const conversation = await fixture.conversations.create();
+		await expect(async () => {
+			for await (const event of fixture.execution.execute(conversation, {
+				conversationId: conversation.conversationId,
+				input: [{ type: "text", text: "session created, binding fails" }],
+				workflow: "plan",
+				permissionMode: "ask",
+				toolPolicy: { kind: "read-only" },
+			})) throw new Error(`unexpected event: ${event.type}`);
+		}).rejects.toThrow("binding 写盘失败");
+
+		expect(dispose).toHaveBeenCalledTimes(1);
+		expect(fixture.execution.hasActiveTurn(conversation.conversationId)).toBe(false);
+	});
+
+	it("carries the last handoff envelope into the next turn history", async () => {
+		const observed: RuntimeTurn[] = [];
+		const fixture = serviceFixture(async function* (turn) {
+			observed.push(turn);
+			yield createAgentEvent({
+				eventId: "handoff-turn-finished",
+				conversationId: turn.conversationId,
+				turnId: turn.turnId,
+				runtimeId: "ohmypi",
+				type: "turn.finished",
+				timestamp: "2026-08-30T00:00:02.000Z",
+				payload: {},
+			});
+		});
+		await fixture.service.initialize();
+		const conversation = await fixture.conversations.create();
+		// handoff.created 当前在单运行时下不可达（switchRuntime 对同值早退），
+		// 只能直接落盘构造：legacy codex 的两条消息 + 一条 toRuntimeId=ohmypi 的信封。
+		await writeStoredEvent(fixture.files, conversation.conversationId, {
+			schemaVersion: 1,
+			eventId: "legacy-user-1",
+			conversationId: conversation.conversationId,
+			turnId: "legacy-turn-1",
+			runtimeId: "codex",
+			type: "user.message",
+			timestamp: "2026-08-30T00:00:00.000Z",
+			payload: { text: "U-1 旧运行时的用户消息" },
+		});
+		await writeStoredEvent(fixture.files, conversation.conversationId, {
+			schemaVersion: 1,
+			eventId: "legacy-assistant-1",
+			conversationId: conversation.conversationId,
+			turnId: "legacy-turn-1",
+			runtimeId: "codex",
+			type: "assistant.final",
+			timestamp: "2026-08-30T00:00:01.000Z",
+			payload: { text: "A-1 旧运行时的回答" },
+		});
+		await writeStoredEvent(fixture.files, conversation.conversationId, {
+			schemaVersion: 1,
+			eventId: "legacy-handoff-1",
+			conversationId: conversation.conversationId,
+			turnId: "handoff-1",
+			// handoff.created 的 event.runtimeId 是 fromRuntimeId（coordinator:135），
+			// 过滤必须看 payload.toRuntimeId。
+			runtimeId: "codex",
+			type: "handoff.created",
+			timestamp: "2026-08-30T00:00:01.500Z",
+			payload: {
+				schemaVersion: 1,
+				conversationId: conversation.conversationId,
+				fromRuntimeId: "codex",
+				toRuntimeId: "ohmypi",
+				goal: "",
+				recentMessages: [
+					{ role: "user", text: "U-1 旧运行时的用户消息" },
+					{ role: "assistant", text: "A-1 旧运行时的回答" },
+				],
+				incompleteTasks: [],
+				toolResultSummaries: [],
+				vaultRelativeReferences: [],
+			},
+		});
+		await fixture.conversations.updateSelection(conversation.conversationId, { runtimeId: "ohmypi" });
+		// 先确认构造的落盘状态真的被读回来（否则下面的断言会因「什么都没读到」而空转）。
+		const seeded = await fixture.service.loadConversation(conversation.conversationId);
+		expect(seeded.events.map((event) => event.eventId)).toEqual(
+			expect.arrayContaining(["legacy-user-1", "legacy-assistant-1", "legacy-handoff-1"]),
+		);
+		expect(seeded.manifest.selection.runtimeId).toBe("ohmypi");
+
+		for await (const event of fixture.service.executeConversationTurn(conversation.conversationId, {
+			input: [{ type: "text", text: "继续" }],
+			toolPolicy: { kind: "read-only" },
+		})) void event;
+
+		expect(observed).toHaveLength(1);
+		const history = observed[0]?.history ?? [];
+		expect(history.length).toBeGreaterThanOrEqual(2);
+		expect(history.map((item) => item.text)).toEqual(expect.arrayContaining([
+			"U-1 旧运行时的用户消息",
+			"A-1 旧运行时的回答",
+		]));
+		// 信封里已带的两条不应在尾部再重复一份，但本次新输入不计入 history。
+		expect(history).toHaveLength(2);
+		expect(history.map((item) => item.role)).toEqual(["user", "assistant"]);
 	});
 });

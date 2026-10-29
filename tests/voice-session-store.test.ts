@@ -6,15 +6,11 @@ import {
 	type VoiceSessionPersistence,
 	type VoiceSessionSnapshot,
 } from "../src/quyuan/voice-session-store";
-import { viewSource as readViewSource } from "./helpers/source-text";
+import { viewSource as readViewSource, expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const voicePanelSource = readFileSync(
 	`${projectRoot}src/quyuan/voice-panel.ts`,
-	"utf8"
-);
-const voiceDriverSource = readFileSync(
-	`${projectRoot}src/quyuan/native-voice-driver.ts`,
 	"utf8"
 );
 const viewSource = readViewSource();
@@ -165,9 +161,12 @@ describe("VoiceSessionStore", () => {
 		const writes: string[] = [];
 		let activeWrites = 0;
 		let maxActiveWrites = 0;
-		let releaseFirst: (() => void) | null = null;
+		// 用 noop 默认值而不是 `(() => void) | null`：Promise executor 是同步执行的，
+		// tsc 的流分析不会建模这点，会把后面的 `releaseFirst?.(...)` 收窄成 never
+		// （TS2349）。默认 noop 的语义与可选调用一致，不改变断言强度。
+		let releaseFirst: () => void = () => undefined;
 		const firstBlocked = new Promise<void>((resolve) => {
-			releaseFirst = resolve;
+			releaseFirst = () => resolve();
 		});
 		const store = new VoiceSessionStore({
 			read: () => "",
@@ -266,30 +265,30 @@ describe("VoiceSessionStore", () => {
 	});
 
 	it("keeps the shipped voice page on the isolated store and shared gateway", () => {
-		expect(voicePanelSource).toContain(
+		expectSourceContains("src/quyuan/voice-panel.ts", 
 			'root.setAttribute("data-session-namespace", "voice")'
 		);
-		expect(voicePanelSource).toContain(
+		expectSourceContains("src/quyuan/voice-panel.ts", 
 			"readLegacy: () => this.settings.jarvisTabsJson"
 		);
-		expect(voicePanelSource).toContain("fallbackToPushToTalk");
-		expect(voiceDriverSource).toContain("service.authorizeTool");
-		expect(voiceDriverSource).not.toContain("evaluateVoiceToolRisk");
-		expect(voiceDriverSource).not.toContain("resolveVoiceToolApproval");
-		expect(voicePanelSource).toContain("appendFinalTranscript");
-		expect(voicePanelSource).toContain("onAudit: (event)");
-        expect(voicePanelSource).toContain('"realtime-" + event.type + "-" + event.reasonCode');
+		expectSourceContains("src/quyuan/voice-panel.ts", "fallbackToPushToTalk");
+		expectSourceContains("src/quyuan/native-voice-driver.ts", "service.authorizeTool");
+		expectSourceNotContains("src/quyuan/native-voice-driver.ts", "evaluateVoiceToolRisk");
+		expectSourceNotContains("src/quyuan/native-voice-driver.ts", "resolveVoiceToolApproval");
+		expectSourceContains("src/quyuan/voice-panel.ts", "appendFinalTranscript");
+		expectSourceContains("src/quyuan/voice-panel.ts", "onAudit: (event)");
+        expectSourceContains("src/quyuan/voice-panel.ts", '"realtime-" + event.type + "-" + event.reasonCode');
 		const goToChat = voicePanelSource.slice(
 			voicePanelSource.indexOf("private goToChat"),
 			voicePanelSource.indexOf("private stopCurrentWork")
 		);
 		expect(goToChat).toContain("++this.lifecycleGeneration");
 		expect(voicePanelSource).not.toMatch(/LocalAsr|VadMic|buildAsr|asrHandlers|bundled-local-voice-runtime/);
-		expect(voiceDriverSource).not.toContain(
+		expectSourceNotContains("src/quyuan/native-voice-driver.ts", 
 			"histories: Record<InteractionChannel"
 		);
-		expect(voiceDriverSource).toContain("conversationId: session.conversationId");
-		expect(voiceDriverSource).not.toContain("this.approve(turn.channel, session.binding.sessionId");
+		expectSourceContains("src/quyuan/native-voice-driver.ts", "conversationId: session.conversationId");
+		expectSourceNotContains("src/quyuan/native-voice-driver.ts", "this.approve(turn.channel, session.binding.sessionId");
 		expect(viewSource).toContain("new QuyuanVoicePanel");
 	});
 });

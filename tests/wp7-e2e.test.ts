@@ -21,6 +21,7 @@ import type {
 } from "../src/ai/provider/types";
 import { proposeAnswerWriteback } from "../src/ai/writeback-policy";
 import { createBuiltinActionRegistry } from "../src/action-core/builtin-actions";
+import { noteScopesFromSchema } from "../src/action-core/note-scopes";
 import {
 	CANONICAL_REGISTRY_PATH,
 	CanonicalRegistryReader,
@@ -32,10 +33,16 @@ import {
 	TalosTaskRunner,
 	type TaskTimerHost,
 } from "../src/task-core/task-runner";
+import { resolveSchema } from "../src/data/schema";
 import { TalosPageRouter } from "../src/ui/page-router";
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const fixtureRoot = join(testDirectory, "../fixtures/wp7-vault");
+// 回写目录由 schema 派生（生产侧同样从 TalosVaultSchema 取，不再写死旧目录名）。
+const writebackFolders = (() => {
+	const schema = resolveSchema(undefined);
+	return { insights: schema.insights, output: schema.output };
+})();
 const nodeTimers: TaskTimerHost = {
 	schedule: (callback, timeoutMs) => nodeSetTimeout(callback, timeoutMs),
 	cancel: (handle) => nodeClearTimeout(handle as NodeJS.Timeout),
@@ -187,7 +194,8 @@ describe("WP7 deterministic mock acceptance", () => {
 			},
 			decideApproval: async () => ({ decided: true }),
 			decidePreference: async () => ({ decided: true }),
-		});
+			moveInboxNote: async () => ({ moved: true }),
+		}, noteScopesFromSchema(resolveSchema(undefined)));
 		const runner = new TalosTaskRunner(
 			actionRegistry,
 			taskStore,
@@ -199,12 +207,12 @@ describe("WP7 deterministic mock acceptance", () => {
 			actionId: "create-note",
 			idempotencyKey: "wp7-b-one-click",
 			input: {
-				targetPath: "30 洞察/B类动作.md",
+				targetPath: "02-洞察/B类动作.md",
 				content: "WP7 synthetic B-class result",
 			},
 			request: {
 				readPaths: [],
-				writePaths: ["30 洞察/B类动作.md"],
+				writePaths: ["02-洞察/B类动作.md"],
 				effects: ["write"],
 			},
 		});
@@ -221,10 +229,10 @@ describe("WP7 deterministic mock acceptance", () => {
 		});
 		expect(bTask.recoveryId).toBeTruthy();
 		expect(recoveryStore.get(bTask.recoveryId ?? "")?.targetPaths).toEqual([
-			"30 洞察/B类动作.md",
+			"02-洞察/B类动作.md",
 		]);
 
-		const approvalTarget = "70 输出/批准后写入.md";
+		const approvalTarget = "输出/批准后写入.md";
 		const writesBeforeProposal = vault.writes.length;
 		const proposal = await runner.run({
 			actionId: "publish-backfill",
@@ -268,11 +276,14 @@ describe("WP7 deterministic mock acceptance", () => {
 			["knowledge", "合成洞察"],
 			["output", "合成输出"],
 		] as const) {
-			const writeback = proposeAnswerWriteback({
-				intent,
-				title,
-				content: `WP7 synthetic ${intent} writeback`,
-			});
+			const writeback = proposeAnswerWriteback(
+				{
+					intent,
+					title,
+					content: `WP7 synthetic ${intent} writeback`,
+				},
+				writebackFolders
+			);
 			expect(writeback?.approvalRequired).toBe(true);
 			if (!writeback) throw new Error("Missing writeback proposal");
 			await runner.run({
@@ -292,8 +303,8 @@ describe("WP7 deterministic mock acceptance", () => {
 		}
 		expect(vault.writes).toEqual(
 			expect.arrayContaining([
-				"30 洞察/合成洞察.md",
-				"70 输出/合成输出.md",
+				"02-洞察/合成洞察.md",
+				"输出/合成输出.md",
 			])
 		);
 

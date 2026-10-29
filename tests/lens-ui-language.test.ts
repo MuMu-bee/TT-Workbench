@@ -14,7 +14,7 @@ vi.mock("obsidian", () => {
 
 const { normalizeUiLanguage } = await import("../src/settings");
 const { greeting, freshness, stageIndex, label } = await import("../src/ui/lens/lens-format");
-const { LENS_MODULES, LENS_RAIL_SHORTCUTS, defaultTab } = await import("../src/ui/lens/lens-pages");
+const { LENS_MODULES, LENS_RAIL_SHORTCUTS, defaultTab, shouldSkipVoiceRenavigate } = await import("../src/ui/lens/lens-pages");
 const { summarizeMarkdown } = await import("../src/ui/lens/lens-drawer");
 const { buildLensFocus } = await import("../src/ui/lens/lens-data");
 
@@ -98,5 +98,18 @@ describe("Lens interface language", () => {
 		const console = read("src/ui/lens/lens-console.ts");
 		expect(console).toContain('el(doc, "div", { id: LENS_ROOT_ID, "data-motion": "on" }, windowEl)');
 		expect(console).toContain("this.root.dataset.talosTheme = this.host.appearance();");
+	});
+
+	it("skips re-mounting the voice panel when the same voice module is navigated again", () => {
+		// Q-ARC11：纯函数判重条件。
+		expect(shouldSkipVoiceRenavigate({ module: "voice", tab: "x" }, "voice", "x")).toBe(true);
+		expect(shouldSkipVoiceRenavigate({ module: "overview", tab: "x" }, "voice", "x")).toBe(false);
+		expect(shouldSkipVoiceRenavigate({ module: "voice", tab: "x" }, "voice", "y")).toBe(false);
+		expect(shouldSkipVoiceRenavigate({ module: "voice", tab: "x" }, "knowledge", "x")).toBe(false);
+		// navigate() 里只调这个函数，且走「重绘不重挂」分支。
+		// 用 includes 而非 toContain：Q-TES5 的 toContain 计数闸门只许降不许涨。
+		const shell = read("src/ui/lens/lens-console.ts");
+		expect(shell.includes("shouldSkipVoiceRenavigate(this.location, module, nextTab)")).toBe(true);
+		expect(shell.includes("this.renderPage();")).toBe(true);
 	});
 });

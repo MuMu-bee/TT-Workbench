@@ -11,6 +11,11 @@
 // 只读元数据：解析事件的 type / timestamp / runtimeId；正文只做非空布尔判断，
 // 不记录、不输出提示词、凭据、本机绝对路径或正文。不代发任何模型消息。
 //
+// 本门只读 `<vaultRoot>/.talos/agent-workbench/v1/conversations/**/events/*.json`，
+// **不需要**已连接的运行时，也不需要真实 Vault：CI 用 `fixtures/chat-gate/` 的
+// 合成夹具跑（`npm run test:chat-gate:fixture`），针对真实 Vault 的手工跑法
+// （`npm run test:chat-gate <vaultRoot>`）是可选补充。
+//
 //   node agent-workbench-chat-gate.selftest.mjs <vaultRoot> [--since <ISO>] [--runtime <id>]
 //
 // 退出码：0 通过；1 未达门槛；2 参数或路径错误。
@@ -19,7 +24,9 @@ import { readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 
 const EVENTS_ROOT = [".talos", "agent-workbench", "v1", "conversations"];
-const RUNTIME_IDS = new Set(["claude", "codex", "ohmypi"]);
+// 与 src/agent-workbench/contracts/runtime-adapter.ts:9 的 `export type RuntimeId = "ohmypi"`
+// 对齐。claude / codex 已在 1.1.0 的运行时收敛里删除，白名单不再接受它们。
+const RUNTIME_IDS = new Set(["ohmypi"]);
 const EVENT_TYPES = new Set([
 	"user.message", "assistant.start", "assistant.delta", "assistant.final",
 	"thinking.delta", "plan.updated", "context.compacted", "tool.started",
@@ -48,7 +55,7 @@ function parseArgs(argv) {
 			options.since = new Date(sinceMs).toISOString();
 			options.sinceMs = sinceMs;
 		} else if (flag === "--runtime") {
-			if (!RUNTIME_IDS.has(value)) throw new Error("--runtime 必须是 claude、codex 或 ohmypi");
+			if (!RUNTIME_IDS.has(value)) throw new Error("--runtime 必须是 ohmypi");
 			options.runtime = value;
 		} else {
 			throw new Error(`未知参数：${flag}`);

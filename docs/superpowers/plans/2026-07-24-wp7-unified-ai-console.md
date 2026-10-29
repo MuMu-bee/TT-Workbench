@@ -483,7 +483,7 @@ Expected: PASS。
 - Modify: `src/main.ts`
 - Modify: `src/view.ts`
 - Modify: `styles.quyuan-shell.css`
-- Test: `quyuan-v2.selftest.mjs`
+- Test: `quyuan-v2.selftest.mjs`（**未落地**：该 selftest 未随本批次入库，与 `docs/qa/wp7-mock-acceptance.md` 的结论一致）
 
 **Interfaces:**
 

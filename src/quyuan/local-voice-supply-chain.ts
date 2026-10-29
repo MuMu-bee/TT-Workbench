@@ -1,5 +1,9 @@
 // Local ASR/VAD supply-chain boundary.
 //
+// 0 引用，仅作供应链边界的类型留档（`grep -rn "local-voice-supply-chain" src/ tests/`
+// 无命中）。它导出的是本地语音资产协议版本、允许的模型主机白名单与转写器接口，
+// 删掉会缩小未来的供应链约束面，故保留；决定见 `MODIFICATIONS.md`「刻意保留」第 7 条。
+//
 // JavaScript/WASM runtimes must be linked into the plugin at build time. Model
 // bytes may come from the bundle, a verified cache, or (only after explicit
 // consent) the exact HTTPS URL in a pinned manifest. Every source is verified

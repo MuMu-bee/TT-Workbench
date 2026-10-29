@@ -7,6 +7,8 @@ import {
 	createConsoleActionRuntime,
 	type ConsoleActionDependencies,
 } from "../src/console-action-runtime";
+import { noteScopesFromSchema } from "../src/action-core/note-scopes";
+import { resolveSchema } from "../src/data/schema";
 import { MemoryRecoveryStore } from "../src/task-core/recovery-store";
 import type { TaskTimerHost } from "../src/task-core/task-runner";
 import { QuickNote } from "../src/ui/quick-note";
@@ -33,17 +35,19 @@ describe("QuickNote", () => {
 			publishBackfill: noop,
 			decideApproval: noop,
 			decidePreference: noop,
+			moveInboxNote: noop,
 		};
 		const runtime = createConsoleActionRuntime({
 			dependencies,
 			recoveryStore: new MemoryRecoveryStore(),
 			timers: nodeTimers,
+			scopes: noteScopesFromSchema(resolveSchema(undefined)),
 		});
 		const { host, element } = createMiniHost();
 		new QuickNote({
 			parent: host,
 			runtime,
-			targetFolder: "00 收件箱",
+			targetFolder: "00-收件箱",
 			now: () => new Date(2026, 7, 23, 9, 8, 7),
 		}).mount();
 
@@ -57,7 +61,7 @@ describe("QuickNote", () => {
 
 		await vi.waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
 		expect(executedInput).toMatchObject({
-			targetPath: "00 收件箱/talos-quick-note-20260823-090807.md",
+			targetPath: "00-收件箱/talos-quick-note-20260823-090807.md",
 		});
 		const task = runtime.store.list()[0];
 		if (!task) throw new Error("Quick note task was not recorded");

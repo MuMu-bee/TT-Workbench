@@ -2,6 +2,7 @@ import { App, TFile, normalizePath } from "obsidian";
 import { isPendingApprovalStatusLine } from "../approval-actions";
 import type { TalosSettings } from "../settings";
 import { CONTENT_KEYS, MODULE_KEYS, SCHEMA_LABELS, type VaultPaths } from "./schema";
+import type { VaultSnapshot } from "./vault-snapshot";
 import type {
 	DistBar,
 	FocusItem,
@@ -24,7 +25,9 @@ function isExcluded(path: string): boolean {
 	return EXCLUDE.some((x) => sp.includes(x));
 }
 
-function notesUnder(app: App, rel: string): TFile[] {
+function notesUnder(app: App, rel: string, snapshot?: VaultSnapshot): TFile[] {
+	const files = snapshot ? snapshot.notesUnder(rel) : null;
+	if (files) return files;
 	const prefix = rel + "/";
 	return app.vault
 		.getMarkdownFiles()
@@ -36,8 +39,8 @@ function notesUnder(app: App, rel: string): TFile[] {
 		);
 }
 
-function countMd(app: App, rel: string): number {
-	return notesUnder(app, rel).length;
+function countMd(app: App, rel: string, snapshot?: VaultSnapshot): number {
+	return notesUnder(app, rel, snapshot).length;
 }
 
 function relTime(ms: number): string {
@@ -65,19 +68,27 @@ function stripMd(s: string): string {
 }
 
 // ---------- 分布 + 模块地图 + 总览 ----------
-export function collectDist(app: App, paths: VaultPaths): { dist: DistBar[]; total: number } {
+export function collectDist(
+	app: App,
+	paths: VaultPaths,
+	snapshot?: VaultSnapshot
+): { dist: DistBar[]; total: number } {
 	const dist: DistBar[] = CONTENT_KEYS.map((key) => ({
 		name: SCHEMA_LABELS[key],
-		count: countMd(app, paths.dir(key)),
+		count: countMd(app, paths.dir(key), snapshot),
 		readme: paths.readme(key),
 	}));
 	return { dist, total: dist.reduce((a, b) => a + b.count, 0) };
 }
 
-export function collectModules(app: App, paths: VaultPaths): ModuleTile[] {
+export function collectModules(
+	app: App,
+	paths: VaultPaths,
+	snapshot?: VaultSnapshot
+): ModuleTile[] {
 	return MODULE_KEYS.map((key) => {
 		const rel = paths.dir(key);
-		const notes = notesUnder(app, rel);
+		const notes = notesUnder(app, rel, snapshot);
 		let lastMtime = 0;
 		let latest: TFile | undefined;
 		for (const f of notes) {
@@ -105,7 +116,8 @@ export function collectOverview(
 	total: number,
 	inboxCount: number,
 	taskFlow: StatCard,
-	healthTrend: HealthPoint[]
+	healthTrend: HealthPoint[],
+	snapshot?: VaultSnapshot
 ): {
 	totalNotes: StatCard;
 	inbox: StatCard;
@@ -113,7 +125,7 @@ export function collectOverview(
 	health: StatCard;
 } {
 	// 收件箱细节
-	const inboxNotes = notesUnder(app, paths.dir("inbox"));
+	const inboxNotes = notesUnder(app, paths.dir("inbox"), snapshot);
 	let oldest = 0;
 	const now = Date.now();
 	for (const f of inboxNotes) {
@@ -124,7 +136,7 @@ export function collectOverview(
 	const weekAgo = now - 7 * DAY;
 	let weekNew = 0;
 	for (const key of CONTENT_KEYS) {
-		for (const f of notesUnder(app, paths.dir(key))) if (f.stat.ctime >= weekAgo) weekNew++;
+		for (const f of notesUnder(app, paths.dir(key), snapshot)) if (f.stat.ctime >= weekAgo) weekNew++;
 	}
 
 	const last = healthTrend.length ? healthTrend[healthTrend.length - 1] : undefined;
@@ -318,9 +330,15 @@ export async function collectHealthTrend(
 }
 
 // ---------- 热力图（全库） ----------
-export function collectHeatmap(app: App): { meta: string; months: HeatMonth[] } {
+export function collectHeatmap(
+	app: App,
+	snapshot?: VaultSnapshot
+): { meta: string; months: HeatMonth[] } {
 	const counts = new Map<string, number>();
-	for (const f of app.vault.getMarkdownFiles()) {
+	// 纳入快照，但保留本函数原有谓词：只跳 EXCLUDE，**不**排 `_README`
+	// （与其他采集器口径不同，不要顺手对齐）。
+	const source = snapshot ? snapshot.heatmapFiles() : app.vault.getMarkdownFiles();
+	for (const f of source) {
 		if (isExcluded(f.path)) continue;
 		const key = fmtDate(new Date(f.stat.ctime));
 		counts.set(key, (counts.get(key) || 0) + 1);

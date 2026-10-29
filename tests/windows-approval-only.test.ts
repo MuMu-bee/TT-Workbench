@@ -70,8 +70,10 @@ describe("无隔离模式的明文命令审计", () => {
 		actionId: "a1",
 		runtimeId: "ohmypi",
 		canonicalToolId: "talos.bash",
-		kind: "command",
-		targets: [{ raw: "rm -rf build", canonical: "rm -rf build" }],
+		kind: "shell",
+		// ActionTarget.role 为必填；shell 动作的 target 在 normalizer 里按 source 归类
+		//（tool-action-normalizer.ts:67 把 cwd 以 role: "source" 入 targets）。
+		targets: [{ raw: "rm -rf build", canonical: "rm -rf build", role: "source" }],
 		command: { executable: "bash", args: ["-lc", "rm -rf build"], cwd: "/vault" },
 		destructive: true,
 	});
@@ -97,5 +99,49 @@ describe("无隔离模式的明文命令审计", () => {
 		const readRequest: ActionRequest = { ...request(), kind: "read", command: undefined };
 		const record = auditRecord(readRequest, decision, { includePlainCommand: true });
 		expect(record.plainCommand).toBeUndefined();
+	});
+
+	it("落库时把 CLI 口令脱敏但保留客户端名与参数结构", () => {
+		const commandRequest = (executable: string, args: string[]): ActionRequest => ({
+			...request(),
+			command: { executable, args, cwd: "/vault" },
+		});
+
+		const mysqlRecord = auditRecord(
+			commandRequest("mysql", ["-pS3cr3tPassw0rd", "-u", "root"]),
+			decision,
+			{ includePlainCommand: true }
+		);
+		// 结构化字段仍是 executable + args 的形状，客户端名与参数顺序都保留；
+		// 这条严格 toEqual 同时覆盖了「口令已被抹掉」与「没有多余字段」。
+		expect(mysqlRecord.plainCommand).toEqual({
+			executable: "mysql",
+			args: ["-p[REDACTED]", "-u", "root"],
+			cwd: "/vault",
+		});
+		expect(JSON.stringify(mysqlRecord.plainCommand)).not.toMatch(/S3cr3tPassw0rd/);
+
+		// 三条不读口令的正常命令行完全不变（端口启发式会误伤它们）
+		const dockerRecord = auditRecord(
+			commandRequest("docker", ["run", "-p8080:80", "nginx"]),
+			decision,
+			{ includePlainCommand: true }
+		);
+		expect(dockerRecord.plainCommand).toEqual({
+			executable: "docker",
+			args: ["run", "-p8080:80", "nginx"],
+			cwd: "/vault",
+		});
+
+		const sshRecord = auditRecord(
+			commandRequest("ssh", ["-p22", "deploy@host"]),
+			decision,
+			{ includePlainCommand: true }
+		);
+		expect(sshRecord.plainCommand).toEqual({
+			executable: "ssh",
+			args: ["-p22", "deploy@host"],
+			cwd: "/vault",
+		});
 	});
 });

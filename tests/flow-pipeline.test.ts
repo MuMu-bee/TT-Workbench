@@ -22,8 +22,8 @@ function collected(overrides: { inboxCount?: number; oldestDays?: number; queue?
 			queue: [],
 			opsCandidates: [],
 			platforms: overrides.platforms ?? [
-				{ name: "抖音", count: 5, published: 3, pending: 1, readme: "a.md", latestTitle: "" },
-				{ name: "公众号", count: 2, published: 2, pending: 0, readme: "b.md", latestTitle: "" },
+				{ name: "抖音", count: 5, published: 3, pending: 1, unclassified: 1, readme: "a.md", latestTitle: "" },
+				{ name: "公众号", count: 2, published: 2, pending: 0, unclassified: 0, readme: "b.md", latestTitle: "" },
 			],
 		},
 	} as unknown as Collected;
@@ -45,8 +45,27 @@ describe("content flow pipeline", () => {
 	it("flags stuck stations: two-week backlog, queued posts and unclosed drafts", () => {
 		const stuck = (d: Collected) => flowStations(d).filter((s) => s.stuck).map((s) => s.key);
 		expect(stuck(collected())).toEqual(["inbox", "queue", "published"]);
-		expect(stuck(collected({ oldestDays: 13, queue: 0, platforms: [{ name: "抖音", count: 3, published: 3, pending: 0, readme: "", latestTitle: "" }] }))).toEqual([]);
+		expect(stuck(collected({ oldestDays: 13, queue: 0, platforms: [{ name: "抖音", count: 3, published: 3, pending: 0, unclassified: 0, readme: "", latestTitle: "" }] }))).toEqual([]);
 		expect(flowStations(collected({ inboxCount: 0 }))[0]).toMatchObject({ sub: "已清空", stuck: false });
+	});
+
+	it("counts only the pending bucket as 待闭环 so it agrees with the closure chart", () => {
+		// Q-QUA18：同一夹具下旧的 `${total - published} 待闭环` 会算出 2，
+		// 而那 2 篇其实是未分类；图表里未分类是独立一段，指标必须与它一致。
+		const stations = flowStations(collected({
+			platforms: [
+				{ name: "抖音", count: 3, published: 1, pending: 0, unclassified: 2, readme: "a.md", latestTitle: "" },
+			],
+		}));
+		const published = stations.find((station) => station.key === "published");
+		expect(published?.sub).toBe("全部闭环");
+
+		const withDrafts = flowStations(collected({
+			platforms: [
+				{ name: "抖音", count: 4, published: 1, pending: 2, unclassified: 1, readme: "a.md", latestTitle: "" },
+			],
+		}));
+		expect(withDrafts.find((station) => station.key === "published")?.sub).toBe("2 待闭环");
 	});
 
 	it("highlights the current page and navigates from the other stations", () => {

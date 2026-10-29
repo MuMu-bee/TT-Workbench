@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -44,7 +44,7 @@ describe("Vault analytics v2", () => {
 		expect(css).toMatch(
 			/\.vault-v2-module-panel \.note-grid\s*\{[^}]*repeat\(3, minmax\(0, 1fr\)\)/
 		);
-		expect(css).toContain("@container system-v2 (max-width: 760px)");
-		expect(css).toContain("@container system-v2 (max-width: 520px)");
+		expectSourceContains("styles.ui-v2.css", "@container system-v2 (max-width: 760px)");
+		expectSourceContains("styles.ui-v2.css", "@container system-v2 (max-width: 520px)");
 	});
 });

@@ -1,0 +1,5 @@
+{
+  "comment": "纯源码文本断言（tests/ 内 toContain 调用）的单调下降闸门。由 tests/source-text-assertions.test.ts 读取：实际计数必须 ≤ cap，且 cap 只允许下调。本轮把 31 个文件的「单文件整源变量」断言换成受限入口 expectSourceContains / expectSourceNotContains（先剔除 import 块再匹配），实测 1035 → 752（降幅 27.3%）。后续每把 toContain 换成行为断言或受限入口，就把 cap 下调到当时实测值。",
+  "cap": 752,
+  "recordedAt": "Q-TES5 落地时实测 grep -ro \"toContain(\" tests/ | wc -l"
+}

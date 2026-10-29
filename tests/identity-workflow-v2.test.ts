@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -29,7 +29,7 @@ describe("Identity context v2", () => {
 		);
 		expect(view).toContain("renderApprovalItem(view, pendingList, item)");
 		expect(view).toContain("renderCandidateItem(view, preferenceList, item)");
-		expect(css).toContain(".talos-decision-workspace");
+		expectSourceContains("styles.ui-v2.css", ".talos-decision-workspace");
 	});
 
 	it("keeps actual identity, soul, focus, and governance paths", () => {
@@ -52,6 +52,6 @@ describe("Identity context v2", () => {
 		expect(css).toMatch(
 			/\.identity-v2-governance-panel \.detail-list\s*\{[^}]*repeat\(2, minmax\(0, 1fr\)\)/
 		);
-		expect(css).toContain("@container knowledge-v2 (max-width: 520px)");
+		expectSourceContains("styles.ui-v2.css", "@container knowledge-v2 (max-width: 520px)");
 	});
 });

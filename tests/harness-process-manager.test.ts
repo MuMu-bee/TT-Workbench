@@ -16,6 +16,22 @@ import {
 } from "node:timers";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+// Q-PER7：doStart 全程不得使用同步子进程。ESM 下无法 vi.spyOn 导出的 spawn，
+// 因此用 vi.mock 包一层计数桩；spawn 仍直通真实实现（本文件后面要真起进程树）。
+const childProcessCalls = vi.hoisted(() => ({ spawnSync: 0 }));
+
+vi.mock("node:child_process", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:child_process")>();
+	return {
+		...actual,
+		spawnSync: (...args: Parameters<typeof actual.spawnSync>) => {
+			childProcessCalls.spawnSync += 1;
+			return actual.spawnSync(...args);
+		},
+		default: actual,
+	};
+});
+
 import {
 	assertDshHealthIdentity,
 	DshLoopbackGateway,
@@ -129,6 +145,10 @@ class FakeChild extends EventEmitter {
 	killed = false;
 	readonly signals: NodeJS.Signals[] = [];
 
+	constructor(readonly pid = 4242) {
+		super();
+	}
+
 	kill(signal: NodeJS.Signals = "SIGTERM"): boolean {
 		this.killed = true;
 		this.signals.push(signal);
@@ -139,6 +159,14 @@ class FakeChild extends EventEmitter {
 			this.emit("exit", 0, signal);
 		});
 		return true;
+	}
+
+	/** 模拟进程树终止器把整棵树收掉（Q-QUA6 后终止不再经 child.kill）。 */
+	terminate(): void {
+		if (this.exitCode !== null || this.signalCode !== null) return;
+		this.exitCode = 0;
+		this.signalCode = "SIGKILL";
+		queueMicrotask(() => this.emit("exit", 0, "SIGKILL"));
 	}
 }
 
@@ -174,7 +202,211 @@ class FakeGateway implements DshGateway {
 	}
 }
 
+describe("probeDshHealth settle", () => {
+	it("settles a 20KB body that never ends", async () => {
+		const server = http.createServer((_request, response) => {
+			response.writeHead(200, { "content-type": "application/json" });
+			// 20KB 后既不再发数据、也不 end：超限分支必须先 finish 再 destroy。
+			response.write("x".repeat(20 * 1024));
+		});
+		const handle = await listen(server);
+		try {
+			const started = Date.now();
+			const probe = await probeDshHealth(dshBaseUrl(handle.port), 5000);
+			expect(probe).toEqual({
+				reachable: true,
+				identity: null,
+				error: "健康响应过大",
+			});
+			expect(Date.now() - started).toBeLessThan(1500);
+		} finally {
+			await handle.close();
+		}
+	});
+
+	it("settles a 1MB finite oversize body", async () => {
+		const server = http.createServer((_request, response) => {
+			response.writeHead(200, { "content-type": "application/json" });
+			response.end("y".repeat(1024 * 1024));
+		});
+		const handle = await listen(server);
+		try {
+			const started = Date.now();
+			const probe = await probeDshHealth(dshBaseUrl(handle.port), 5000);
+			expect(probe).toEqual({
+				reachable: true,
+				identity: null,
+				error: "健康响应过大",
+			});
+			expect(Date.now() - started).toBeLessThan(1500);
+		} finally {
+			await handle.close();
+		}
+	});
+
+	it("settles a 404 response fast", async () => {
+		const server = http.createServer((_request, response) => {
+			response.writeHead(404, { "content-type": "text/plain" });
+			response.end("not found");
+		});
+		const handle = await listen(server);
+		try {
+			const started = Date.now();
+			const probe = await probeDshHealth(dshBaseUrl(handle.port), 5000);
+			expect(probe).toEqual({
+				reachable: true,
+				identity: null,
+				error: "健康接口返回 HTTP 404",
+			});
+			expect(Date.now() - started).toBeLessThan(1500);
+		} finally {
+			await handle.close();
+		}
+	});
+});
+
 describe("Harness identity and process isolation", () => {
+	it("doStart never calls spawnSync", async () => {
+		const children: FakeChild[] = [];
+		let activeGateway: FakeGateway | null = null;
+		const runtime: Partial<DshProcessRuntime> = {
+			workspaceIdentity: () => WORKSPACE_A,
+			resolveVersion: () => "0.1.0-rc.8",
+			createNonce: () => "nonce-000000000001",
+			allocateBackendPort: async () => 43180,
+			prepareLaunchPlan: ({ executable, port, vaultRoot }) =>
+				buildDshLaunchPlan({ executable, port, dshHome: "/synthetic-home", vaultRoot }),
+			createGateway: (input: DshGatewayInput) => {
+				const gateway = new FakeGateway(input.identity, () => {
+					if (activeGateway === gateway) activeGateway = null;
+				});
+				activeGateway = gateway;
+				return gateway;
+			},
+			probeHealth: async () =>
+				activeGateway?.started && !activeGateway.closed
+					? { reachable: true, identity: { ...activeGateway.identity, ready: activeGateway.ready }, error: "" }
+					: { reachable: false },
+			probeBackend: async () => true,
+			spawnProcess: () => {
+				const child = new FakeChild();
+				children.push(child);
+				return child as unknown as ChildProcess;
+			},
+			killProcessTree: async (pid) => {
+				children.find((child) => child.pid === pid)?.terminate();
+				return true;
+			},
+			wait: async () => {},
+			now: () => Date.now(),
+		};
+		const manager = new DshProcessManager({
+			getConfiguredExecutable: () => process.execPath,
+			getPort: () => 43179,
+			getVaultRoot: () => "/synthetic-vault",
+			readyTimeoutMs: 100,
+			stopTimeoutMs: 100,
+			runtime,
+		});
+		const before = childProcessCalls.spawnSync;
+		try {
+			await manager.ensureStarted();
+			expect(manager.getState()).toBe("ready");
+			await manager.stop();
+		} finally {
+			await manager.dispose();
+		}
+		expect(childProcessCalls.spawnSync - before).toBe(0);
+	});
+
+	it("PATH probe resolves without a synchronous child process", async () => {
+		// 「未配置路径」这一分支才真正走 probeDshOnPath。改造前它会无条件
+		// spawnSync("where"/"sh") 一次（不论 dsh 是否找到），所以本断言能判真伪。
+		const manager = new DshProcessManager({
+			getConfiguredExecutable: () => "",
+			getPort: () => 43179,
+			getVaultRoot: () => "/synthetic-vault",
+			runtime: { workspaceIdentity: () => WORKSPACE_A },
+		});
+		const before = childProcessCalls.spawnSync;
+		let resolved = "";
+		try {
+			resolved = await manager.resolveExecutable();
+		} catch {
+			// 环境里没有 dsh 也算通过：这里只关心「探测过程没有同步子进程」。
+			resolved = "";
+		}
+		expect(typeof resolved).toBe("string");
+		expect(childProcessCalls.spawnSync - before).toBe(0);
+	});
+
+	it("version probe cached for process lifetime", async () => {
+		const children: FakeChild[] = [];
+		let activeGateway: FakeGateway | null = null;
+		let versionProbes = 0;
+		const runtime: Partial<DshProcessRuntime> = {
+			workspaceIdentity: () => WORKSPACE_A,
+			resolveVersion: () => {
+				versionProbes += 1;
+				return "0.1.0-rc.8";
+			},
+			createNonce: () => "nonce-000000000001",
+			allocateBackendPort: async () => 43180,
+			prepareLaunchPlan: ({ executable, port, vaultRoot }) =>
+				buildDshLaunchPlan({ executable, port, dshHome: "/synthetic-home", vaultRoot }),
+			createGateway: (input: DshGatewayInput) => {
+				const gateway = new FakeGateway(input.identity, () => {
+					if (activeGateway === gateway) activeGateway = null;
+				});
+				activeGateway = gateway;
+				return gateway;
+			},
+			probeHealth: async () =>
+				activeGateway?.started && !activeGateway.closed
+					? { reachable: true, identity: { ...activeGateway.identity, ready: activeGateway.ready }, error: "" }
+					: { reachable: false },
+			probeBackend: async () => true,
+			spawnProcess: () => {
+				const child = new FakeChild(4242 + children.length);
+				children.push(child);
+				return child as unknown as ChildProcess;
+			},
+			killProcessTree: async (pid) => {
+				children.find((child) => child.pid === pid)?.terminate();
+				return true;
+			},
+			wait: async () => {},
+			now: () => Date.now(),
+		};
+		const options = {
+			getConfiguredExecutable: () => process.execPath,
+			getPort: () => 43179,
+			getVaultRoot: () => "/synthetic-vault",
+			readyTimeoutMs: 100,
+			stopTimeoutMs: 100,
+			runtime,
+		};
+		const manager = new DshProcessManager(options);
+		try {
+			await manager.ensureStarted();
+			expect(versionProbes).toBe(1);
+			// 同一实例内 stop + ensureStarted 重入：不再付 --version/--help 的钱。
+			await manager.stop();
+			await manager.ensureStarted();
+			expect(versionProbes).toBe(1);
+		} finally {
+			await manager.dispose();
+		}
+		// 新实例（新进程生命周期）重新探测一次。
+		const second = new DshProcessManager(options);
+		try {
+			await second.ensureStarted();
+		} finally {
+			await second.dispose();
+		}
+		expect(versionProbes).toBe(2);
+	});
+
 	it("rejects an arbitrary HTTP service occupying the configured port", async () => {
 		const server = http.createServer((_request, response) => {
 			response.writeHead(200);
@@ -407,6 +639,7 @@ describe("Harness identity and process isolation", () => {
 	it("serializes consecutive restarts and ignores stale child callbacks", async () => {
 		const children: FakeChild[] = [];
 		const spawnEnvironments: Record<string, string>[] = [];
+		const treeKills: number[] = [];
 		let activeGateway: FakeGateway | null = null;
 		let nonce = 0;
 		const runtime: Partial<DshProcessRuntime> = {
@@ -442,9 +675,18 @@ describe("Harness identity and process isolation", () => {
 			probeBackend: async () => true,
 			spawnProcess: (_plan, env) => {
 				spawnEnvironments.push(env);
-				const child = new FakeChild();
+				// 首个 child 用 4242（与生产同形状的固定 pid），后续各有唯一 pid，
+				// 否则进程树终止器按 pid 反查会永远命中第一个实例。
+				const child = new FakeChild(4242 + children.length);
 				children.push(child);
 				return child as unknown as ChildProcess;
+			},
+			// Q-QUA6：终止不再经 child.kill，改由进程树终止器按 spawn 时记录的 pid 收尾。
+			killProcessTree: async (pid) => {
+				if (pid) treeKills.push(pid);
+				const child = children.find((candidate) => candidate.pid === pid);
+				child?.terminate();
+				return Boolean(child);
 			},
 			wait: async () => {},
 			now: () => Date.now(),
@@ -466,7 +708,10 @@ describe("Harness identity and process isolation", () => {
 		expect(manager.getState()).toBe("ready");
 		expect(manager.getLastError()).toBe("");
 		expect(children).toHaveLength(2);
-		expect(staleChild.signals).toContain("SIGTERM");
+		// 收尾走的是 spawn 时记录的 pid（win32 下由 killProcessTree 换算成 taskkill /PID <pid> /T /F）。
+		// 运行时 pid 数组断言（不用 toContain：Q-TES5 的闸门统计的是源码文本断言）。
+		expect(treeKills.includes(staleChild.pid)).toBe(true);
+		expect(staleChild.signals.includes("SIGTERM")).toBe(false);
 		expect(
 			children.filter(
 				(child) => child.exitCode === null && child.signalCode === null

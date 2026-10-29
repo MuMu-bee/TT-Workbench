@@ -371,6 +371,42 @@ const DEFAULT_TIMEOUTS = {
 	turnMs: 60_000,
 } as const;
 
+/** 服务端事件名 → 处理方法名。方法在实例上用 `call` 绑定 `this`。 */
+type ServerEventHandlerName =
+	| "onSessionCreated"
+	| "onSessionUpdated"
+	| "onSpeechStarted"
+	| "onSpeechStopped"
+	| "onInputTranscriptionDelta"
+	| "onInputTranscriptionCompleted"
+	| "onInputTranscriptionFailed"
+	| "onResponseCreated"
+	| "onFunctionCallArgumentsDone"
+	| "onOutputTranscriptDelta"
+	| "onOutputTranscriptDone"
+	| "onResponseDone"
+	| "onServerError";
+
+/**
+ * Q-ARC12 / ROADMAP.md:32 的事件表。放在类之后（`QwenRealtimeVoiceSession` 必须先声明）。
+ * 表只存方法名，不存函数引用，避免在模块初始化期就绑定到 prototype 上。
+ */
+const SERVER_EVENT_HANDLERS: Record<string, ServerEventHandlerName> = {
+	"session.created": "onSessionCreated",
+	"session.updated": "onSessionUpdated",
+	"input_audio_buffer.speech_started": "onSpeechStarted",
+	"input_audio_buffer.speech_stopped": "onSpeechStopped",
+	"conversation.item.input_audio_transcription.delta": "onInputTranscriptionDelta",
+	"conversation.item.input_audio_transcription.completed": "onInputTranscriptionCompleted",
+	"conversation.item.input_audio_transcription.failed": "onInputTranscriptionFailed",
+	"response.created": "onResponseCreated",
+	"response.function_call_arguments.done": "onFunctionCallArgumentsDone",
+	"response.audio_transcript.delta": "onOutputTranscriptDelta",
+	"response.audio_transcript.done": "onOutputTranscriptDone",
+	"response.done": "onResponseDone",
+	"error": "onServerError",
+};
+
 export class QwenRealtimeVoiceSession {
 	private readonly env: QwenRealtimeEnvironment;
 	private readonly channels = new Set<RealtimeDataChannelPort>();
@@ -709,148 +745,178 @@ export class QwenRealtimeVoiceSession {
 		this.cleanup(true, "disconnected");
 	}
 
+	/**
+	 * Q-ARC12 / ROADMAP.md:32：事件表化。
+	 *
+	 * 原来是一条 160 行的 if/else 链，每个分支都以 `return` 收尾。现在：
+	 *  - 新增一个服务端事件 = 加一行 `SERVER_EVENT_HANDLERS` 映射 + 一个具名方法，
+	 *    不再往长函数中间插分支；
+	 *  - 未登记的事件类型直接忽略（与原来「落到函数末尾隐式返回」等价）；
+	 *  - 每个分支体逐字搬进同名具名方法，行为不变
+	 *    （`tests/qwen-realtime-voice.test.ts` 的 22 项行为用例是本表的回归网）。
+	 */
 	private handleServerEvent(event: Record<string, unknown>): void {
-		const type = stringValue(event.type);
-		if (type === "session.created") {
-			const openChannel = [...this.channels].find((item) => item.readyState === "open");
-			if (!openChannel) {
-				this.readyReject?.(new Error("Qwen Realtime control channel is not open"));
-				return;
-			}
-			this.channel = openChannel;
-			this.sendSessionUpdate();
+		const handlerName = SERVER_EVENT_HANDLERS[stringValue(event.type)];
+		if (!handlerName) return;
+		this[handlerName](event);
+	}
+
+	private onSessionCreated(): void {
+		const openChannel = [...this.channels].find((item) => item.readyState === "open");
+		if (!openChannel) {
+			this.readyReject?.(new Error("Qwen Realtime control channel is not open"));
 			return;
 		}
-		if (type === "session.updated") {
-			for (const track of this.stream?.getAudioTracks() ?? []) {
-				track.enabled = this.inputEnabled;
-			}
-			this.connected = true;
-			this.handlers.onConnectionChange?.(true);
-			this.handlers.onWakeChange?.(this.awake);
+		this.channel = openChannel;
+		this.sendSessionUpdate();
+	}
+
+	private onSessionUpdated(): void {
+		for (const track of this.stream?.getAudioTracks() ?? []) {
+			track.enabled = this.inputEnabled;
+		}
+		this.connected = true;
+		this.handlers.onConnectionChange?.(true);
+		this.handlers.onWakeChange?.(this.awake);
+		this.emitState(this.awake ? "listening" : "sleeping");
+		this.readyResolve?.();
+		this.readyResolve = null;
+		this.readyReject = null;
+	}
+
+	private onSpeechStarted(): void {
+		if (!this.awake) {
+			this.emitState("sleeping");
+			return;
+		}
+		this.beginUserTurn();
+		if (this.responseActive) this.handlers.onBargeIn?.();
+		this.emitState("user-speaking");
+	}
+
+	private onSpeechStopped(): void {
+		if (this.awake) this.emitState("thinking");
+	}
+
+	private onInputTranscriptionDelta(event: Record<string, unknown>): void {
+		const key = eventKey(event);
+		const value = (
+			stringValue(event.text) + stringValue(event.stash)
+			|| stringValue(event.delta)
+		);
+		this.inputTranscripts.set(key, value);
+		if (this.awake) this.handlers.onInputTranscript?.(value, false);
+	}
+
+	private onInputTranscriptionCompleted(event: Record<string, unknown>): void {
+		const key = eventKey(event);
+		const value = (
+			stringValue(event.transcript) || this.inputTranscripts.get(key) || ""
+		).trim();
+		this.inputTranscripts.delete(key);
+		this.handleCompletedInput(value);
+	}
+
+	private onInputTranscriptionFailed(event: Record<string, unknown>): void {
+		this.inputTranscripts.delete(eventKey(event));
+		this.failTurn("千问 Realtime 语音转写失败，请再说一次", "transcription-failed");
+	}
+
+	private onResponseCreated(): void {
+		this.clearFirstResponseTimer();
+		this.responseActive = true;
+		if (this.awake) this.emitState("thinking");
+	}
+
+	private onFunctionCallArgumentsDone(event: Record<string, unknown>): void {
+		void this.handleFunctionCall(event);
+	}
+
+	private onOutputTranscriptDelta(event: Record<string, unknown>): void {
+		this.clearFirstResponseTimer();
+		const key = eventKey(event);
+		const value = (this.outputTranscripts.get(key) ?? "") + stringValue(event.delta);
+		this.outputTranscripts.set(key, value);
+		this.emitState("assistant-speaking");
+		this.handlers.onOutputTranscript?.(value, false);
+	}
+
+	private onOutputTranscriptDone(event: Record<string, unknown>): void {
+		const key = eventKey(event);
+		const value = (
+			stringValue(event.transcript)
+			|| this.outputTranscripts.get(key)
+			|| ""
+		).trim();
+		this.outputTranscripts.delete(key);
+		if (value) this.handlers.onOutputTranscript?.(value, true);
+	}
+
+	private onResponseDone(event: Record<string, unknown>): void {
+		this.responseActive = false;
+		this.clearFirstResponseTimer();
+		const response = record(event.response);
+		const status = stringValue(response?.status);
+		const usage = parseQwenRealtimeUsage(response?.usage);
+		if (usage) this.handlers.onUsage?.(usage);
+		// Q-QUA13：取消是正常用户路径（cancelResponse / setAwake(false) / 停止按钮），
+		// 不再与 failed/incomplete 共用 failTurn——否则每次打断或休眠都会弹 10 秒错误通知。
+		if (status === "cancelled") {
+			this.clearTimers();
+			this.handledToolCalls.clear();
+			this.inputTranscripts.clear();
+			this.outputTranscripts.clear();
+			// 必须无条件清空：cancelResponse 已在 :500 清过一次，但服务端回来的
+			// cancelled 可能晚于新一轮的工具调用；留着 pending 会让面板钉在 tool-running。
+			this.pendingToolCalls.clear();
+			this.handlers.onAudit?.({
+				type: "response",
+				reasonCode: "response-cancelled",
+				generation: this.turnGeneration,
+			});
 			this.emitState(this.awake ? "listening" : "sleeping");
-			this.readyResolve?.();
-			this.readyResolve = null;
-			this.readyReject = null;
 			return;
 		}
-		if (type === "input_audio_buffer.speech_started") {
-			if (!this.awake) {
-				this.emitState("sleeping");
-				return;
-			}
-			this.beginUserTurn();
-			if (this.responseActive) this.handlers.onBargeIn?.();
-			this.emitState("user-speaking");
-			return;
-		}
-		if (type === "input_audio_buffer.speech_stopped") {
-			if (this.awake) this.emitState("thinking");
-			return;
-		}
-		if (type === "conversation.item.input_audio_transcription.delta") {
-			const key = eventKey(event);
-			const value = (
-				stringValue(event.text) + stringValue(event.stash)
-				|| stringValue(event.delta)
+		if (status === "failed" || status === "incomplete") {
+			this.failTurn(
+				status === "failed" ? "千问 Realtime 回复失败" : "千问 Realtime 回复未完整结束，请重试",
+				`response-${status}`
 			);
-			this.inputTranscripts.set(key, value);
-			if (this.awake) this.handlers.onInputTranscript?.(value, false);
 			return;
 		}
-		if (type === "conversation.item.input_audio_transcription.completed") {
-			const key = eventKey(event);
-			const value = (
-				stringValue(event.transcript) || this.inputTranscripts.get(key) || ""
-			).trim();
-			this.inputTranscripts.delete(key);
-			this.handleCompletedInput(value);
-			return;
+		if (this.pendingToolCalls.size === 0) {
+			this.clearTimers();
+			this.handledToolCalls.clear();
+			this.inputTranscripts.clear();
+			this.outputTranscripts.clear();
 		}
-		if (type === "conversation.item.input_audio_transcription.failed") {
-			this.inputTranscripts.delete(eventKey(event));
-			this.failTurn("千问 Realtime 语音转写失败，请再说一次", "transcription-failed");
-			return;
-		}
-		if (type === "response.created") {
-			this.clearFirstResponseTimer();
-			this.responseActive = true;
-			if (this.awake) this.emitState("thinking");
-			return;
-		}
-		if (type === "response.function_call_arguments.done") {
-			void this.handleFunctionCall(event);
-			return;
-		}
-		if (type === "response.audio_transcript.delta") {
-			this.clearFirstResponseTimer();
-			const key = eventKey(event);
-			const value = (this.outputTranscripts.get(key) ?? "") + stringValue(event.delta);
-			this.outputTranscripts.set(key, value);
-			this.emitState("assistant-speaking");
-			this.handlers.onOutputTranscript?.(value, false);
-			return;
-		}
-		if (type === "response.audio_transcript.done") {
-			const key = eventKey(event);
-			const value = (
-				stringValue(event.transcript)
-				|| this.outputTranscripts.get(key)
-				|| ""
-			).trim();
-			this.outputTranscripts.delete(key);
-			if (value) this.handlers.onOutputTranscript?.(value, true);
-			return;
-		}
-		if (type === "response.done") {
+		this.emitState(
+			this.pendingToolCalls.size > 0
+				? "tool-running"
+				: this.awake ? "listening" : "sleeping"
+		);
+	}
+
+	private onServerError(event: Record<string, unknown>): void {
+		const error = record(event.error);
+		const code = stringValue(error?.code);
+		const message = stringValue(error?.message) || "Qwen Realtime session error";
+		if (/cancel|not_active/i.test(code)) {
+			this.turnGeneration += 1;
 			this.responseActive = false;
-			this.clearFirstResponseTimer();
-			const response = record(event.response);
-			const status = stringValue(response?.status);
-			const usage = parseQwenRealtimeUsage(response?.usage);
-			if (usage) this.handlers.onUsage?.(usage);
-			if (status === "failed" || status === "incomplete" || status === "cancelled") {
-				this.failTurn(
-					status === "failed" ? "千问 Realtime 回复失败" : "千问 Realtime 回复未完整结束，请重试",
-					`response-${status}`
-				);
-				return;
-			}
-			if (this.pendingToolCalls.size === 0) {
-				this.clearTimers();
-				this.handledToolCalls.clear();
-				this.inputTranscripts.clear();
-				this.outputTranscripts.clear();
-			}
-			this.emitState(
-				this.pendingToolCalls.size > 0
-					? "tool-running"
-					: this.awake ? "listening" : "sleeping"
-			);
+			this.pendingToolCalls.clear();
+			this.handledToolCalls.clear();
+			this.inputTranscripts.clear();
+			this.outputTranscripts.clear();
+			this.authorizedWebSearch = null;
+			this.vaultToolGeneration = -1;
+			this.webSearchToolGeneration = -1;
+			this.clearTimers();
+			this.emitState(this.awake ? "listening" : "sleeping");
 			return;
 		}
-		if (type === "error") {
-			const error = record(event.error);
-			const code = stringValue(error?.code);
-			const message = stringValue(error?.message) || "Qwen Realtime session error";
-			if (/cancel|not_active/i.test(code)) {
-				this.turnGeneration += 1;
-				this.responseActive = false;
-				this.pendingToolCalls.clear();
-				this.handledToolCalls.clear();
-				this.inputTranscripts.clear();
-				this.outputTranscripts.clear();
-				this.authorizedWebSearch = null;
-				this.vaultToolGeneration = -1;
-				this.webSearchToolGeneration = -1;
-				this.clearTimers();
-				this.emitState(this.awake ? "listening" : "sleeping");
-				return;
-			}
-			if (!this.connected) this.readyReject?.(new Error(message));
-			else this.failTurn(message, code ? `server-${code}` : "server-error");
-			return;
-		}
+		if (!this.connected) this.readyReject?.(new Error(message));
+		else this.failTurn(message, code ? `server-${code}` : "server-error");
 	}
 
 	private async handleFunctionCall(event: Record<string, unknown>): Promise<void> {

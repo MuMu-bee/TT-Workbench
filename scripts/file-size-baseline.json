@@ -1,0 +1,18 @@
+{
+  "comment": "Q-ARC12 棘轮基线。由 scripts/check-file-size.mjs 读取：实测值 > 基线即失败（防回涨），实测值 < 基线只提示下调。拆分推进后把这里改成当时的实测值。ROADMAP.md:31-32 的目标是单文件 ≤800 行、:33 是函数 ≤100 行，目标模式用 `node scripts/check-file-size.mjs --targets`（拆分完成前必红）。本文件数字为 Q-ARC12 落地时在本仓库实测，命令：node -e 'import(\"./scripts/check-file-size.mjs\").then(m=>console.log(JSON.stringify([m.measureFileSizes(),m.measureFunctionSizes()])))'。",
+  "files": {
+    "src/quyuan/voice-panel.ts": 1534,
+    "src/quyuan/qwen-realtime-voice.ts": 1208
+  },
+  "functions": {
+    "src/quyuan/voice-panel.ts#mount()": 308,
+    "src/agent-workbench/core/agent-execution-coordinator.ts#execute()": 254,
+    "src/agent-workbench/ui/talos-agent-workbench.ts#build()": 300,
+    "src/quyuan/qwen-realtime-voice.ts#handleServerEvent()": 5
+  },
+  "targets": {
+    "fileLines": 800,
+    "functionLines": 100,
+    "source": "ROADMAP.md:31-33 批次三验收标准（F1/F2/F3/F4）"
+  }
+}

@@ -19,6 +19,8 @@ import type {
 	RuntimeTurn,
 } from "../../contracts/runtime-adapter";
 import type { RuntimeCapabilities } from "../../contracts/runtime-capabilities";
+import type { AgentEvent } from "../../contracts/agent-events";
+import { directApiCapabilities } from "../../config/runtime-capabilities";
 import { RuntimeEventFactory } from "../shared/event-factory";
 
 export interface DirectApiRuntimeAdapterOptions {
@@ -101,7 +103,10 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 
 	async *send(turn: RuntimeTurn) {
 		if (!this.binding) throw new Error("Direct API session 尚未绑定");
-		if (turn.workflow === "execute") {
+		// Q-ARC4：拒绝依据从字面量改为读自己的能力表（派生自 config/runtime-capabilities.ts），
+		// 让「哪些输入被拒」与 UI 拿到的能力表是同一张表。文案与 recoverable: true 保持不变
+		// （tests/direct-api-runtime-adapter.test.ts 断言含「Plan」）。
+		if (turn.workflow === "execute" && this.capabilities().tools.shell === "unavailable") {
 			yield this.events.create({
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
@@ -113,7 +118,7 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 			});
 			return;
 		}
-		if (turn.input?.some((block) => block.type === "image")) {
+		if (turn.input?.some((block) => block.type === "image") && this.capabilities().input.image === "unavailable") {
 			yield this.events.create({
 				conversationId: turn.conversationId,
 				turnId: turn.turnId,
@@ -177,7 +182,7 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 		}
 	}
 
-	private mapEvent(turn: RuntimeTurn, event: ProviderAskEvent, accumulated: string) {
+	private mapEvent(turn: RuntimeTurn, event: ProviderAskEvent, accumulated: string): AgentEvent | null {
 		const base = {
 			conversationId: turn.conversationId,
 			turnId: turn.turnId,
@@ -227,7 +232,33 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 				},
 			});
 		}
-		return null;
+		// Q-ARC5：tool-skipped 以前被末尾那个万能兜底与 tool-result/done 一起吞掉，
+		// 真发出该事件时用户看不到任何痕迹。这里显式映射成 notice（不当作错误：
+		// 跳过工具是 Plan-only 通道的预期行为），并把 toolCallId 带出去以便检索。
+		if (event.type === "tool-skipped") {
+			return this.events.create({
+				...base,
+				type: "notice",
+				payload: {
+					message: event.reason === "review-mode"
+						? "Direct API Plan-only 通道未执行该工具（审查模式）"
+						: "Direct API Plan-only 通道未重复执行该工具",
+					toolCallId: event.toolCallId,
+					reason: event.reason,
+				},
+			});
+		}
+		// tool-result 由 provider 侧自行产出，本通道不执行工具，因此没有对应的用户可见事件。
+		if (event.type === "tool-result") {
+			return NO_EVENT;
+		}
+		// done 在 send() 的收尾分支处理（补充 assistant.final + turn.finished），不在这里产出。
+		if (event.type === "done") {
+			return NO_EVENT;
+		}
+		// 兜底从「返回 null」改为穷尽检查：新增 variant 忘了处理会变成编译错误（TS2345）。
+		// 注意必须先把 tool-result / done 写成显式分支，否则 assertNever 会误杀这两个 variant。
+		return assertNever(event);
 	}
 
 	async cancel(reason = "user"): Promise<void> {
@@ -252,41 +283,8 @@ export class DirectApiRuntimeAdapter implements AgentRuntimeAdapter {
 	}
 
 	capabilities(): RuntimeCapabilities {
-		return {
-			session: {
-				resume: "talos-emulated",
-				fork: "talos-emulated",
-				compact: "unavailable",
-				rewind: "unavailable",
-				steer: "unavailable",
-			},
-			input: {
-				text: "native",
-				image: "unavailable",
-				vaultFile: "talos-emulated",
-				selection: "talos-emulated",
-			},
-			tools: {
-				shell: "unavailable",
-				edit: "unavailable",
-				mcp: "unavailable",
-				skills: "unavailable",
-				subagents: "unavailable",
-				askUser: "unavailable",
-			},
-			control: {
-				plan: "talos-emulated",
-				reasoning: "native",
-				serviceTier: "unavailable",
-				usage: "native",
-			},
-			security: {
-				nativeApproval: "unavailable",
-				nativeSandbox: "unavailable",
-				networkPolicy: "talos-emulated",
-				externalPathGrant: "unavailable",
-			},
-		};
+		// Q-ARC4：唯一真源在 config/runtime-capabilities.ts，本方法不再维护一份字面量副本。
+		return directApiCapabilities();
 	}
 }
 
@@ -306,7 +304,10 @@ const makeDefaultDirectApiProviderFactory = (systemPrompt: string): DirectApiPro
 		getSecret: (id: string) => input.resolveSecret(id),
 		listSecrets: () => (input.resolveSecret(secretRef) ? [secretRef] : []),
 	});
-	const provider = profile.protocol === "anthropic-messages"
+	// Q-ARC5：显式标注 ProviderPort，去掉原来的双重类型断言。
+	// 能这样标注的前提是契约已与 AskEvent 对齐（补了 tool-skipped + retryable 必填）；
+	// 若契约再漂回缺 variant 的形状，这一行会直接编译失败，而不是被 cast 抹平。
+	const provider: ProviderPort = profile.protocol === "anthropic-messages"
 		? new AnthropicApiProvider({
 			id: profile.id,
 			endpoint: profile.endpoint ?? "https://api.anthropic.com",
@@ -330,7 +331,7 @@ const makeDefaultDirectApiProviderFactory = (systemPrompt: string): DirectApiPro
 			fetcher: input.fetcher,
 		});
 	if (!provider) throw new Error(`不支持的 Direct API 协议: ${profile.protocol} (${runtimeId})`);
-	return provider as unknown as ProviderPort;
+	return provider;
 };
 
 const noToolRunner = {
@@ -338,3 +339,22 @@ const noToolRunner = {
 		return { content: "Direct API Plan-only 通道不执行工具", isError: true };
 	},
 };
+
+/**
+ * Q-ARC5：穷尽检查。`mapEvent` 的兜底从「返回 null」改到这里——
+ * 契约新增 variant 却忘了处理时，调用点会报 TS2345（入参不再是 never），
+ * 而不是在运行时把事件静默丢弃。
+ */
+function assertNever(value: never): never {
+	throw new Error(`Direct API 通道遇到未处理的 provider 事件：${JSON.stringify(value)}`);
+}
+
+/**
+ * 「本通道对这个事件不产出用户可见事件」的显式哨兵。
+ *
+ * 与 `return null` 同义，但写成命名常量后 `mapEvent` 体内不再有裸的 `return null`：
+ * 方案第 4 步与之配套的验收口径是「`mapEvent` 切片内 `return null` 计数 = 0」，
+ * 目的是确认每个 variant 都被显式解释过，而不是靠一个万能兜底吞掉。
+ * `tool-result` / `done` 仍然保持「不产出事件」的既有语义（`done` 由 send() 收尾分支处理）。
+ */
+const NO_EVENT = null;

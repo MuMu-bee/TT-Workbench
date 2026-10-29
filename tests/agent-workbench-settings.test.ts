@@ -151,6 +151,58 @@ describe("WorkbenchSettingsStore", () => {
 			"openai-main",
 		]);
 	});
+
+	it("keeps persisting after a failed settings write", async () => {
+		let value = settings();
+		let writes = 0;
+		const errors: string[] = [];
+		const store = new WorkbenchSettingsStore(
+			{
+				read: async () => structuredClone(value),
+				write: async (next) => {
+					writes += 1;
+					// 第一次写盘失败（IO 层），之后正常写入并累计次数。
+					if (writes === 1) throw new Error("disk full");
+					value = structuredClone(next);
+				},
+			},
+			{ has: () => true },
+		);
+		const service = new AgentWorkbenchService({
+			settingsStore: store,
+			onPersistenceError: (error) => errors.push(error instanceof Error ? error.message : String(error)),
+		});
+		await service.initialize();
+		const managed = (id: string, models: string[]) => ({
+			id,
+			displayName: id,
+			runtimeId: "ohmypi" as const,
+			protocol: "openai-responses" as const,
+			endpoint: `https://${id}.example.test/`,
+			models,
+			secretRef: "talos-codex-api-key",
+			enabled: true,
+		});
+
+		// ① 失败的 sync 不抛错，错误经 onPersistenceError 上报恰好一次。
+		await expect(service.syncProviderProfiles([managed("openai", ["model-b"])], ["openai"])).resolves.toBeUndefined();
+		expect(errors).toEqual(["disk full"]);
+
+		// ② 紧接着的权限选择必须落盘：写链不能停在 rejected。
+		const writesBeforePermission = writes;
+		service.setPermissionMode("scoped");
+		await service.flushSettings();
+		expect(writes - writesBeforePermission).toBe(1);
+		expect(value.permission).toBe("scoped");
+
+		// ③ 之后每次内容不同的 sync 都真的写一次盘。
+		const writesBeforeSyncs = writes;
+		await service.syncProviderProfiles([managed("openai", ["model-c"])], ["openai"]);
+		expect(writes - writesBeforeSyncs).toBe(1);
+		await service.syncProviderProfiles([managed("openai", ["model-d"])], ["openai"]);
+		expect(writes - writesBeforeSyncs).toBe(2);
+		expect(errors).toEqual(["disk full"]);
+	});
 });
 
 it("allows egress only to the selected provider profile", async () => {

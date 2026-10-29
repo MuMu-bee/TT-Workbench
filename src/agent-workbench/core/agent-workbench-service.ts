@@ -4,7 +4,9 @@ import {
 	isDirectApiProviderProfile,
 	validateProviderProfile,
 } from "../contracts/provider-profile";
-import type { AgentRuntimeAdapter, ModelDescriptor, RuntimeId, RuntimeProbe } from "../contracts/runtime-adapter";
+import type { AgentRuntimeAdapter, ModelDescriptor, RuntimeHistoryItem, RuntimeId, RuntimeProbe } from "../contracts/runtime-adapter";
+import type { RuntimeCapabilities } from "../contracts/runtime-capabilities";
+import { deriveRuntimeCapabilities } from "../config/runtime-capabilities";
 import { RuntimeRegistry } from "./runtime-registry";
 import type { ApprovalBroker } from "../security/approval-broker";
 import { normalizeToolAction } from "../security/tool-action-normalizer";
@@ -13,7 +15,7 @@ import type { WorkbenchConversationCoordinator } from "./workbench-conversation-
 import { createAgentEvent, type AgentEvent } from "../contracts/agent-events";
 import type { ConversationManifest, ConversationProjection, ConversationSelection } from "../contracts/conversation";
 import type { AgentExecutionRequest } from "../contracts/execution-request";
-import { projectMessages } from "../storage/conversation-projection";
+import { projectHandoffHistory, projectMessages } from "../storage/conversation-projection";
 import type { ConversationInputLedger } from "../storage/conversation-input-ledger";
 import type { WorkbenchUiState, WorkbenchUiStateStore } from "../storage/workbench-ui-state-store";
 import {
@@ -59,6 +61,34 @@ export interface AgentWorkbenchInteractionPort {
 }
 
 /**
+ * 回合历史 = 最近一条 handoff.created 携带的上下文 + 当前 runtime 自己的消息。
+ *
+ * 只合并进 history，不接线 `synchronizeContext`（报告 B2 已选边）：两条上下文通路
+ * 并存会重复注入。`ohmypi` 适配器不消费 `turn.history`，故单运行时下用户可见行为不变，
+ * 本函数打通的是「handoff 信封有写入方无读取方」的数据通路。
+ */
+function projectTurnHistory(projection: ConversationProjection): RuntimeHistoryItem[] {
+	const carried = projectHandoffHistory(projection.events, projection.manifest.selection.runtimeId);
+	const own = projectMessages(projection.events.filter((event) => event.runtimeId === projection.manifest.selection.runtimeId))
+		.filter((message) => message.role !== "system")
+		.map((message) => ({ role: message.role as "user" | "assistant", text: message.text }));
+	// 去重键用 role + text（带出现序号）：信封里已带的同名同文消息不再在尾部重复出现，
+	// 但真实重复的两条（出现序号不同）都保留。
+	const carriedCounts = new Map<string, number>();
+	for (const entry of carried) {
+		const key = `${entry.role}\u0000${entry.text}`;
+		carriedCounts.set(key, (carriedCounts.get(key) ?? 0) + 1);
+	}
+	return [...carried, ...own.filter((item) => {
+		const key = `${item.role}\u0000${item.text}`;
+		const remaining = carriedCounts.get(key) ?? 0;
+		if (remaining === 0) return true;
+		carriedCounts.set(key, remaining - 1);
+		return false;
+	})];
+}
+
+/**
  * TALOS-owned composition root for the agent workbench.
  *
  * Provider, session, permission and UI ownership all terminate here.
@@ -89,6 +119,8 @@ export class AgentWorkbenchService {
 				vaultRoot: options.vaultRoot,
 				initialContext: () => this.systemContext || undefined,
 				preflightEgress: options.preflightEgress,
+				// Q-ARC4：coordinator 与 UI 共用同一张派生表（经 getRuntimeCapabilities）。
+				runtimeCapabilities: (runtimeId) => this.getRuntimeCapabilities(runtimeId),
 				createRuntime: (runtimeId, conversationId, selection) => this.createRuntime(runtimeId, {
 					vaultRoot: options.vaultRoot!,
 					permissionMode: this.permission,
@@ -247,14 +279,30 @@ export class AgentWorkbenchService {
 			selection: this.getSelection(),
 		};
 		this.settings = next;
+		// 与 queueSettingsSave 同形：catch 让 this.persistence 永远落在 fulfilled，
+		// 否则一次失败的同步写会毒化后续所有落盘（下一次 .then(save) 直接跳过）。
 		this.persistence = this.persistence
 			.then(() => this.options.settingsStore?.save(next))
-			.then(() => undefined);
+			.then(() => undefined)
+			.catch((error: unknown) => {
+				this.options.onPersistenceError?.(error);
+			});
 		await this.persistence;
 	}
 
 	getSelectedProviderProfile(runtimeId = this.selectedRuntimeId): ProviderProfile | undefined {
 		return this.getProviderProfiles(runtimeId).find((profile) => profile.id === this.selectedProviderProfileId);
+	}
+
+	/**
+	 * Q-ARC4：UI 侧读取运行时能力的唯一入口。
+	 *
+	 * 刻意不读 `this.runtimes` 注册表：它的生产装配点从未传值，走它只会恒回落
+	 * `unavailableCapabilities()`；也不碰 lease 生命周期（`releaseLease` 会 dispose adapter，
+	 * 而 `RuntimeRegistry.register` 重复注册直接 throw）。派生只看 (runtimeId, protocol)。
+	 */
+	getRuntimeCapabilities(runtimeId: RuntimeId): RuntimeCapabilities {
+		return deriveRuntimeCapabilities({ runtimeId, providerProfile: this.getSelectedProviderProfile(runtimeId) });
 	}
 
 	getRuntimeProfile(runtimeId: RuntimeId): RuntimeProfile | undefined {
@@ -317,6 +365,9 @@ export class AgentWorkbenchService {
 		if (lifecycle === "active") await conversations.restore(conversationId);
 		else if (lifecycle === "archived") await conversations.archive(conversationId);
 		else await conversations.softDelete(conversationId);
+		// 会话删除后必须回收它的会话级外部授权（`rememberExternalGrant` 是唯一生产者，
+		// 此前 `clearConversation` 全仓零调用）。
+		if (lifecycle === "deleted") this.options.approvalBroker?.clearConversation(conversationId);
 	}
 
 	discardEmptyConversation(conversationId: string): Promise<boolean> {
@@ -355,9 +406,7 @@ export class AgentWorkbenchService {
 	): AsyncGenerator<AgentEvent> {
 		const run = async function* (service: AgentWorkbenchService): AsyncGenerator<AgentEvent> {
 			const projection = await service.loadConversation(conversationId);
-			const history = request.history ?? projectMessages(projection.events.filter((event) => event.runtimeId === projection.manifest.selection.runtimeId))
-				.filter((message) => message.role !== "system")
-				.map((message) => ({ role: message.role as "user" | "assistant", text: message.text }));
+			const history = request.history ?? projectTurnHistory(projection);
 			const interactions: AgentExecutionInteractions = {
 				approve: async (event) => {
 					const toolName = typeof event.payload.name === "string"
@@ -638,10 +687,18 @@ export class AgentWorkbenchService {
 		}
 		const selected = await input.prompt({ ...approval, phase: "execute" });
 		if (selected === "deny") return "deny";
-		if (selected === "allow-always" && request.kind !== "unknown" && approval.risk === "B") {
-			const remembered = await this.options.approvalBroker.rememberExactRule(request, {
+		const approvalContext = {
 			workflow: this.workflow, permission: this.permission, conversationId: input.conversationId, approvalUiAttached: true,
-		});
+		};
+		// risk A（Vault 外读是 risk A）没有 allow-always 语义，只能写会话级授权；
+		// 只挂 risk B 分支会让最常见的「读 Vault 外文件」一次都拿不到授权。
+		if (approval.risk === "A") {
+			await this.options.approvalBroker.rememberExternalGrant(request, approvalContext, "conversation");
+		}
+		if (selected === "allow-always" && request.kind !== "unknown" && approval.risk === "B") {
+			const remembered = await this.options.approvalBroker.rememberExactRule(request, approvalContext);
+			// 与原 rememberExactRule 并列：allow-always 同时写会话级外部授权。
+			await this.options.approvalBroker.rememberExternalGrant(request, approvalContext, "conversation");
 			return remembered ? "allow-always" : "allow";
 		}
 		return "allow";

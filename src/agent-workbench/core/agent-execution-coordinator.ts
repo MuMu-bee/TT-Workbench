@@ -8,6 +8,7 @@ import type {
 	RuntimeId,
 	RuntimeTurn,
 } from "../contracts/runtime-adapter";
+import type { RuntimeCapabilities } from "../contracts/runtime-capabilities";
 import {
 	ConversationInputLedger,
 	createConversationInputRecord,
@@ -39,6 +40,11 @@ export interface AgentExecutionCoordinatorOptions {
 		hasImages: boolean;
 	}): Promise<{ allowed: boolean; message?: string }>;
 	onRuntimeInvalidated?(runtimeId: RuntimeId, error: unknown): void;
+	/**
+	 * Q-ARC4：execute 入口的运行时能力查询。可选——未注入时不做能力校验，
+	 * 现有那些只关心会话/租约行为的构造点无需改动。
+	 */
+	runtimeCapabilities?(runtimeId: RuntimeId): RuntimeCapabilities;
 }
 
 const TRANSIENT_RUNTIME_EVENTS = new Set<AgentEvent["type"]>([
@@ -52,6 +58,19 @@ function shouldPersistRuntimeEvent(event: AgentEvent): boolean {
 	return !TRANSIENT_RUNTIME_EVENTS.has(event.type);
 }
 
+/**
+ * 会话租约已被一个进行中的回合占用。
+ *
+ * `compact` / `fork` 以 `forTurn: false` 申请租约时，若同一会话的租约正在跑回合，
+ * 必须显式失败而不是复用（复用会让它们的 `finally` 把正在跑的 runtime dispose 掉）。
+ */
+export class LeaseBusyError extends Error {
+	constructor(readonly conversationId: string) {
+		super("当前会话已有回合正在执行，不能复用其运行时租约");
+		this.name = "LeaseBusyError";
+	}
+}
+
 interface RuntimeLease {
 	key: string;
 	conversationId: string;
@@ -62,6 +81,8 @@ interface RuntimeLease {
 	generation: number;
 	seenEventIds: Set<string>;
 	seenNativeEventKeys: Set<string>;
+	/** 该租约是否正被 `execute` 的进行中回合持有（只有 `execute` 会置位）。 */
+	activeTurn: boolean;
 }
 
 interface ActiveExecution {
@@ -121,6 +142,11 @@ export class AgentExecutionCoordinator {
 		return current === execution && lease?.generation === execution.generation;
 	}
 
+	/** 一次 dispose 同时关掉子进程与 loopback 代理（onDispose 挂在 adapter 上），失败不掩其它路径。 */
+	private async disposeQuietly(runtime: AgentRuntimeAdapter): Promise<void> {
+		await runtime.dispose().catch(() => undefined);
+	}
+
 	private async invalidateLease(lease: RuntimeLease, error: unknown): Promise<void> {
 		if (this.leases.get(lease.key) === lease) this.leases.delete(lease.key);
 		await this.options.conversations.clearBinding(
@@ -128,66 +154,84 @@ export class AgentExecutionCoordinator {
 			lease.runtimeId,
 			lease.providerProfileId,
 		).catch(() => undefined);
-		await lease.runtime.dispose().catch(() => undefined);
+		await this.disposeQuietly(lease.runtime);
 		this.options.onRuntimeInvalidated?.(lease.runtimeId, error);
 	}
 
 	private async releaseLease(lease: RuntimeLease): Promise<void> {
+		if (lease.activeTurn) return;
 		if (this.leases.get(lease.key) !== lease) return;
 		this.leases.delete(lease.key);
-		await lease.runtime.dispose().catch(() => undefined);
+		await this.disposeQuietly(lease.runtime);
 	}
 
+	/**
+	 * `forTurn: true` 分支在 `execute` 下已成死码：`:204-206` 的 active/preparing 守卫
+	 * 与 preparing 占位保证同一会话不会二次 acquire，保留它只为与 `forTurn: false`
+	 * 的调用方形成防御性对称，不要指望有测试能覆盖它。
+	 */
 	private async acquireLease(
 		conversation: ConversationManifest,
 		selection: ConversationManifest["selection"],
+		options: { forTurn: boolean } = { forTurn: true },
 	): Promise<RuntimeLease> {
 		const key = leaseKey(conversation.conversationId, selection.runtimeId, selection.providerProfileId);
 		const existing = this.leases.get(key);
-		if (existing) return existing;
+		if (existing) {
+			// 只看「调用方 forTurn」+「existing.activeTurn」两级：租约上不存 forTurn。
+			if (options.forTurn && !existing.activeTurn) return existing;
+			throw new LeaseBusyError(conversation.conversationId);
+		}
 		let runtime = await this.options.createRuntime(selection.runtimeId, conversation.conversationId, selection);
-		let binding = await this.options.conversations.getBinding(
-			conversation.conversationId,
-			selection.runtimeId,
-			selection.providerProfileId,
-		);
-		if (binding) {
-			try {
-				await runtime.resumeSession(binding);
-			} catch {
-				await runtime.dispose().catch(() => undefined);
-				await this.options.conversations.clearBinding(
-					conversation.conversationId,
-					selection.runtimeId,
-					selection.providerProfileId,
-				).catch(() => undefined);
-				runtime = await this.options.createRuntime(selection.runtimeId, conversation.conversationId, selection);
-				binding = null;
+		// runtime 是 let（失败回退分支会重新赋值），catch 必须 dispose 那一刻的当前值。
+		try {
+			let binding = await this.options.conversations.getBinding(
+				conversation.conversationId,
+				selection.runtimeId,
+				selection.providerProfileId,
+			);
+			if (binding) {
+				try {
+					await runtime.resumeSession(binding);
+				} catch {
+					await runtime.dispose().catch(() => undefined);
+					await this.options.conversations.clearBinding(
+						conversation.conversationId,
+						selection.runtimeId,
+						selection.providerProfileId,
+					).catch(() => undefined);
+					runtime = await this.options.createRuntime(selection.runtimeId, conversation.conversationId, selection);
+					binding = null;
+				}
 			}
-		}
-		if (!binding) {
-			binding = await runtime.createSession({
+			if (!binding) {
+				binding = await runtime.createSession({
+					conversationId: conversation.conversationId,
+					vaultRoot: this.options.vaultRoot,
+					model: selection.model,
+					providerProfileId: selection.providerProfileId,
+					initialContext: this.options.initialContext?.(),
+				});
+				await this.options.conversations.setBinding(conversation.conversationId, binding);
+			}
+			const lease: RuntimeLease = {
+				key,
 				conversationId: conversation.conversationId,
-				vaultRoot: this.options.vaultRoot,
-				model: selection.model,
+				runtimeId: selection.runtimeId,
 				providerProfileId: selection.providerProfileId,
-				initialContext: this.options.initialContext?.(),
-			});
-			await this.options.conversations.setBinding(conversation.conversationId, binding);
+				runtime,
+				binding,
+				generation: ++this.nextGeneration,
+				seenEventIds: new Set(),
+				seenNativeEventKeys: new Set(),
+				activeTurn: false,
+			};
+			this.leases.set(key, lease);
+			return lease;
+		} catch (error) {
+			await this.disposeQuietly(runtime);
+			throw error;
 		}
-		const lease: RuntimeLease = {
-			key,
-			conversationId: conversation.conversationId,
-			runtimeId: selection.runtimeId,
-			providerProfileId: selection.providerProfileId,
-			runtime,
-			binding,
-			generation: ++this.nextGeneration,
-			seenEventIds: new Set(),
-			seenNativeEventKeys: new Set(),
-		};
-		this.leases.set(key, lease);
-		return lease;
 	}
 
 	async *execute(
@@ -199,6 +243,15 @@ export class AgentExecutionCoordinator {
 		const displayText = executionText(request.input);
 		if (!displayText && !request.input.some((block) => block.type === "image")) {
 			throw new Error("消息或图片不能为空");
+		}
+		// Q-ARC4：执行前的图片能力校验。用 `conversation.selection.runtimeId`（此时还没有 prepared，
+		// 拿不到本次请求解析后的 selection），与 UI 侧 `getRuntimeCapabilities` 走同一张派生表。
+		// 回调可选：未注入时（含 fake runtime 的 20+ 构造点）行为不变。
+		if (request.input.some((block) => block.type === "image")) {
+			const caps = this.options.runtimeCapabilities?.(conversation.selection.runtimeId);
+			if (caps?.input.image === "unavailable") {
+				throw new Error("当前运行时不支持图片输入，请移除图片后重试");
+			}
 		}
 		const conversationId = conversation.conversationId;
 		if (this.active.has(conversationId) || this.preparing.has(conversationId)) {
@@ -283,6 +336,7 @@ export class AgentExecutionCoordinator {
 					abort,
 				};
 				this.active.set(conversationId, execution);
+				lease.activeTurn = true;
 				return { selection, recordId, turnId, turn, staged, lease, execution };
 			} catch (error) {
 				request.signal?.removeEventListener("abort", relayAbort);
@@ -424,6 +478,10 @@ export class AgentExecutionCoordinator {
 			yield errorEvent;
 		} finally {
 			request.signal?.removeEventListener("abort", relayAbort);
+			// 必须先放开归属标记再 releaseLease，否则 releaseLease 会在 activeTurn 上早退，
+			// 该租约永远不会被 dispose。releaseLease 在 active.delete 之前的顺序也不能动：
+			// tests/agent-workbench-native-execution.test.ts 依赖「dispose 被 gate 挂住时 active 仍在」。
+			lease.activeTurn = false;
 			await this.releaseLease(lease);
 			if (this.active.get(conversation.conversationId) === execution) {
 				this.active.delete(conversation.conversationId);
@@ -459,7 +517,14 @@ export class AgentExecutionCoordinator {
 	async compact(conversationId: string): Promise<boolean> {
 		const projection = await this.options.conversations.conversations.store.load(conversationId);
 		const selection = projection.manifest.selection;
-		const lease = await this.acquireLease(projection.manifest, selection);
+		let lease: RuntimeLease;
+		try {
+			lease = await this.acquireLease(projection.manifest, selection, { forTurn: false });
+		} catch (error) {
+			// 租约忙只转成 false（`Promise<boolean>` 契约不变），其余错误继续外抛。
+			if (error instanceof LeaseBusyError) return false;
+			throw error;
+		}
 		try {
 			if (!lease.runtime.compact) return false;
 			await lease.runtime.compact({ binding: lease.binding });
@@ -470,7 +535,9 @@ export class AgentExecutionCoordinator {
 	}
 
 	async fork(conversation: ConversationManifest): Promise<NativeSessionBinding | null> {
-		const lease = await this.acquireLease(conversation, conversation.selection);
+		// 不捕获 LeaseBusyError：让它外抛，避免 agent-workbench-service 的 `if (binding)`
+		// 静默产出一个没有 binding 的分支。
+		const lease = await this.acquireLease(conversation, conversation.selection, { forTurn: false });
 		try {
 			if (!lease.runtime.fork) return null;
 			return await lease.runtime.fork({ binding: lease.binding });

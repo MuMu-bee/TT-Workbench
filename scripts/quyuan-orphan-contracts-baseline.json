@@ -1,0 +1,11 @@
+{
+  "comment": "Q-ARC6 护栏 `quyuan-no-orphan-contract` 的存量白名单：src/quyuan/ 下「导出 interface、全仓无 implements、且只被 tests/ 引用」的文件。contract.ts 一组 4 个文件（contract/workbench-adapter/module/index）已按报告 C5 首选处置删除；这里只留本轮之前就存在、且不在 Q-ARC6 删除范围内的 local-voice-supply-chain.ts（本地语音供应链类型包，属 TT 1.2.0 本地 ASR 整链退役后的遗留，需单独判断删除还是接线）。清空本文件后 node scripts/check-module-boundaries.mjs 应报 1 条 quyuan-no-orphan-contract 违规并以退出码 1 结束。",
+  "allowed": [
+    {
+      "file": "src/quyuan/local-voice-supply-chain.ts",
+      "note": "本地 ASR 整链退役后残留的类型包（src/ 内 0 导入、tests/ 内 0 引用），处置方式待定，不并入 Q-ARC6",
+      "issue": "Q-ARC6 后的遗留：本地语音供应链整链删除或接线",
+      "reviewBy": "2026-12-31"
+    }
+  ]
+}

@@ -12,11 +12,13 @@ import {
 
 describe("Windows platform compatibility", () => {
 	it("discovers command shims without enabling a shell for native executables", () => {
+		// 扩展名优先、裸名垫底：win32 上裸名可能命中一个纯文本 shim 或压根不存在，
+		// 让 .exe/.cmd 先被选中才止得住 spawn ENOENT → status: crashed。
 		expect(runtimeCandidateNames("codex", "win32", ".EXE;.CMD;.BAT")).toEqual([
-			"codex",
 			"codex.exe",
 			"codex.cmd",
 			"codex.bat",
+			"codex",
 		]);
 		expect(runtimeProbeUsesShell("C:\\tools\\codex.cmd", "win32")).toBe(true);
 		expect(runtimeProbeUsesShell("C:\\tools\\codex.exe", "win32")).toBe(false);

@@ -50,8 +50,10 @@ async function flushAndTick(): Promise<void> {
 
 interface Harness {
   scheduler: StreamRenderScheduler;
-  doRender: Mock<() => Promise<void>>;
-  afterRender: ReturnType<typeof vi.fn>;
+  // 显式写出签名（与 StreamRenderScheduler 的 options.doRender / afterRender 一致），
+  // 这样 `mock.calls[0]?.[1]` 才有元素类型，不需要用 as 绕类型。
+  doRender: Mock<(el: HTMLElement, content: string) => Promise<void>>;
+  afterRender: Mock<() => void>;
   setContent: (text: string) => void;
   setEl: (el: { mockEl: boolean } | null) => void;
 }
@@ -59,8 +61,8 @@ interface Harness {
 function createHarness(initialContent = ""): Harness {
   let content = initialContent;
   let el: { mockEl: boolean } | null = { mockEl: true };
-  const doRender = vi.fn(async () => {});
-  const afterRender = vi.fn();
+  const doRender = vi.fn<(el: HTMLElement, content: string) => Promise<void>>(async () => {});
+  const afterRender = vi.fn<() => void>();
 
   const scheduler = new StreamRenderScheduler({
     getTargetEl: () => el as unknown as HTMLElement,

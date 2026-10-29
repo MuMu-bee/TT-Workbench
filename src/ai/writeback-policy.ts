@@ -26,11 +26,18 @@ function safeTitle(title: string): string {
 	return sanitized || "AI 回答";
 }
 
+/** 回写目标目录，由调用方从 TalosVaultSchema 取（不再写死旧目录名）。 */
+export interface AnswerWritebackFolders {
+	insights: string;
+	output: string;
+}
+
 export function proposeAnswerWriteback(
-	input: AnswerWritebackInput
+	input: AnswerWritebackInput,
+	folders: AnswerWritebackFolders
 ): AnswerWritebackProposal | null {
 	if (input.intent === "display-only") return null;
-	const folder = input.intent === "knowledge" ? "30 洞察" : "70 输出";
+	const folder = input.intent === "knowledge" ? folders.insights : folders.output;
 	const title = safeTitle(input.title);
 	return {
 		targetPath: `${folder}/${title}.md`,

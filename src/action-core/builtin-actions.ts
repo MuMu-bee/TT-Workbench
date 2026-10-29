@@ -23,19 +23,12 @@ export interface BuiltinActionDependencies {
 
 export interface BuiltinActionScopes {
 	noteWriteScopes: string[];
+	/** 发布回填的影响范围（首项是保留的 `<publish>` 语义标记）。 */
+	publishWriteScopes: string[];
 	/** 收件箱分诊：读取范围是收件箱，写入范围是收件箱与可选目标目录。 */
 	inboxTriageReadScopes?: string[];
 	inboxTriageWriteScopes?: string[];
 }
-
-const DEFAULT_SCOPES: BuiltinActionScopes = {
-	noteWriteScopes: [
-		"00 收件箱/**",
-		"01 日志/**",
-		"30 洞察/**",
-		"70 输出/**",
-	],
-};
 
 function executor(
 	dependency: BuiltinExecutor
@@ -45,7 +38,7 @@ function executor(
 
 export function createBuiltinActionRegistry(
 	dependencies: BuiltinActionDependencies,
-	scopes: BuiltinActionScopes = DEFAULT_SCOPES
+	scopes: BuiltinActionScopes
 ): TalosActionRegistry {
 	return new TalosActionRegistry([
 		{
@@ -102,7 +95,7 @@ export function createBuiltinActionRegistry(
 			description: "更新发布状态并可能触发外部发布流程",
 			risk: "C",
 			readScope: ["**"],
-			writeScope: ["<publish>", "70 输出/**"],
+			writeScope: [...scopes.publishWriteScopes],
 			timeoutMs: 2 * 60_000,
 			cancelable: true,
 			reversible: true,

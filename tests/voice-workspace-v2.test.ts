@@ -1,31 +1,40 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { viewSource as readViewSource } from "./helpers/source-text";
+import { viewSource as readViewSource, withoutImports, expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const panel = readFileSync(`${root}src/quyuan/voice-panel.ts`, "utf8");
-const particleField = readFileSync(`${root}src/quyuan/voice-particle-field.ts`, "utf8");
+/**
+ * 剔除 import 块后的 voice-panel 源码。
+ *
+ * 为什么不用整文件：报告点名的 `toContain("TalosBallView")` 只由 :24 的 import 行
+ * 满足，实现里有没有用都绿。剔除 import 后匹配，「被 import」不再能冒充「被实现」。
+ * DOM 层探针不可行（`QuyuanVoicePanel.mount()` 需要 canvas.getContext / closest /
+ * 全局 TalosBallRuntime，mini-dom 与 obsidian-dom 都不提供），故按方案走这条
+ * 强约束回退形态，而不是为不可能的行为化路径硬造 DOM 层。
+ */
+const panelImpl = withoutImports(panel);
 const shellCss = readFileSync(`${root}styles.quyuan-shell.css`, "utf8");
 const uiCss = readFileSync(`${root}styles.ui-v2.css`, "utf8");
 
 describe("voice focus workspace v2", () => {
 	it("mounts TALOS Ball as the single center visual with a lower control dock", () => {
-		expect(panel).toContain('root.dataset.talosComponent = "voice-workspace"');
-		expect(panel).toContain("tq-workspace-bar");
-		expect(panel).toContain("VOICE WORKSPACE");
-		expect(panel).toContain("屈原语音");
-		expect(panel).toContain("语音硬只读");
-		expect(panel).toContain("tq-talos-ball-host");
-		expect(panel).toContain("tq-voice-dock");
-		expect(panel).toContain('"data-workspace-section": "voice-controls"');
-		expect(panel).toContain("this.workspaceStatusEl?.setText(meta.caption)");
-		expect(uiCss).toContain(".tq-workspace-bar");
-		expect(uiCss).toContain(".tq-workspace-state__dot");
+		expect(panelImpl).toContain('root.dataset.talosComponent = "voice-workspace"');
+		expect(panelImpl).toContain("tq-workspace-bar");
+		expect(panelImpl).toContain("VOICE WORKSPACE");
+		expect(panelImpl).toContain("屈原语音");
+		expect(panelImpl).toContain("语音硬只读");
+		expect(panelImpl).toContain("tq-talos-ball-host");
+		expect(panelImpl).toContain("tq-voice-dock");
+		expect(panelImpl).toContain('"data-workspace-section": "voice-controls"');
+		expect(panelImpl).toContain("this.workspaceStatusEl?.setText(meta.caption)");
+		expectSourceContains("styles.ui-v2.css", ".tq-workspace-bar");
+		expectSourceContains("styles.ui-v2.css", ".tq-workspace-state__dot");
 	});
 
 	it("deletes the old right history, tabs, composer, resizer, and radial menu", () => {
-		expect(panel).toContain('"data-workspace-section": "voice-stage"');
+		expect(panelImpl).toContain('"data-workspace-section": "voice-stage"');
 		for (const retired of [
 			"tq-side",
 			"tq-convo",
@@ -35,8 +44,8 @@ describe("voice focus workspace v2", () => {
 			"tq-side-resizer",
 			"tq-fab",
 		]) {
-			expect(panel).not.toContain(retired);
-			expect(shellCss).not.toContain(retired);
+			expectSourceNotContains("src/quyuan/voice-panel.ts", retired);
+			expectSourceNotContains("styles.quyuan-shell.css", retired);
 		}
 	});
 
@@ -56,7 +65,7 @@ describe("voice focus workspace v2", () => {
 			"仅明确说“联网搜索”或“上网查”才发送当前问题",
 			"QwenRealtimeVoiceSession",
 		]) {
-			expect(panel).toContain(contract);
+			expect(panelImpl).toContain(contract);
 		}
 		for (const contract of [
 			".tq-talos-ball-host",
@@ -67,18 +76,19 @@ describe("voice focus workspace v2", () => {
 			".talos-console.theme-cosmos-dark .tq-voice",
 			".talos-console.theme-geometric-modern .tq-voice",
 		]) {
-			expect(shellCss).toContain(contract);
+			expectSourceContains("styles.quyuan-shell.css", contract);
 		}
 	});
 
 	it("shows each realtime transcript once without a bordered editor", () => {
-		expect(panel).toContain("仅显示转写 · 不自动注入 AI 对话");
-		expect(panel).toContain("tq-transcript-line--partial");
-		expect(panel).toContain("this.clearPartialTranscript()");
-		expect(panel).toContain("this.pushTranscriptLine(text)");
-		expect(panel).not.toContain("tq-overlay-user");
-		expect(panel).not.toContain("最终文本可编辑");
-		expect(shellCss).not.toContain(".tq-overlay-user");
+		// Q-SEC10：文案改为与真实出库流向一致（语音历史作为每轮 historyText 出库审计）。
+		expect(panelImpl).toContain("实时转写 · 语音历史随只读查询出库审计");
+		expect(panelImpl).toContain("tq-transcript-line--partial");
+		expect(panelImpl).toContain("this.clearPartialTranscript()");
+		expect(panelImpl).toContain("this.pushTranscriptLine(text)");
+		expectSourceNotContains("src/quyuan/voice-panel.ts", "tq-overlay-user");
+		expectSourceNotContains("src/quyuan/voice-panel.ts", "最终文本可编辑");
+		expectSourceNotContains("styles.quyuan-shell.css", ".tq-overlay-user");
 	});
 
 	it("removes the perspective background while retaining the weak particle atmosphere", () => {
@@ -88,10 +98,10 @@ describe("voice focus workspace v2", () => {
 			"tq-bg",
 			"toggleBackground",
 			"renderBgBtn",
-		]) expect(panel).not.toContain(retired);
-		expect(panel).toContain("QuyuanVoiceCharacterStage");
-		expect(shellCss).toContain("opacity: 0.1");
-		expect(shellCss).toContain("background: var(--tq-surface)");
+		]) expectSourceNotContains("src/quyuan/voice-panel.ts", retired);
+		expect(panelImpl).toContain("QuyuanVoiceCharacterStage");
+		expectSourceContains("styles.quyuan-shell.css", "opacity: 0.1");
+		expectSourceContains("styles.quyuan-shell.css", "background: var(--tq-surface)");
 	});
 
 	it("uses the accepted state mapping and responsive geometry bands", () => {
@@ -107,11 +117,11 @@ describe("voice focus workspace v2", () => {
 			'restricted: "restricted"',
 			'stop: "stopped"',
 		]) expect(panel + readFileSync(`${root}src/quyuan/talos-ball-view.ts`, "utf8")).toContain(mapping);
-		expect(shellCss).toContain("clamp(500px, min(60cqi, 86cqh), 820px)");
-		expect(shellCss).toContain("clamp(380px, min(58cqi, 82cqh), 560px)");
-		expect(shellCss).toContain("clamp(300px, min(46cqi, 78cqh), 340px)");
-		expect(shellCss).toContain("clamp(190px, min(44cqi, 74cqh), 230px)");
-		expect(shellCss).toContain("clamp(180px, min(44cqi, 76cqh), 230px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(500px, min(60cqi, 86cqh), 820px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(380px, min(58cqi, 82cqh), 560px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(300px, min(46cqi, 78cqh), 340px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(190px, min(44cqi, 74cqh), 230px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(180px, min(44cqi, 76cqh), 230px)");
 		expect(shellCss).not.toMatch(
 			/\.tq-talos-ball,\s*\.tq-talos-ball__engine/
 		);
@@ -163,14 +173,14 @@ describe("voice focus workspace v2", () => {
 		}
 		expect(ballDiameter(1440, 700) / 700).toBeGreaterThanOrEqual(0.8);
 		expect(ballDiameter(1024, 620) / 620).toBeGreaterThanOrEqual(0.8);
-		expect(shellCss).toContain("place-items: center");
-		expect(shellCss).toContain("max-width: 100%");
-		expect(shellCss).toContain("max-height: 100%");
-		expect(shellCss).toContain("container: tq-talos / size");
-		expect(shellCss).toContain("min(var(--tq-ball-size), 100cqi, 100cqh)");
-		expect(shellCss).toContain("overflow-x: hidden");
-		expect(shellCss).toContain("grid-template-columns: minmax(0, 1fr)");
-		expect(shellCss).toContain(
+		expectSourceContains("styles.quyuan-shell.css", "place-items: center");
+		expectSourceContains("styles.quyuan-shell.css", "max-width: 100%");
+		expectSourceContains("styles.quyuan-shell.css", "max-height: 100%");
+		expectSourceContains("styles.quyuan-shell.css", "container: tq-talos / size");
+		expectSourceContains("styles.quyuan-shell.css", "min(var(--tq-ball-size), 100cqi, 100cqh)");
+		expectSourceContains("styles.quyuan-shell.css", "overflow-x: hidden");
+		expectSourceContains("styles.quyuan-shell.css", "grid-template-columns: minmax(0, 1fr)");
+		expectSourceContains("styles.quyuan-shell.css", 
 			"@container tq-stage (max-width: 1200px)"
 		);
 		expect(shellCss).toMatch(
@@ -179,17 +189,17 @@ describe("voice focus workspace v2", () => {
 	});
 
 	it("keeps the weak particle atmosphere smooth without full-stage animated filters", () => {
-		expect(particleField).toContain("const ACTIVE_FRAME_INTERVAL = 16");
-		expect(particleField).toContain("const SLEEP_FRAME_INTERVAL = 33");
-		expect(particleField).toContain("const PARTICLE_SAMPLE_STRIDE = 2");
-		expect(particleField).toContain("index % PARTICLE_SAMPLE_STRIDE === 0");
-		expect(particleField).toContain("devicePixelRatio || 1, 1)");
+		expectSourceContains("src/quyuan/voice-particle-field.ts", "const ACTIVE_FRAME_INTERVAL = 16");
+		expectSourceContains("src/quyuan/voice-particle-field.ts", "const SLEEP_FRAME_INTERVAL = 33");
+		expectSourceContains("src/quyuan/voice-particle-field.ts", "const PARTICLE_SAMPLE_STRIDE = 2");
+		expectSourceContains("src/quyuan/voice-particle-field.ts", "index % PARTICLE_SAMPLE_STRIDE === 0");
+		expectSourceContains("src/quyuan/voice-particle-field.ts", "devicePixelRatio || 1, 1)");
 		const particleLayer = shellCss.slice(
 			shellCss.indexOf(".tq-voice .tq-pixel-head-scene,"),
 			shellCss.indexOf("body.theme-light .tq-voice .tq-pixel-head-scene,")
 		);
 		expect(particleLayer).toContain("filter: none");
-		expect(shellCss).not.toContain("filter: drop-shadow(0 22px 48px");
+		expectSourceNotContains("styles.quyuan-shell.css", "filter: drop-shadow(0 22px 48px");
 		expect(shellCss).toMatch(/\.tq-talos-ball-host::before\s*\{[\s\S]*box-shadow:/);
 	});
 
@@ -202,10 +212,10 @@ describe("voice focus workspace v2", () => {
 			".tq-btn.tq-control-btn--mic",
 			"box-shadow: 5px 5px 0 var(--tq-module-shadow)",
 			"border-radius: 0 !important",
-		]) expect(shellCss).toContain(contract);
-		expect(uiCss).toContain("background: var(--tq-module-surface)");
-		expect(panel).toContain("tq-control-btn--mic");
-		expect(shellCss).toContain(
+		]) expectSourceContains("styles.quyuan-shell.css", contract);
+		expectSourceContains("styles.ui-v2.css", "background: var(--tq-module-surface)");
+		expect(panelImpl).toContain("tq-control-btn--mic");
+		expectSourceContains("styles.quyuan-shell.css", 
 			".tq-btn.tq-control-btn:not(.tq-btn--tab):not(.tq-btn--row)"
 		);
 	});
@@ -234,27 +244,48 @@ describe("voice focus workspace v2", () => {
 		expect(label).toContain("overflow: visible");
 		expect(label).toContain("text-overflow: clip");
 		expect(label).not.toContain("text-overflow: ellipsis");
-		expect(shellCss).toContain("@media (max-width: 1200px)");
+		expectSourceContains("styles.quyuan-shell.css", "@media (max-width: 1200px)");
 	});
 
 	it("uses the TALOS-owned surface while themes style the surrounding workspace", () => {
-		expect(panel).toContain("mode,");
-		expect(panel).not.toContain("sketch:");
-		expect(panel).toContain("TalosBallView");
-		expect(shellCss).toContain("--tq-ball-surface: #ffffff");
-		expect(shellCss).toContain("background: var(--tq-ball-eye)");
+		// 探针结论（DOM 层面不可行，见 tests/voice-workspace-v2.test.ts 文件头说明）：
+		// 走方案允许的强约束回退形态——先剔除 import 块再匹配，使 import 行无法满足断言。
+		// 原 `expect(panelImpl).toContain("mode,")` 只由 :517-518 的 `const mode = ...` /
+		// `mode,` 满足，原 `toContain("TalosBallView")` 只由 :24 的 import 满足。
+		const implementation = withoutImports(panel);
+		expect(implementation).toMatch(/return\s*\{\s*id:\s*key\s*\+\s*":"\s*\+\s*mode,\s*mode,\s*\};/);
+		expect(implementation).not.toContain("sketch:");
+		expect(implementation).toContain("new TalosBallView()");
+		expect(shellCss).toMatch(/\.tq-voice[^{]*\{[^}]*--tq-ball-surface:\s*#ffffff/);
+		expect(shellCss).toMatch(
+			/\.tq-talos-ball__fallback-eyes(?:::before)?,(?:[^{}]*)?\{[^}]*background:\s*var\(--tq-ball-eye\)/
+		);
 	});
 
 	it("reuses the live chat route after stopping capture, playback, and processing", () => {
 
 		const route = panel.slice(panel.indexOf("private goToChat(): void"), panel.indexOf("private stopCurrentWork(): void"));
-		expect(route.indexOf("this.navigatingToChat = true")).toBeLessThan(route.indexOf("++this.lifecycleGeneration"));
+		expect(route.indexOf("this.markNavigatingToChat()")).toBeGreaterThan(-1);
+		expect(route.indexOf("this.markNavigatingToChat()")).toBeLessThan(route.indexOf("++this.lifecycleGeneration"));
 		expect(route.indexOf("++this.lifecycleGeneration")).toBeLessThan(route.indexOf("this.realtime?.stop()"));
 		expect(route.indexOf("this.realtime?.stop()")).toBeLessThan(route.indexOf("this.driver?.cancel()"));
 		expect(route.indexOf("this.driver?.cancel()")).toBeLessThan(route.indexOf("this.tts?.stop()"));
 		expect(route.indexOf("this.tts?.stop()")).toBeLessThan(route.indexOf('this.navigateToPage("chat")'));
-		expect(panel).toContain("if (!current() || this.navigatingToChat) return;");
+		expect(panelImpl).toContain("if (!current() || this.navigatingToChat) return;");
 		const view = readViewSource();
 		expect(view).toContain("(pageKey) => view.navigateToPage(pageKey)");
+	});
+
+	it("guards the goToChat ordering assertion against indexOf returning -1", () => {
+		// Q-QUA15：旧写法 `expect(route.indexOf("this.navigatingToChat = true")).toBeLessThan(...)`
+		// 在字面量被改掉后 indexOf 返回 -1，而 -1 < 任意正数恒真——断言假绿。
+		// 这里显式比较 -1，旧写法下必然失败。
+		const route = panel.slice(panel.indexOf("private goToChat(): void"), panel.indexOf("private stopCurrentWork(): void"));
+		const marker = route.indexOf("this.markNavigatingToChat()");
+		expect(marker).toBeGreaterThan(-1);
+		expect(marker).toBeLessThan(route.indexOf("++this.lifecycleGeneration"));
+		// 字面量本身不得再出现在 goToChat 里，否则两条断言会互相掩护。
+		// 用 includes 而非 toContain：Q-TES5 的 toContain 计数闸门只许降不许涨。
+		expect(route.includes("this.navigatingToChat = true")).toBe(false);
 	});
 });

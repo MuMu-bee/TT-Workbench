@@ -7,6 +7,8 @@ import {
 	createConsoleActionRuntime,
 	type ConsoleActionDependencies,
 } from "../src/console-action-runtime";
+import { noteScopesFromSchema } from "../src/action-core/note-scopes";
+import { resolveSchema } from "../src/data/schema";
 import { MemoryRecoveryStore } from "../src/task-core/recovery-store";
 import type { TaskTimerHost } from "../src/task-core/task-runner";
 import { ConsoleActionPanel } from "../src/ui/console-action-panel";
@@ -16,6 +18,9 @@ const nodeTimers: TaskTimerHost = {
 	schedule: (callback, timeoutMs) => nodeSetTimeout(callback, timeoutMs),
 	cancel: (handle) => nodeClearTimeout(handle as NodeJS.Timeout),
 };
+
+// 写入范围由 schema 派生（与生产装配点同源）。
+const scopes = noteScopesFromSchema(resolveSchema(undefined));
 
 function runtimeWith(executions: string[]) {
 	const dependency = (id: string) => vi.fn(async () => {
@@ -30,11 +35,13 @@ function runtimeWith(executions: string[]) {
 		publishBackfill: dependency("publish-backfill"),
 		decideApproval: dependency("decide-approval"),
 		decidePreference: dependency("decide-preference"),
+		moveInboxNote: dependency("triage-inbox-note"),
 	};
 	return createConsoleActionRuntime({
 		dependencies,
 		recoveryStore: new MemoryRecoveryStore(),
 		timers: nodeTimers,
+		scopes,
 	});
 }
 
@@ -64,10 +71,10 @@ describe("ConsoleActionPanel", () => {
 				{
 					actionId: "create-note",
 					idempotencyKey: "panel-b",
-					input: { targetPath: "00 收件箱/new.md" },
+					input: { targetPath: "00-收件箱/new.md" },
 					request: {
 						readPaths: [],
-						writePaths: ["00 收件箱/new.md"],
+						writePaths: ["00-收件箱/new.md"],
 						effects: ["write"],
 					},
 					proposal: {
@@ -75,7 +82,7 @@ describe("ConsoleActionPanel", () => {
 						provider: "TALOS",
 						steps: ["创建笔记"],
 						fileCount: 1,
-						keyDiffs: ["新增 00 收件箱/new.md"],
+						keyDiffs: ["新增 00-收件箱/new.md"],
 						reversible: true,
 					},
 				},

@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const css = readFileSync(`${root}styles.ui-v2.css`, "utf8");
 const polish = css.slice(css.indexOf("UI polish v1"));
 const businessHeader =
-	'.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])\n\t.talos-ui-page-header.module-hero';
+	'.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])\n\t.talos-ui-page-header.module-hero';
 
 function rule(selectorStart: string): string {
 	const start = polish.indexOf(selectorStart);

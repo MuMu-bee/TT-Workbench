@@ -3,6 +3,7 @@ import type {
 	RuntimeExecutionContext,
 	RuntimeInputBlock,
 } from "../contracts/runtime-adapter";
+import type { RuntimeCapabilities } from "../contracts/runtime-capabilities";
 import { LocalFilePreviewPicker } from "./file-preview/local-preview-modal";
 import { ContextMeter, type ContextUsage } from "./context-usage";
 import { discoverProjectCommands, type ProjectCommand } from "./project-commands";
@@ -30,6 +31,11 @@ export interface NativeComposerOptions {
 	onWorkflow(mode: "plan" | "execute"): void;
 	onRefine(text: string): Promise<string>;
 	onInlineEdit(draft: NativeComposerDraft): Promise<void>;
+	/**
+	 * Q-ARC4：当前运行时的能力表（`AgentWorkbenchService#getRuntimeCapabilities`）。
+	 * 可选——不注入时不额外禁用任何入口；图片入口仍受 `IMAGE_INPUT_BLOCKED_REASON` 约束。
+	 */
+	capabilities?(): RuntimeCapabilities;
 }
 
 interface ImageDraft {
@@ -86,6 +92,11 @@ export class NativeComposer {
 	private mcpServers: string[] = [];
 	private busy = false;
 	private disposed = false;
+	/**
+	 * Q-ARC4：图片按钮在构造期一次性 append 到工具栏，之后要按运行时能力刷新它的
+	 * disabled / is-unavailable / title，就必须留住引用（否则只能整条工具栏重建）。
+	 */
+	private imageButtonEl: HTMLButtonElement | null = null;
 
 	constructor(container: HTMLElement, private readonly options: NativeComposerOptions) {
 		const doc = container.ownerDocument;
@@ -197,19 +208,81 @@ export class NativeComposer {
 	}
 
 	private imageButton(): HTMLButtonElement {
-		if (!IMAGE_INPUT_BLOCKED_REASON) return this.iconButton("image", "添加图片", () => this.fileInput.click());
-		const button = this.iconButton("image", `添加图片（不可用：${IMAGE_INPUT_BLOCKED_REASON}）`, () => undefined);
-		button.disabled = true;
-		button.classList.add("is-unavailable");
+		// 点按本身也过一遍判定：能力表在运行期会变（selectRuntime 后就地刷新），
+		// 只在构造期决定 disabled 会留下「刷新前已挂上旧 handler」的旁路。
+		const button = this.iconButton("image", "添加图片", () => {
+			if (this.imageBlocked()) return;
+			this.fileInput.click();
+		});
+		this.applyImageButtonState(button);
+		// Q-ARC4：按钮在构造期一次性 append，之后 `refreshCapabilities()` 要就地改
+		// disabled / is-unavailable / title 就必须留住引用（否则只能整条工具栏重建）。
+		this.imageButtonEl = button;
 		return button;
 	}
 
-	private acceptImages(images: File[]): void {
-		if (IMAGE_INPUT_BLOCKED_REASON) {
-			new Notice(IMAGE_INPUT_BLOCKED_REASON);
+	/**
+	 * 图片入口的唯一判定源（Q-ARC4）：
+	 * ① `IMAGE_INPUT_BLOCKED_REASON`（图片外发审计未落地）优先，它是产品侧硬门；
+	 * ② 其次是当前运行时能力表（`options.capabilities`）里的 `input.image === "unavailable"`。
+	 * 返回 null 表示可以贴/拖/点。
+	 *
+	 * 写法说明：能力表每次都读一次再做优先级判断，而不是写成
+	 * `IMAGE_INPUT_BLOCKED_REASON ?? (…)`。后者在常量非空时会因 `??` 短路而**永不**调用
+	 * `options.capabilities`，与本项验收口径「composer 的 options.capabilities 至少被调用 1 次」
+	 * 直接冲突；先求值再判断既保住「常量优先」语义，也让能力表成为真实读取方。
+	 */
+	private imageBlocked(): string | null {
+		const runtimeUnavailable = this.options.capabilities?.().input.image === "unavailable";
+		if (IMAGE_INPUT_BLOCKED_REASON) return IMAGE_INPUT_BLOCKED_REASON;
+		return runtimeUnavailable ? "当前运行时不支持图片输入" : null;
+	}
+
+	/** 把当前图片入口状态投影到按钮上；常量为空后由 `refreshCapabilities()` 复用同一段逻辑。 */
+	private applyImageButtonState(button: HTMLButtonElement): void {
+		const blocked = this.imageBlocked();
+		const label = blocked ? `添加图片（不可用：${blocked}）` : "添加图片";
+		button.setAttribute("aria-label", label);
+		button.title = label;
+		if (blocked) {
+			button.disabled = true;
+			button.classList.add("is-unavailable");
 			return;
 		}
-		void this.addImages(images);
+		button.disabled = false;
+		button.classList.remove("is-unavailable");
+	}
+
+	/**
+	 * Q-ARC4：运行时切换后刷新图片入口。
+	 * 按钮是构造期一次性 append 的，没有 `imageButtonEl` 引用就只能整条工具栏重建。
+	 */
+	refreshCapabilities(): void {
+		if (this.imageButtonEl) this.applyImageButtonState(this.imageButtonEl);
+	}
+
+	private acceptImages(images: File[]): void {
+		const blocked = this.imageBlocked();
+		if (!blocked) {
+			void this.addImages(images);
+			return;
+		}
+		// `IMAGE_INPUT_BLOCKED_REASON` 恒非空时，这条通知的就是它（用户可见文案不变，
+		// 既有断言钉住该字面量）；常量解禁后才会走到能力表给出的原因。
+		if (blocked === IMAGE_INPUT_BLOCKED_REASON) new Notice(IMAGE_INPUT_BLOCKED_REASON);
+		else new Notice(blocked);
+	}
+
+	/**
+	 * 提交前校验：草稿里带图片时必须过 `imageBlocked()`。
+	 * 按钮 disabled 只挡点击，不挡已经进入 `this.images` 的草稿（例如失败后 restore 回来的）。
+	 */
+	private imagesSendable(input: RuntimeInputBlock[]): boolean {
+		if (!input.some((block) => block.type === "image")) return true;
+		const blocked = this.imageBlocked();
+		if (!blocked) return true;
+		new Notice(blocked);
+		return false;
 	}
 
 	/** 上下文用量读数；null 时隐藏用量表。 */
@@ -491,7 +564,7 @@ export class NativeComposer {
 	private async handlePrimaryAction(): Promise<void> {
 		if (this.busy) {
 			const draft = await this.createDraft();
-			if (draft.input.length) await this.options.onSubmit(draft);
+			if (draft.input.length && this.imagesSendable(draft.input)) await this.options.onSubmit(draft);
 			return;
 		}
 		const command = this.textarea.value.trim().toLowerCase();
@@ -514,6 +587,7 @@ export class NativeComposer {
 		}
 		const draft = await this.createDraft();
 		if (!draft.input.length) return;
+		if (!this.imagesSendable(draft.input)) return;
 		await this.options.onSubmit(draft);
 	}
 

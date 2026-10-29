@@ -4,7 +4,7 @@ import { lineDiff, renderInlineDiff, requestInlineReplacement, type InlineEditSe
 import { createMiniHost } from "./helpers/mini-dom";
 
 function event(type: AgentEvent["type"], text: string): AgentEvent {
-	return createAgentEvent({ eventId: type + text, conversationId: "tmp", turnId: "t", runtimeId: "codex", type, timestamp: "2026-10-08T00:00:00.000Z", payload: { text } });
+	return createAgentEvent({ eventId: type + text, conversationId: "tmp", turnId: "t", runtimeId: "ohmypi", type, timestamp: "2026-10-08T00:00:00.000Z", payload: { text } });
 }
 
 function service(events: AgentEvent[] | Error): InlineEditService & { deleted: string[]; prompts: string[] } {

@@ -3,10 +3,6 @@ import {
   evaluateQuyuanGovernance,
   type QuyuanToolRequest,
 } from "../src/quyuan/governance";
-import {
-  checkQuyuanCapabilityContract,
-  QUYUAN_REQUIRED_CAPABILITIES,
-} from "../src/quyuan/contract";
 
 function request(overrides: Partial<QuyuanToolRequest> = {}): QuyuanToolRequest {
   return {
@@ -245,25 +241,6 @@ describe("evaluateQuyuanGovernance — inline-edit", () => {
   });
 });
 
-describe("checkQuyuanCapabilityContract", () => {
-  it("全部必需能力都满足时 ok", () => {
-    const all = new Set([...QUYUAN_REQUIRED_CAPABILITIES, "rewind"]);
-    const result = checkQuyuanCapabilityContract({
-      provider: "claude",
-      supported: all,
-    });
-    expect(result.ok).toBe(true);
-    expect(result.missing).toEqual([]);
-  });
-
-  it("缺少必需能力时不 ok", () => {
-    const partial = new Set(QUYUAN_REQUIRED_CAPABILITIES);
-    partial.delete("stream");
-    const result = checkQuyuanCapabilityContract({
-      provider: "claude",
-      supported: partial,
-    });
-    expect(result.ok).toBe(false);
-    expect(result.missing).toContain("stream");
-  });
-});
+// Q-ARC6：checkQuyuanCapabilityContract 的两条用例已随屈原能力契约孤岛一并删除
+// （该契约无任何生产实现，唯一消费者就是这里；能力真源是
+// src/agent-workbench/contracts/runtime-adapter.ts 的 RuntimeId）。

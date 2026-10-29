@@ -1,13 +1,54 @@
-import { access } from "node:fs/promises";
-import { constants } from "node:fs";
+import { access, constants, open } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { clearTimeout as cancelTimeout, setTimeout as scheduleTimeout } from "node:timers";
 import type { RuntimeId } from "../contracts/runtime-adapter";
 import type { ProbeCommandResult, ProtocolHandshake, RuntimeProbeHost } from "./runtime-discovery-service";
 
-async function executable(candidate: string): Promise<boolean> {
-	try { await access(candidate, constants.X_OK); return true; } catch { return false; }
+const WINDOWS_RUNTIME_EXTENSIONS = [".exe", ".cmd", ".bat", ".com"];
+const WINDOWS_TEXT_SHIM_EXTENSIONS = new Set([".cmd", ".bat"]);
+
+function windowsExtensions(pathext = ""): string[] {
+	return (pathext || WINDOWS_RUNTIME_EXTENSIONS.join(";"))
+		.split(";")
+		.map((extension) => extension.trim().toLowerCase())
+		.filter(Boolean)
+		.map((extension) => extension.startsWith(".") ? extension : `.${extension}`);
+}
+
+/** 只读文件头两字节判定 PE（`MZ`）。不整文件读入，也不用 `access(X_OK)`。 */
+async function windowsPortableExecutable(candidate: string): Promise<boolean> {
+	let handle: Awaited<ReturnType<typeof open>> | undefined;
+	try {
+		handle = await open(candidate, "r");
+		const header = Buffer.alloc(2);
+		const { bytesRead } = await handle.read(header, 0, 2, 0);
+		return bytesRead === 2 && header[0] === 0x4d && header[1] === 0x5a;
+	} catch {
+		return false;
+	} finally {
+		await handle?.close().catch(() => undefined);
+	}
+}
+
+/**
+ * 可执行判定。win32 上 `constants.X_OK` 对纯文本文件恒真（实测），
+ * 于是 `omp` 这种文本 shim 会冒充可执行、随后 spawn 报 ENOENT。因此 win32
+ * 走「扩展名 ∈ WINDOWS_RUNTIME_EXTENSIONS ∪ PATHEXT」且「.exe 需 MZ 魔数」；
+ * `.cmd`/`.bat` 是文本 shim，豁免魔数只看扩展名。posix 保留 X_OK。
+ */
+async function executable(candidate: string, platform: NodeJS.Platform, pathext = ""): Promise<boolean> {
+	if (platform !== "win32") {
+		try { await access(candidate, constants.X_OK); return true; } catch { return false; }
+	}
+	const extension = path.win32.extname(candidate).toLowerCase();
+	if (!extension) return false;
+	const allowed = new Set([...WINDOWS_RUNTIME_EXTENSIONS, ...windowsExtensions(pathext)]);
+	if (!allowed.has(extension)) return false;
+	if (WINDOWS_TEXT_SHIM_EXTENSIONS.has(extension)) {
+		try { await access(candidate, constants.F_OK); return true; } catch { return false; }
+	}
+	return windowsPortableExecutable(candidate);
 }
 
 export type ProbeEnvironment = Partial<Pick<
@@ -15,20 +56,15 @@ export type ProbeEnvironment = Partial<Pick<
 	"PATH" | "HOME" | "TMPDIR" | "LANG" | "PATHEXT" | "ComSpec" | "SystemRoot" | "WINDIR" | "APPDATA" | "LOCALAPPDATA" | "USERPROFILE"
 >>;
 
-const WINDOWS_RUNTIME_EXTENSIONS = [".exe", ".cmd", ".bat", ".com"];
-
 export function runtimeCandidateNames(
 	candidate: string,
 	platform: NodeJS.Platform,
 	pathext = "",
 ): string[] {
 	if (platform !== "win32" || path.win32.extname(candidate)) return [candidate];
-	const extensions = (pathext || WINDOWS_RUNTIME_EXTENSIONS.join(";"))
-		.split(";")
-		.map((extension) => extension.trim().toLowerCase())
-		.filter(Boolean)
-		.map((extension) => extension.startsWith(".") ? extension : `.${extension}`);
-	return [candidate, ...extensions.map((extension) => `${candidate}${extension}`)];
+	// 扩展名优先：裸名垫底。win32 上裸名可能命中一个纯文本 shim（或不存在的名字），
+	// 让 `.exe`/`.cmd` 先被选中才止得住 spawn ENOENT → status: crashed 那条链。
+	return [...windowsExtensions(pathext).map((extension) => `${candidate}${extension}`), candidate];
 }
 
 export function runtimeProbeUsesShell(
@@ -96,13 +132,14 @@ export class NodeRuntimeProbeHost implements RuntimeProbeHost {
 
 	async resolve(candidates: string[]): Promise<string | null> {
 		const directories = this.searchDirectories();
+		const pathext = this.environment.PATHEXT;
 		for (const candidate of candidates) {
-			for (const expanded of runtimeCandidateNames(candidate, this.platform, this.environment.PATHEXT)) {
-				if (path.isAbsolute(expanded) && await executable(expanded)) return expanded;
+			for (const expanded of runtimeCandidateNames(candidate, this.platform, pathext)) {
+				if (path.isAbsolute(expanded) && await executable(expanded, this.platform, pathext)) return expanded;
 				if (!path.isAbsolute(expanded)) {
 					for (const directory of directories) {
 						const resolved = path.join(directory, expanded);
-						if (await executable(resolved)) return resolved;
+						if (await executable(resolved, this.platform, pathext)) return resolved;
 					}
 				}
 			}

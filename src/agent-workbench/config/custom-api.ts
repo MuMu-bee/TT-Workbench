@@ -3,6 +3,7 @@
 // 也接受 Claudian 风格的环境变量块（ANTHROPIC_BASE_URL=… 等）自动拆分。
 // 本模块只做解析与校验；密钥由调用方写入 SecretStorage，不进入 data.json。
 import type { RuntimeId } from "../contracts/runtime-adapter";
+import { assertAllowedEndpoint } from "../contracts/provider-profile";
 
 export type CustomApiKind = "anthropic" | "openai";
 
@@ -95,21 +96,26 @@ export function parseModelList(text: string): string[] {
 	return [...new Set(text.split(/[\r\n,，]+/).map((model) => model.trim()).filter(Boolean))];
 }
 
-function isLoopbackHost(hostname: string): boolean {
-	return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
-}
-
-/** 返回第一条错误；全部通过时返回 null。 */
+/**
+ * 返回第一条错误；全部通过时返回 null。
+ *
+ * Q-SEC7：判定收敛到 `contracts/provider-profile.ts` 的 `assertAllowedEndpoint`，
+ * 但**保留本文件的返回值约定与字面文案**——它返回字符串而不是抛错，且
+ * `tests/custom-api.test.ts:59-60` 分别断言含「HTTPS」与「账号」，
+ * 所以这里把统一断言的两类错误映射回既有文案，不能直接透传
+ * （透传会变成「Realtime/Provider endpoint …」并让第 60 行失败）。
+ */
 export function validateCustomApi(draft: CustomApiDraft, hasSavedKey: boolean): string | null {
 	const baseUrl = draft.baseUrl.trim();
 	if (baseUrl) {
-		let url: URL;
-		try { url = new URL(baseUrl); }
-		catch { return "Base URL 不是有效地址"; }
-		if (url.protocol !== "https:" && !(url.protocol === "http:" && isLoopbackHost(url.hostname))) {
+		try {
+			assertAllowedEndpoint(baseUrl, "Base URL");
+		} catch (error) {
+			// 解析失败（new URL 抛 TypeError）与两类策略失败必须分成三句中文字面串。
+			if (!(error instanceof Error) || error.name === "TypeError") return "Base URL 不是有效地址";
+			if (error.message.includes("userinfo")) return "Base URL 不能包含账号或密码";
 			return "Base URL 必须是 HTTPS（本机地址可用 HTTP）";
 		}
-		if (url.username || url.password) return "Base URL 不能包含账号或密码";
 	}
 	if (!draft.models.length) return "至少填写一个模型";
 	if (draft.models.some((model) => /\s/.test(model))) return "模型 ID 不能包含空格";

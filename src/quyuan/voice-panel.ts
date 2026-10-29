@@ -7,11 +7,16 @@ import {
 	type InteractionChannel,
 	type TalosVoiceRuntimeHost,
 } from "./native-voice-driver";
-import { quyuanRealtimeProviderId, resolveQuyuanRealtimeSessionConfig } from "./realtime-provider";
+import {
+	DASHSCOPE_REALTIME_TRANSCRIPTION_MODEL,
+	quyuanRealtimeProviderId,
+	resolveQuyuanRealtimeSessionConfig,
+} from "./realtime-provider";
 import { showVoiceConfirmCard } from "./voice-confirm-card";
 import { voiceRealtimeLaunchHint, voiceRealtimeSetupHint } from "./voice-panel-labels";
 import {
 	restingVoiceState,
+	realtimeProviderKindOf,
 	voiceEngineAccessibleLabel,
 	voiceEngineVisualLabel,
 	voiceModelLabel,
@@ -27,6 +32,7 @@ import {
 } from "./talos-ball-view";
 import type { VaultPaths } from "../data/schema";
 import { VoiceSessionStore } from "./voice-session-store";
+import { VoiceSessionCoalescer } from "./voice-session-coalescer";
 import {
 	VoiceModeController,
 	type VoiceInputMode,
@@ -104,6 +110,10 @@ export class QuyuanVoicePanel {
 	private plugin: TalosQuyuanPlugin;
 	private settings: TalosSettings;
 	private save?: () => Promise<void>;
+	/** Q-PER10：语音会话专用轻量落盘；与 this.save（全量设置保存）分开。 */
+	private saveSession?: () => Promise<void>;
+	/** 回合级写盘合并器（写内存即时生效，落盘折叠到回合边界一次）。 */
+	private voiceSessionCoalescer: VoiceSessionCoalescer | null = null;
 
 	private tts: StreamTts | null = null;
 	private realtime: QwenRealtimeVoiceSession | null = null;
@@ -141,6 +151,8 @@ export class QuyuanVoicePanel {
 	private ttsWasCancelled = false;
 	private ttsEnabled = true;
 	private navigatingToChat = false;
+	/** Q-QUA15：navigatingToChat 的 TTL 定时器；goToChat 之后面板不会 unmount，靠它自动复位。 */
+	private navigatingToChatTimer: number | null = null;
 	private pushToTalkActive = false;
 	private lifecycleGeneration = 0;
 	private responseGeneration = 0;
@@ -161,21 +173,42 @@ export class QuyuanVoicePanel {
 		plugin: TalosQuyuanPlugin,
 		settings: TalosSettings,
 		save?: () => Promise<void>,
-		private readonly navigateToPage?: (pageKey: string) => void
+		private readonly navigateToPage?: (pageKey: string) => void,
+		saveSession?: () => Promise<void>
 	) {
 		this.app = app;
 		this.plugin = plugin;
 		this.settings = settings;
 		this.save = save;
+		this.saveSession = saveSession;
+	}
+
+	/**
+	 * Q-PER10：回合级会话落盘合并器。
+	 * 写内存立即生效（同一回合内的读始终看到最新快照），真正的落盘只在
+	 * 回合边界 flush 一次；flush 期间新到的写不会丢，由合并器自己补写。
+	 */
+	private async flushVoiceSession(): Promise<void> {
+		await this.voiceSessionCoalescer?.flush();
 	}
 
 	// ---------- 挂载 ----------
 	mount(container: HTMLElement): void {
+		// Q-ARC11：mount 会被重复调用（Lens 对已激活的 voice 模块仍会 navigate）。
+		// 先幂等释放上一轮，否则每次 mount 都会多一条未关闭的 RTCPeerConnection
+		// 与一份麦克风轨道。unmount 内部逐个 try/catch 兜底，不会中断 mount。
+		if (this.mounted) {
+			try {
+				this.unmount();
+			} catch (error) {
+				console.error("TT-Workbench Quyuan voice panel re-mount teardown failed", error);
+			}
+		}
 		const lifecycleGeneration = ++this.lifecycleGeneration;
 		++this.responseGeneration;
 		container.empty();
 		this.mounted = true;
-		this.navigatingToChat = false;
+		this.clearNavigatingToChat();
 		this.ttsEnabled = true;
 		this.markdownComponent = new Component();
 		this.markdownComponent.load();
@@ -191,13 +224,17 @@ export class QuyuanVoicePanel {
 				? "push-to-talk"
 				: "continuous"
 		);
+		// Q-PER10：合并器绑定本面板的 saveSession（轻量落盘，不走全量设置保存链）。
+		this.voiceSessionCoalescer = new VoiceSessionCoalescer(() => this.saveSession?.());
 		this.voiceSessionStore = new VoiceSessionStore({
 			read: () => this.settings.quyuanVoiceSessionJson,
 			// jarvisTabsJson 仅作一次保守迁移源；store 会拒绝 chat/无 namespace 数据。
 			readLegacy: () => this.settings.jarvisTabsJson,
-			write: async (value) => {
+			// Q-PER10：先写内存（同回合后续读拿到最新值），再交给回合级合并器；
+			// 真正的落盘折叠到回合边界 flushVoiceSession() 一次完成。
+			write: (value) => {
 				this.settings.quyuanVoiceSessionJson = value;
-				await this.save?.();
+				this.voiceSessionCoalescer?.markDirty();
 			},
 		});
 		this.tts = new StreamTts(this.settings, (s) => {
@@ -348,7 +385,9 @@ export class QuyuanVoicePanel {
 		});
 		const transcriptHead = this.overlayTranscriptEl.createDiv({ cls: "tq-transcript-head" });
 		transcriptHead.createSpan({ text: "实时转写" });
-		transcriptHead.createEl("small", { text: "仅显示转写 · 不自动注入 AI 对话" });
+		// Q-SEC10：原文案谎称转写不会进入 AI 链路，与真实流向不符——语音历史经
+		// native-voice-driver 每轮作为 historyText 参与出库审计。改文案，不改流向。
+		transcriptHead.createEl("small", { text: "实时转写 · 语音历史随只读查询出库审计" });
 		this.overlayTranscriptLinesEl = this.overlayTranscriptEl.createDiv({
 			cls: "tq-transcript-lines",
 			attr: { "aria-live": "polite" },
@@ -440,7 +479,7 @@ export class QuyuanVoicePanel {
 		const safety = dock.createDiv({ cls: "tq-voice-safety" });
 		setIcon(safety.createSpan(), "shield-check");
 		safety.createSpan({
-			text: "实时音频发送至已配置的 Realtime 服务商 · 长期密钥由 SecretStorage 隔离 · 语音工具只读；仅明确说“联网搜索”或“上网查”才发送当前问题",
+			text: "实时音频发送至已配置的 Realtime 服务商 · 长期密钥由 SecretStorage 隔离 · 语音工具只读；仅明确说“联网搜索”或“上网查”才发送当前问题 · 语音历史参与每轮出库审计",
 		});
 		this.confirmHostEl = dock.createDiv({
 			cls: "tq-confirm-host",
@@ -541,13 +580,35 @@ export class QuyuanVoicePanel {
 		}, resetAfterMs);
 	}
 
+	/**
+	 * Q-QUA15：goToChat 走 navigateToPage("chat") 之后本面板从不 unmount
+	 * （view.ts 在 renderedPage === activePage 处早退、lens-console 对 assistant
+	 * 直接 openChat），所以标志不能只靠 mount/unmount 复位——那会让
+	 * onInputTranscript/onOutputTranscript 的守卫永久吞掉全部转写与回复。
+	 * 改成带 TTL 的临时标志：至多一次短窗口内的丢弃，之后自动放行。
+	 */
+	private markNavigatingToChat(ttlMs = 500): void {
+		this.clearNavigatingToChat();
+		this.navigatingToChat = true;
+		this.navigatingToChatTimer = window.setTimeout(() => {
+			this.navigatingToChatTimer = null;
+			this.navigatingToChat = false;
+		}, ttlMs);
+	}
+
+	private clearNavigatingToChat(): void {
+		if (this.navigatingToChatTimer !== null) window.clearTimeout(this.navigatingToChatTimer);
+		this.navigatingToChatTimer = null;
+		this.navigatingToChat = false;
+	}
+
 	private goToChat(): void {
 		if (!this.navigateToPage) {
 			new Notice("AI 对话路由暂不可用");
 			return;
 		}
 		// 先封住可能由 stop() 产生的最终转写，绝不把缓冲自动发送或注入文字会话。
-		this.navigatingToChat = true;
+		this.markNavigatingToChat();
 		++this.lifecycleGeneration;
 		++this.responseGeneration;
 		this.realtime?.stop();
@@ -731,13 +792,25 @@ export class QuyuanVoicePanel {
 			this.mounted &&
 			lifecycleGeneration === this.lifecycleGeneration;
 		// TT 1.1.0:模型/音色/Provider 解析统一收敛到 realtime-provider(单一定义)。
-		let sessionConfig: { kind: "dashscope" | "openai-compatible"; model: string; voice: string };
+		// Q-ARC9：transcriptionModel 不再按 kind 硬编码 undefined——百炼恒有默认值，
+		// 自定义端点由设置里的「Realtime 转写模型」决定（留空则不下发该字段）。
+		let sessionConfig: {
+			kind: "dashscope" | "openai-compatible";
+			model: string;
+			voice: string;
+			transcriptionModel?: string;
+		};
 		try {
 			sessionConfig = resolveQuyuanRealtimeSessionConfig(this.settings);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			new Notice(`实时语音 Provider 配置无效，已回退百炼默认：${message}`, 8000);
-			sessionConfig = { kind: "dashscope", model: "qwen3.5-omni-flash-realtime", voice: "Tina" };
+			sessionConfig = {
+				kind: "dashscope",
+				model: "qwen3.5-omni-flash-realtime",
+				voice: "Tina",
+				transcriptionModel: DASHSCOPE_REALTIME_TRANSCRIPTION_MODEL,
+			};
 		}
 		const model = sessionConfig.model;
 		const realtimeSessionId = "qwen-realtime-" + Date.now();
@@ -745,7 +818,7 @@ export class QuyuanVoicePanel {
 		return new QwenRealtimeVoiceSession({
 			model,
 			voice,
-			transcriptionModel: sessionConfig.kind === "dashscope" ? "qwen3-asr-flash-realtime" : undefined,
+			transcriptionModel: sessionConfig.transcriptionModel,
 			language: this.settings.voiceLang || "zh-CN",
 			instructions: this.realtimeInstructions(),
 			wakeAliases: this.wakeAliases,
@@ -837,6 +910,8 @@ export class QuyuanVoicePanel {
 					this.replyBuffer = trimmed;
 					this.feedOverlayLine("");
 				}
+				// Q-PER10：回合边界（助手终稿字幕落地）→ 合并落盘一次。
+				void this.flushVoiceSession();
 				this.responseActive = false;
 			},
 			onUsage: (usage) => {
@@ -865,12 +940,7 @@ export class QuyuanVoicePanel {
 					console.error("[TT 屈原] Realtime 状态审计失败", error);
 				});
 			},
-			onBargeIn: () => {
-				if (!current()) return;
-				this.responseActive = false;
-				this.setTalosBallState("stop", 700);
-				this.controlStatusEl?.setText("已接住打断，继续听你说");
-			},
+			onBargeIn: () => { if (!current()) return; this.onBargeIn(); this.controlStatusEl?.setText("已接住打断，继续听你说"); },
 			onError: (message) => {
 				if (!current()) return;
 				this.controlStatusEl?.setText(`实时语音错误 · ${message}`);
@@ -905,11 +975,15 @@ export class QuyuanVoicePanel {
 			return;
 		}
 		if (state === "sleeping") {
+			// Q-PER10：进入休眠即回合结束，合并落盘一次。
+			void this.flushVoiceSession();
 			this.responseActive = false;
 			this.setState("sleep");
 			return;
 		}
 		if (state === "listening" || state === "user-speaking") {
+			// Q-PER10：回到监听即上一回合收尾，合并落盘一次。
+			void this.flushVoiceSession();
 			this.responseActive = false;
 			this.setState("listen");
 			return;
@@ -1033,6 +1107,19 @@ export class QuyuanVoicePanel {
 			}
 			if (!(realtime?.isConnected() ?? false)) {
 				this.fallbackToPushToTalk("Realtime 会话未能进入就绪状态");
+				return;
+			}
+			// Q-ARC9：自定义端点未配转写模型时，input_audio_transcription 不下发 →
+			// 唤醒状态机的唯一入口（转写 completed）永远不会触发，用户只会看到「已连接」。
+			// 落点必须在连接建立之后的收尾处：buildRealtime 阶段 DOM 引用尚未创建，
+			// fallbackToPushToTalk 的提示会被静默丢弃。范围写死为持续监听：
+			// 报告影响栏原文限定「限持续监听模式」，push-to-talk 不依赖唤醒词，放行。
+			if (
+				realtimeProviderKindOf(this.settings) === "openai-compatible"
+				&& !(this.settings.quyuanRealtimeTranscriptionModel ?? "").trim()
+				&& this.voiceMode.snapshot().inputMode !== "push-to-talk"
+			) {
+				this.fallbackToPushToTalk("自定义 Realtime 端点未配置转写模型，唤醒词不可用");
 				return;
 			}
 			if (this.voiceMode.snapshot().inputMode === "push-to-talk") {
@@ -1383,6 +1470,8 @@ export class QuyuanVoicePanel {
 	unmount(): void {
 		++this.lifecycleGeneration;
 		++this.responseGeneration;
+		// Q-PER10：卸载是最后一个回合边界，未落盘的会话写入在这里兜底 flush。
+		void this.flushVoiceSession();
 		this.mounted = false;
 		this.wakeActive = false;
 		this.pushToTalkActive = false;
@@ -1411,6 +1500,7 @@ export class QuyuanVoicePanel {
 		}
 		this.driver = null;
 		this.voiceSessionStore = null;
+		this.voiceSessionCoalescer = null;
 		this.characterStage?.destroy();
 		this.characterStage = null;
 		if (this.ballStateTimer != null) window.clearTimeout(this.ballStateTimer);
@@ -1439,6 +1529,6 @@ export class QuyuanVoicePanel {
 		this.workspaceStatusEl = null;
 		this.confirmHostEl = null;
 		this.replyBuffer = "";
-		this.navigatingToChat = false;
+		this.clearNavigatingToChat();
 	}
 }

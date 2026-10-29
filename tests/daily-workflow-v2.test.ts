@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { viewSource as readViewSource } from "./helpers/source-text";
+import { viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -44,9 +44,9 @@ describe("Daily workflow v2", () => {
 	});
 
 	it("reflows the workflow container without changing page height", () => {
-		expect(css).toContain("container: workflow-v2 / inline-size");
-		expect(css).toContain("@container workflow-v2 (max-width: 820px)");
-		expect(css).toContain("@container workflow-v2 (max-width: 560px)");
+		expectSourceContains("styles.ui-v2.css", "container: workflow-v2 / inline-size");
+		expectSourceContains("styles.ui-v2.css", "@container workflow-v2 (max-width: 820px)");
+		expectSourceContains("styles.ui-v2.css", "@container workflow-v2 (max-width: 560px)");
 		expect(css).not.toMatch(
 			/\.workflow-v2-primary\s*\{[^}]*min-height/s
 		);

@@ -14,10 +14,13 @@ function searchBox(ctx: LensContext, key: string, placeholder: string): HTMLElem
 	const input = el(doc, "input", { id: `lens-q-${key}`, type: "search", "aria-label": placeholder, placeholder });
 	input.value = ctx.state.queries[key] ?? "";
 	input.addEventListener("input", () => {
+		// 状态立刻写（不高滞后期望值），只把重绘合并到一个窗口里（Q-PER9）。
 		ctx.state.queries[key] = input.value;
 		ctx.state.deckPages[key] = 0;
-		ctx.rerender();
+		ctx.rerenderDebounced();
 	});
+	// 失焦 / 回车（change）时把待处理的重绘立刻打出来，避免「输入了但列表没变」。
+	input.addEventListener("change", () => ctx.flushRerender());
 	return el(doc, "label", { class: "ta-search" }, icon(doc, "search"), input);
 }
 
@@ -67,7 +70,7 @@ function cardDeck(ctx: LensContext, key: string, label: string, cards: HTMLEleme
 /** 目录笔记卡片：搜索 + 子目录芯片 + 分页卡片。 */
 export function noteDeck(ctx: LensContext, key: string, label: string, folder: string, kind = label): HTMLElement {
 	const { doc } = ctx;
-	const all = listNotes(ctx.app, folder, { skipReadme: true });
+	const all = listNotes(ctx.app, folder, { skipReadme: true, generation: ctx.data.capturedAt });
 	const query = (ctx.state.queries[key] ?? "").trim().toLowerCase();
 	const filterKey = `${key}:kind`;
 	const activeKind = ctx.state.queries[filterKey] ?? "all";

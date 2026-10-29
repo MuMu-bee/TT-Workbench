@@ -8,7 +8,7 @@ function event(type: AgentEvent["type"], text: string, eventId: string): AgentEv
 		eventId,
 		conversationId: "conversation",
 		turnId: "turn",
-		runtimeId: "codex",
+		runtimeId: "ohmypi",
 		type,
 		timestamp: "2026-08-28T00:00:00.000Z",
 		payload: { text },

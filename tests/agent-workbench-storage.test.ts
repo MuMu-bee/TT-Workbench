@@ -6,8 +6,10 @@ import { ConversationService } from "../src/agent-workbench/core/conversation-se
 import { WorkbenchConversationCoordinator } from "../src/agent-workbench/core/workbench-conversation-coordinator";
 import {
 	assertPortableValue,
-	PortableConversationStore,
+	FORBIDDEN_KEY,
 	sanitizePortableString,
+	sanitizePortableValue,
+	PortableConversationStore,
 	type PortableFileAdapter,
 } from "../src/agent-workbench/storage/portable-conversation-store";
 import { RuntimeBindingStore } from "../src/agent-workbench/storage/runtime-binding-store";
@@ -70,7 +72,7 @@ const manifest: ConversationManifest = {
 	createdAt: "2026-08-26T00:00:00.000Z",
 	updatedAt: "2026-08-26T00:00:00.000Z",
 	lifecycle: "active",
-	selection: { runtimeId: "codex" },
+	selection: { runtimeId: "ohmypi" },
 };
 
 function event(id = "event-1") {
@@ -78,7 +80,7 @@ function event(id = "event-1") {
 		eventId: id,
 		conversationId: "conv-1",
 		turnId: "turn-1",
-		runtimeId: "codex",
+		runtimeId: "ohmypi",
 		type: "assistant.final",
 		timestamp: "2026-08-26T00:00:01.000Z",
 		payload: { text: "done", vaultPath: "00 收件箱/test.md" },
@@ -98,7 +100,7 @@ describe("PortableConversationStore", () => {
 		await conversations.append({
 			conversationId: used.conversationId,
 			turnId: "turn-used",
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			type: "user.message",
 			payload: { text: "real content" },
 		});
@@ -141,7 +143,7 @@ describe("PortableConversationStore", () => {
 			eventId: "provider-first",
 			conversationId: "conv-1",
 			turnId: "turn-1",
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			type: "assistant.delta",
 			timestamp: "2026-08-26T00:00:01.000Z",
 			payload: { text: "answer" },
@@ -150,7 +152,7 @@ describe("PortableConversationStore", () => {
 			eventId: "user-after-acceptance",
 			conversationId: "conv-1",
 			turnId: "turn-1",
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			type: "user.message",
 			timestamp: "2026-08-26T00:00:02.000Z",
 			payload: { text: "question" },
@@ -159,7 +161,7 @@ describe("PortableConversationStore", () => {
 			eventId: "assistant-start",
 			conversationId: "conv-1",
 			turnId: "turn-1",
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			type: "assistant.start",
 			timestamp: "2026-08-26T00:00:03.000Z",
 			payload: {},
@@ -176,7 +178,7 @@ describe("PortableConversationStore", () => {
 			eventId: "empty-handoff",
 			conversationId: "conv-1",
 			turnId: "handoff-1",
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			type: "handoff.created",
 			timestamp: "2026-08-26T00:00:01.000Z",
 			payload: {
@@ -235,6 +237,83 @@ describe("PortableConversationStore", () => {
 		expect([...files.files.values()].join("\n")).not.toContain("fake-secret-value");
 	});
 
+	it("strips api key, credential and known token shapes from serialized bytes", () => {
+		const serialized = JSON.stringify(sanitizePortableValue({
+			apiKey: "AKIAIOSFODNN7EXAMPLE",
+			accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+			credential: "cert-blob",
+			secretAccessKey: "should-drop",
+			githubToken: "ghp_0123456789abcdefghijklmnopqrstuvwxyz",
+		}));
+		expect(serialized.includes("AKIAIOSFODNN7EXAMPLE")).toBe(false);
+		expect(serialized.includes("cert-blob")).toBe(false);
+		expect(serialized.includes("should-drop")).toBe(false);
+		expect(serialized.includes("ghp_0123456789abcdefghijklmnopqrstuvwxyz")).toBe(false);
+	});
+
+	it("keeps api key shaped values out of the on-disk event bytes", async () => {
+		const files = new MemoryFiles();
+		const store = new PortableConversationStore(files);
+		await store.create(manifest);
+		await expect(store.append({
+			...event("event-credentials"),
+			payload: { apiKey: "AKIAIOSFODNN7EXAMPLE", credential: "cert-blob" },
+		})).resolves.toBe("written");
+		const bytes = [...files.files.values()].join("\n");
+		expect(bytes.includes("AKIAIOSFODNN7EXAMPLE")).toBe(false);
+		expect(bytes.includes("cert-blob")).toBe(false);
+	});
+
+	it("rejects a forbidden key on the assertion path", () => {
+		expect(() => assertPortableValue({ apiKey: "AKIAIOSFODNN7EXAMPLE" })).toThrow("portable 数据包含禁止字段：apiKey");
+		expect(() => assertPortableValue({ credential: "cert-blob" })).toThrow("portable 数据包含禁止字段：credential");
+	});
+
+	it.each([
+		["polaris model id", "openai-codex/gpt-5.6-sol"],
+		["markdown filename", "note.md"],
+		["task id", "task-1234567890"],
+		["short aws-like token", "AKIA-short"],
+		["short github-like token", "ghp_short"],
+	])("does not treat %s as a credential", (_label, value) => {
+		expect(sanitizePortableString(value)).toBe(value);
+		expect(() => assertPortableValue(value)).not.toThrow();
+	});
+
+	// 契约键防漂移：新增的丢弃集合必须为空（取数口径：src/agent-workbench/contracts/*.ts
+	// 里形如 `name:` / `name?:` 的字段名 token）。清单硬编码在仓库内，不依赖外部探针。
+	it("does not drop any additional contract field name", () => {
+		const contractKeys = [
+			"actionId", "args", "canonical", "canonicalToolId", "command", "content", "context", "control",
+			"conversationId", "createdAt", "decision", "defaultReasoning", "defaultServiceTier", "description",
+			"destructive", "displayName", "enabled", "enabledMcpServers", "endpoint", "eventId", "events",
+			"executable", "executablePath", "executedToolIds", "externalContextPaths", "fetcher", "fromRuntimeId",
+			"goal", "headerNames", "history", "historyRef", "id", "importedFrom", "incompleteTasks",
+			"initialContext", "input", "isDefault", "kind", "label", "lastEventId", "lastSyncedEventId",
+			"lastTurnId", "lifecycle", "linkedContent", "manifest", "model", "models", "nativeBindings",
+			"nativeId", "nativeResumeToken", "network", "path", "payload", "permissionMode", "profile",
+			"protocol", "protocolVersion", "providerProfileId", "providerStateRef", "raw", "reason", "reasonCode",
+			"reasoning", "reasoningOptions", "recentMessages", "resolveSecret", "reviewOfTurnId", "risk", "role",
+			"ruleId", "runId", "runtimeId", "sandboxNote", "schemaVersion", "secretRef", "security", "selection",
+			"selections", "serviceTier", "serviceTiers", "session", "sessionId", "signal", "source", "sourceDigest",
+			"status", "targets", "text", "timestamp", "title", "toRuntimeId", "toolPolicy", "toolResultSummaries",
+			"tools", "toolsAllowed", "transcript", "turnId", "type", "updatedAt", "vaultRelativeReferences",
+			"vaultRoot", "version", "workflow",
+		];
+		expect(contractKeys).toHaveLength(103);
+		// 已丢弃集合 = 5 项既有敏感字段；新增丢弃集合必须为空（报告 A1 :168）。
+		expect(contractKeys.filter((key) => FORBIDDEN_KEY.test(key)).sort()).toEqual([
+			"executablePath", "nativeResumeToken", "resolveSecret", "secretRef", "vaultRoot",
+		]);
+		// 收窄后的 auth 分支不得把状态字面量/标识符卷进来。
+		for (const safe of ["unauthenticated", "authority", "author"]) {
+			expect(FORBIDDEN_KEY.test(safe)).toBe(false);
+		}
+		for (const sensitive of ["apiKey", "api_key", "API-KEY", "accessKeyId", "access_key", "credential", "credentials", "authToken", "auth", "auth_header", "x-auth"]) {
+			expect(FORBIDDEN_KEY.test(sensitive)).toBe(true);
+		}
+	});
+
 	const syntheticMacPath = ["", "Users", "synthetic", "超级大脑", "state.json"].join("/");
 	const markdownWrappedMacPath = ["`", syntheticMacPath, "`"].join("");
 
@@ -243,10 +322,13 @@ describe("PortableConversationStore", () => {
 		["Windows drive root with slash", "C:/"],
 		["UNC share root", "\\\\server\\share"],
 		["Markdown-wrapped Unicode POSIX path", markdownWrappedMacPath],
+		["Windows root-relative", "\\synthetic-home\\project\\x.md"],
 	])("keeps portable detection and redaction symmetric for %s", (_label, value) => {
 		expect(() => assertPortableValue(value)).toThrow("portable 数据不得包含本机绝对路径");
 		const portable = sanitizePortableString(value);
 		expect(portable).not.toBe(value);
+		expect(portable.includes("synthetic-home")).toBe(false);
+		expect(JSON.stringify(sanitizePortableValue({ nativeId: value })).includes("synthetic-home")).toBe(false);
 		expect(() => assertPortableValue(portable)).not.toThrow();
 	});
 
@@ -260,16 +342,40 @@ describe("PortableConversationStore", () => {
 		expect(() => assertPortableValue(value)).not.toThrow();
 	});
 
+	// 误报护栏：Windows 单反斜杠判定必须放过用户正文。v4 形态会把其中 8 条吞成
+	// 「[本机路径已省略]」（报告 A1 实测），这里逐条钉死「原样返回」。
+	it.each([
+		["escaped bold markers", "\\*\\*bold\\*\\*"],
+		["markdown bold", "**bold**"],
+		["escaped starred word", "note \\*starred\\* text"],
+		["plain starred word", "note *starred* text"],
+		["regex shorthand backslashes", "regex \\d+\\w+ pattern"],
+		["latex greek letters", "latex \\alpha\\beta"],
+		["latex sqrt", "math \\sqrt\\pi"],
+		["regex shorthand classes", "regex \\w+\\s"],
+		["latex fraction", "latex \\frac{1}{2}"],
+		["escape sequence n", "escape \\n"],
+		["latex left right", "latex \\left(\\right)"],
+		["unicode escape", "escape \\u00e9"],
+		["regex dotted range", "regex \\d{1,3}\\."],
+	])("keeps user prose untouched: %s", (_label, value) => {
+		expect(sanitizePortableString(value)).toBe(value);
+		expect(() => assertPortableValue(value)).not.toThrow();
+	});
+
+	// RuntimeId 契约已收窄为 "ohmypi"；历史 runtime 名仍会从旧会话 JSON 读回，
+	// 因此这里用 legacyRuntime 作为**载荷内容**（而不是类型化的 runtimeId 字段）
+	// 覆盖「旧名 + 本机路径元数据」同时出现时不影响可移植 append。
 	it.each(["claude", "codex", "ohmypi"] as const)(
 		"keeps %s native path metadata from aborting the shared portable append",
-		async (runtimeId) => {
+		async (legacyRuntime) => {
 			const files = new MemoryFiles();
 			const store = new PortableConversationStore(files);
 			await store.create(manifest);
 			await expect(store.append({
-				...event("event-" + runtimeId),
-				runtimeId,
+				...event("event-" + legacyRuntime),
 				payload: {
+					legacyRuntime,
 					driveRoot: "C:\\",
 					uncRoot: "\\\\server\\share",
 					instruction: markdownWrappedMacPath,
@@ -320,7 +426,7 @@ describe("PortableConversationStore", () => {
 		await conversations.append({
 			conversationId: "conv-1",
 			turnId: "turn-activity",
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			type: "user.message",
 			payload: { text: "new activity" },
 		});
@@ -328,3 +434,105 @@ describe("PortableConversationStore", () => {
 		expect((await store.load("conv-1")).manifest.updatedAt).toBe("2026-08-26T00:00:03.000Z");
 	});
 });
+
+describe("RuntimeBindingStore transaction queue", () => {
+	/** 每次 read/write 各加 20ms 延迟，用来放大「无锁 read→write」的重叠窗口。 */
+	function delayedHost(initial: Record<string, unknown> | null = null) {
+		let persisted = initial;
+		const host = {
+			persisted: () => persisted,
+			reads: 0,
+			writes: 0,
+			async read() {
+				host.reads += 1;
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				return persisted;
+			},
+			async write(value: Record<string, unknown>) {
+				host.writes += 1;
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				persisted = structuredClone(value);
+			},
+		};
+		return host;
+	}
+
+	it("keeps both bindings when two conversation ids set concurrently", async () => {
+		const host = delayedHost();
+		const store = new RuntimeBindingStore(host);
+		await Promise.all([
+			store.set("conv-A", { runtimeId: "ohmypi", sessionId: "session-A" }),
+			store.set("conv-B", { runtimeId: "ohmypi", sessionId: "session-B" }),
+		]);
+
+		const persistedBindings = (host.persisted()?.bindings ?? {}) as Record<string, unknown>;
+		const keys = Object.keys(persistedBindings);
+		expect(keys).toHaveLength(2);
+		expect(keys).toEqual(expect.arrayContaining(["conv-A:ohmypi:native", "conv-B:ohmypi:native"]));
+		expect(await store.get("conv-A", "ohmypi")).toMatchObject({ sessionId: "session-A" });
+		expect(await store.get("conv-B", "ohmypi")).toMatchObject({ sessionId: "session-B" });
+	});
+
+	it("does not write when the binding to remove never existed", async () => {
+		const host = delayedHost();
+		const store = new RuntimeBindingStore(host);
+		await store.remove("conv-missing", "ohmypi");
+		expect(host.writes).toBe(0);
+		expect(host.persisted()).toBeNull();
+	});
+
+	it("writes exactly once when an existing binding is removed", async () => {
+		const host = delayedHost();
+		const store = new RuntimeBindingStore(host);
+		await store.set("conv-A", { runtimeId: "ohmypi", sessionId: "session-A" });
+		const writesAfterSet = host.writes;
+		await store.remove("conv-A", "ohmypi");
+		expect(host.writes).toBe(writesAfterSet + 1);
+		expect(await store.get("conv-A", "ohmypi")).toBeNull();
+	});
+});
+
+describe("PortableConversationStore manifest lock", () => {
+	/**
+	 * 把「武装后第一次」读 manifest 卡住，直到放开闸门，用来构造确定性的交错。
+	 * 必须在 create 之后才 arm：索引首次缺失时 readIndex 会回退 rebuildIndex，
+	 * 那时也会读 manifest，提前武装会把 create 本身卡死（不是被测行为）。
+	 */
+	function gatedFiles() {
+		const files = new MemoryFiles();
+		const manifestRead = ".talos/agent-workbench/v1/conversations/conv-1/manifest.json";
+		let armGate: () => void = () => undefined;
+		const gate = new Promise<void>((resolve) => { armGate = resolve; });
+		let armed = false;
+		let held = false;
+		const original = files.read.bind(files);
+		files.read = async (path: string) => {
+			if (armed && !held && path === manifestRead) {
+				held = true;
+				await gate;
+			}
+			return original(path);
+		};
+		return { files, arm: () => { armed = true; }, release: () => armGate() };
+	}
+
+	it("keeps archived lifecycle when touch and setLifecycle interleave", async () => {
+		const { files, arm, release } = gatedFiles();
+		const store = new PortableConversationStore(files);
+		await store.create(manifest);
+
+		arm();
+		const touch = store.touch("conv-1", "2026-08-26T00:00:05.000Z");
+		const archived = store.setLifecycle("conv-1", "archived");
+		release();
+		const settled = await Promise.allSettled([touch, archived]);
+		expect(settled.map((item) => item.status)).toEqual(["fulfilled", "fulfilled"]);
+
+		expect((await store.load("conv-1")).manifest.lifecycle).toBe("archived");
+		const index = JSON.parse(files.files.get(".talos/agent-workbench/v1/index.json") ?? "{}") as {
+			conversations: Record<string, { lifecycle: string }>;
+		};
+		expect(index.conversations["conv-1"]?.lifecycle).toBe("archived");
+	});
+});
+

@@ -2,6 +2,7 @@
 import { DEFAULT_SETTINGS } from "../settings";
 import { Notice, TFile, WorkspaceLeaf, normalizePath } from "obsidian";
 import { QUYUAN_RUNTIME_ERROR_LIMIT, formatError, timestampForPath } from "./plugin-support";
+import { formatRuntimeErrorLines } from "./quyuan-diagnostics-format";
 import { VIEW_TYPE_TALOS_AGENT_RECOVERY } from "../agent-workbench/ui/talos-agent-recovery-view";
 import { VIEW_TYPE_TALOS } from "../view";
 import type TalosPlugin from "../main";
@@ -234,6 +235,11 @@ export function buildQuyuanDiagnosticsReport(plugin: TalosPlugin, path: string):
 		"",
 		"## 最近运行时错误",
 		"",
+		// 文案只声明脱敏的真实覆盖范围：HOME_PATH 只认 /Users、/home 与 X:\\Users，
+		// D:\\MyVault\\…、/opt/obsidian/main.js 这类非 home 绝对路径仍会原样保留，
+		// 所以这里不写「所有本机绝对路径均已脱敏」这种更大的承诺。
+		"说明：用户主目录路径已脱敏为 `[HOME_PATH]`。",
+		"",
 		...describeQuyuanRuntimeErrors(plugin),
 		"",
 		"## 下一步",
@@ -267,17 +273,7 @@ export function describeQuyuanLeaves(plugin: TalosPlugin, leaves: WorkspaceLeaf[
 
 export function describeQuyuanRuntimeErrors(plugin: TalosPlugin): string[] {
 	if (plugin.quyuanRuntimeErrors.length === 0) return ["- 暂无记录。"];
-	return plugin.quyuanRuntimeErrors.flatMap((item, index) => [
-		`### ${index + 1}. ${item.scope}`,
-		"",
-		`- 时间：${item.at}`,
-		`- 错误：${item.message}`,
-		"",
-		"```text",
-		item.stack || "(no stack)",
-		"```",
-		"",
-	]);
+	return formatRuntimeErrorLines(plugin.quyuanRuntimeErrors);
 }
 
 export async function ensureVaultFolder(plugin: TalosPlugin, folder: string): Promise<void> {

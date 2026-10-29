@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 import { describe, expect, it } from "vitest";
 import { codexProtectedVaultSubpaths } from "../src/agent-workbench/security/vault-protected-subpaths";
 import { evaluateQuyuanGovernance } from "../src/quyuan/governance";
@@ -11,17 +10,15 @@ import {
 	VOICE_QWEN_WEB_SEARCH_ALLOWED,
 } from "../src/quyuan/runtime-policy";
 
-const root = fileURLToPath(new URL("../", import.meta.url));
-const runtimeFactorySource = readFileSync(`${root}src/agent-workbench/discovery/desktop-runtime-factory.ts`, "utf8");
 
 describe("native TALOS runtime policy", () => {
 	it("runs the OhMyPi RPC in the TALOS sandbox with protected vault zones and dot-env denial", () => {
-		expect(runtimeFactorySource).toContain("buildOhMyPiLaunch");
-		expect(runtimeFactorySource).toContain("this.sandbox.prepare");
-		expect(runtimeFactorySource).toContain("protectedVaultSubpaths");
-		expect(runtimeFactorySource).toContain("denyDotEnvFiles: true");
-		expect(runtimeFactorySource).not.toContain("danger-full-access");
-		expect(runtimeFactorySource).not.toContain("claude-agent-sdk");
+		expectSourceContains("src/agent-workbench/discovery/desktop-runtime-factory.ts", "buildOhMyPiLaunch");
+		expectSourceContains("src/agent-workbench/discovery/desktop-runtime-factory.ts", "this.sandbox.prepare");
+		expectSourceContains("src/agent-workbench/discovery/desktop-runtime-factory.ts", "protectedVaultSubpaths");
+		expectSourceContains("src/agent-workbench/discovery/desktop-runtime-factory.ts", "denyDotEnvFiles: true");
+		expectSourceNotContains("src/agent-workbench/discovery/desktop-runtime-factory.ts", "danger-full-access");
+		expectSourceNotContains("src/agent-workbench/discovery/desktop-runtime-factory.ts", "claude-agent-sdk");
 	});
 
 	it("routes legacy voice settings into the authorized Realtime boundary", () => {
@@ -52,11 +49,15 @@ describe("native TALOS runtime policy", () => {
 
 	it("materializes Codex permanent deny zones for the external TALOS sandbox", () => {
 		const configDir = ".vault-config";
+		// Q-SEC5：两个 talos 管理目录必须同时进 OS 沙箱拒绝清单
+		//（这是 desktop-runtime-factory → process-sandbox 的唯一来源）。
 		expect(codexProtectedVaultSubpaths(configDir)).toEqual([
 			configDir,
 			".talos/private",
 			".talos/secrets",
 			".talos/credentials",
+			".talos/audit",
+			".talos/agent-workbench/v1",
 		]);
 		expect(() => codexProtectedVaultSubpaths("../escape")).toThrow();
 	});

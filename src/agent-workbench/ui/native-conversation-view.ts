@@ -192,6 +192,8 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 			onWorkflow: (mode) => this.options.service.setWorkflowMode(mode),
 			onRefine: (text) => this.refineInstruction(text),
 			onInlineEdit: (draft) => this.inlineEdit(draft),
+			// Q-ARC4：图片入口由运行时能力表驱动，与 adapter 拒绝分支和 coordinator 校验同源。
+			capabilities: () => this.options.service.getRuntimeCapabilities(this.options.service.getSelectedRuntimeId()),
 		});
 		composer.navRow.append(tabRow, headerActions);
 		this.composer = composer;
@@ -418,7 +420,20 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 		await this.openConversation(created.conversationId);
 	}
 
+	/**
+	 * Q-ARC4：运行时切换成功后刷新图片入口。
+	 *
+	 * 包一层而不是在四个 return 前各写一次：能力表是「选中 runtime + 选中 provider profile」
+	 * 的函数，而每条分支都会改其中之一（selectRuntime / openConversation 里的 restoreSelection），
+	 * 漏掉任何一条就会让按钮停在旧状态。刷新放在成功返回后，抛错时保持原状。
+	 */
 	async selectRuntime(runtimeId: RuntimeId, modelId?: string): Promise<boolean> {
+		const result = await this.applyRuntimeSelection(runtimeId, modelId);
+		this.composer?.refreshCapabilities();
+		return result;
+	}
+
+	private async applyRuntimeSelection(runtimeId: RuntimeId, modelId?: string): Promise<boolean> {
 		if (!this.activeConversationId) {
 			this.options.service.selectRuntime(runtimeId, modelId);
 			const created = await this.options.service.createConversation();
@@ -584,8 +599,10 @@ export class NativeConversationView implements AgentWorkbenchInteractionPort {
 	}
 
 	private async compact(): Promise<void> {
-		if (!this.activeConversationId) return;
+		if (!this.activeConversationId || this.isRunning(this.activeConversationId)) return;
 		if (!await this.options.service.compactConversation(this.activeConversationId)) {
+			// 补了上面的 isRunning 守卫后，这条文案只代表「运行时不支持原生上下文压缩」，
+			// 不再代表「回合忙」。守卫到这里之间的残留竞态仍可能命中本文案，属已知可接受残留。
 			new Notice("当前智能体不支持原生上下文压缩");
 		}
 	}

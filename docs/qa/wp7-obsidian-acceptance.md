@@ -146,7 +146,7 @@
 |---|---|
 | Task 15R 新定向测试 | PASS；4 files，9 tests |
 | `npx vitest run tests/wp7-e2e.test.ts tests/action-button.test.ts tests/task-drawer.test.ts tests/task-runner.test.ts tests/voice-session-store.test.ts` | PASS；5 files，25 tests |
-| `npm test` | PASS；46 files，245 tests |
+| `npm test` | PASS；46 files，245 tests（**历史快照，非当前值**：2026-07-25 时点记录；当前实测为 `Test Files 172 passed` / `Tests 1158 passed`，以同提交 `npx vitest run` 输出为准） |
 | `npm run test:quyuan` | PASS |
 | `npm run test:approval-actions` | PASS |
 | `npm run test:approval-executor` | PASS |

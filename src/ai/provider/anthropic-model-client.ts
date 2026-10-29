@@ -236,7 +236,8 @@ export class AnthropicModelClient implements ModelClient {
 						content: textOnly,
 					});
 				}
-				handlers.onDone("end");
+				// 取消必须与「正常结束」区分：取消前的文本仍属会话历史，但 stop 面不能是 end。
+				handlers.onDone("cancelled");
 				return;
 			}
 			handlers.onError(

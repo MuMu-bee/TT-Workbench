@@ -17,16 +17,16 @@ function usageEvent(runtimeId: AgentEvent["runtimeId"], payload: Record<string, 
 }
 
 describe("context usage meter", () => {
-	it("reads Codex last-turn input against the model context window", () => {
-		const usage = contextUsageFromEvent(usageEvent("codex", {
+	it("reads codex-style last-turn input against the model context window", () => {
+		const usage = contextUsageFromEvent(usageEvent("ohmypi", {
 			tokenUsage: { total: { inputTokens: 90_000 }, last: { inputTokens: 64_000 }, modelContextWindow: 256_000 },
 		}));
 		expect(usage).toEqual({ usedTokens: 64_000, windowTokens: 256_000, approximate: false });
 		expect(describeContextUsage(usage!)).toMatchObject({ label: "25%", warning: false });
 	});
 
-	it("marks Claude turn totals as approximate and caps the ring at 100%", () => {
-		const usage = contextUsageFromEvent(usageEvent("claude", {
+	it("marks claude-style turn totals as approximate and caps the ring at 100%", () => {
+		const usage = contextUsageFromEvent(usageEvent("ohmypi", {
 			usage: { input_tokens: 30_000, cache_read_input_tokens: 150_000, cache_creation_input_tokens: 40_000, output_tokens: 900 },
 			modelUsage: { "claude-sonnet": { contextWindow: 200_000 } },
 		}));
@@ -44,8 +44,8 @@ describe("context usage meter", () => {
 	});
 
 	it("ignores other events and empty usage", () => {
-		expect(contextUsageFromEvent({ ...usageEvent("codex", {}), type: "assistant.final" })).toBeNull();
-		expect(contextUsageFromEvent(usageEvent("codex", { tokenUsage: { last: { inputTokens: 0 } } }))).toBeNull();
+		expect(contextUsageFromEvent({ ...usageEvent("ohmypi", {}), type: "assistant.final" })).toBeNull();
+		expect(contextUsageFromEvent(usageEvent("ohmypi", { tokenUsage: { last: { inputTokens: 0 } } }))).toBeNull();
 	});
 
 	it("formats token counts compactly", () => {

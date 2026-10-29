@@ -1,11 +1,11 @@
 import { readFileSync } from "node:fs";
+import { expectSourceContains } from "./helpers/source-text";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // Lens 界面语言样式：由 scripts/sync-lens-css.mjs 从 TALOS Lens 源码同步，不得泄漏到 Obsidian。
 const root = fileURLToPath(new URL("../", import.meta.url));
 const lens = readFileSync(`${root}styles.lens.css`, "utf8");
-const host = readFileSync(`${root}styles.lens-host.css`, "utf8");
 const build = readFileSync(`${root}build-styles.mjs`, "utf8");
 const css = lens.replace(/\/\*[\s\S]*?\*\//g, "");
 
@@ -31,7 +31,7 @@ describe("synced Lens stylesheet", () => {
 	it("is generated from the Lens source and records where it came from", () => {
 		expect(lens).toMatch(/^\/\* GENERATED FILE — run `node scripts\/sync-lens-css\.mjs/);
 		expect(lens).toMatch(/TALOS Lens 界面语言 · 源提交 [0-9a-f]{7,} · \d+ 个样式文件/);
-		expect(lens).toContain("/* lens: src/workspace.css */");
+		expectSourceContains("styles.lens.css", "/* lens: src/workspace.css */");
 		expect(lens.indexOf("/* lens: src/workspace.css */")).toBeLessThan(lens.indexOf("/* lens: src/overview.css */"));
 	});
 
@@ -53,7 +53,7 @@ describe("synced Lens stylesheet", () => {
 
 	it("loads the host reset before the Lens rules and never reverts icons or native settings", () => {
 		expect(build.indexOf("readFileSync(lensHostSource")).toBeLessThan(build.indexOf("readFileSync(lensSource"));
-		expect(host).toContain("#talos-data-app-preview :where(:not(svg, svg *, .talos-lens-native, .talos-lens-native *,");
-		expect(host).toContain("all: revert;");
+		expectSourceContains("styles.lens-host.css", "#talos-data-app-preview :where(:not(svg, svg *, .talos-lens-native, .talos-lens-native *,");
+		expectSourceContains("styles.lens-host.css", "all: revert;");
 	});
 });

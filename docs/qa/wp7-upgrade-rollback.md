@@ -60,8 +60,10 @@ Tests 1 passed
 
 ## 正式 WP6 回滚基线
 
-用户已确认把插件仓库 `main` 的以下状态作为 Task 16 正式 WP6 基线；TALOS
-权威源码通过 `contracts/wp6-plugin-baseline.json` 固定该合同：
+> 本基线以本文档记录为准，仓库内无独立 json 副本（本仓库根没有 `contracts/` 目录）。
+
+用户已确认把插件仓库 `main` 的以下状态作为 Task 16 正式 WP6 基线；该合同即本文件下方列出的
+commit / 版本 / 产物哈希，不再另有外部 JSON 承载：
 
 - Git commit：`ff871dcba6f729ed8b62cb7db9f2e18a11225c0b`
 - 插件版本：`0.4.0`

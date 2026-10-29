@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createBuiltinActionRegistry } from "../src/action-core/builtin-actions";
+import { noteScopesFromSchema } from "../src/action-core/note-scopes";
 import type { TalosActionContext } from "../src/action-core/types";
+import { resolveSchema } from "../src/data/schema";
+
+const scopes = noteScopesFromSchema(resolveSchema(undefined));
 
 function context(): TalosActionContext {
 	return {
@@ -19,7 +23,8 @@ describe("createBuiltinActionRegistry", () => {
 			publishBackfill: vi.fn(),
 			decideApproval: vi.fn(),
 			decidePreference: vi.fn(),
-		});
+			moveInboxNote: vi.fn(),
+		}, scopes);
 
 		expect(
 			registry.list().map(({ id, risk }) => ({ id, risk }))
@@ -45,7 +50,8 @@ describe("createBuiltinActionRegistry", () => {
 			publishBackfill: vi.fn(),
 			decideApproval: vi.fn(),
 			decidePreference: vi.fn(),
-		});
+			moveInboxNote: vi.fn(),
+		}, scopes);
 
 		const result = await registry
 			.get("refresh-stats")
@@ -65,12 +71,16 @@ describe("createBuiltinActionRegistry", () => {
 				publishBackfill: vi.fn(),
 				decideApproval: vi.fn(),
 				decidePreference: vi.fn(),
+				moveInboxNote: vi.fn(),
 			},
-			{ noteWriteScopes: ["00 收件箱/**", "01 日志/**"] }
+			{
+				noteWriteScopes: ["00-收件箱/**", "01-日志/**"],
+				publishWriteScopes: ["<publish>", "输出/**"],
+			}
 		);
 
 		const create = registry.get("create-note");
 		expect(create?.reversible).toBe(true);
-		expect(create?.writeScope).toEqual(["00 收件箱/**", "01 日志/**"]);
+		expect(create?.writeScope).toEqual(["00-收件箱/**", "01-日志/**"]);
 	});
 });

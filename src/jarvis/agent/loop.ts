@@ -17,7 +17,7 @@ export interface StreamHandlers {
 	onThinkingDelta: (t: string) => void;
 	onToolCall: (c: ToolCall) => void;
 	onUsage: (u: UsageInfo) => void;
-	onDone: (stop: "end" | "tool_use") => void;
+	onDone: (stop: "end" | "tool_use" | "cancelled") => void;
 	onError: (e: Error) => void;
 }
 
@@ -48,6 +48,12 @@ export class AgentLoop {
 		try {
 			while (steps++ < MAX_STEPS && !this.aborted) {
 				const { stop, calls } = await this.once();
+				// 取消不是「正常收尾」：必须用 return 离开 turn()，否则循环外的
+				// :82 会把被取消的一轮记成 isError:false 的成功回合（break 只跳出 while）。
+				if (stop === "cancelled") {
+					this.aborted = true;
+					return;
+				}
 				if (stop === "tool_use" && calls.length) {
 					// 中断或已达步数上限：不执行工具，但必须回灌错误结果——
 					// 否则 assistant 消息里的 tool_use 没有对应 tool_result，
@@ -88,7 +94,7 @@ export class AgentLoop {
 	}
 
 	// 跑一次模型请求，收集本轮 tool 调用，resolve 出停止原因
-	private once(): Promise<{ stop: "end" | "tool_use"; calls: ToolCall[] }> {
+	private once(): Promise<{ stop: "end" | "tool_use" | "cancelled"; calls: ToolCall[] }> {
 		return new Promise((resolve, reject) => {
 			const calls: ToolCall[] = [];
 			void this.model

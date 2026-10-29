@@ -5,7 +5,6 @@
 
 import {
 	spawn,
-	spawnSync,
 	type ChildProcess,
 } from "child_process";
 import { createHash, randomUUID } from "crypto";
@@ -64,7 +63,7 @@ export interface DshProcessRuntime {
 	probeBackend(baseUrl: string): Promise<boolean>;
 	allocateBackendPort(): Promise<number>;
 	createGateway(input: DshGatewayInput): DshGateway;
-	resolveVersion(executable: string): string;
+	resolveVersion(executable: string): string | Promise<string>;
 	createNonce(): string;
 	workspaceIdentity(vaultRoot: string): string;
 	prepareLaunchPlan(input: {
@@ -74,6 +73,11 @@ export interface DshProcessRuntime {
 	}): DshLaunchPlan;
 	wait(milliseconds: number): Promise<void>;
 	now(): number;
+	/**
+	 * 进程树终止接缝：默认就是模块级 killProcessTree。单独放进 runtime 是为了让
+	 * 单元测试能注入桩（ESM 下无法 vi.spyOn 导出的 spawn，真去 taskkill 假 pid 也无意义）。
+	 */
+	killProcessTree(pid: number | undefined, graceMs: number): Promise<boolean>;
 }
 
 type StateListener = (state: DshRuntimeState, error: string) => void;
@@ -250,6 +254,18 @@ const requestStop = () => {
 	if (hostTimer) clearInterval(hostTimer);
 	hostTimer = null;
 	if (child.exitCode !== null || child.signalCode !== null) return;
+	if (process.platform === "win32") {
+		// Windows 上 child.kill("SIGTERM") 直接 TerminateProcess，handler 不执行；
+		// 而 child 可能是 .cmd（spawn 走 shell）派生的 cmd.exe，只对它发包会漏掉
+		// 真正的 node 孙进程。因此整棵树一律 taskkill /T /F（有意跳过优雅关闭）。
+		if (!child.pid) return;
+		const killer = spawn("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+			windowsHide: true,
+			stdio: "ignore",
+		});
+		killer.once("error", () => {});
+		return;
+	}
 	child.kill("SIGTERM");
 	forceTimer = setTimeout(() => {
 		if (child.exitCode === null && child.signalCode === null) {
@@ -338,12 +354,71 @@ export function parseDshVersion(output: string): string | null {
 	)?.[1] ?? null;
 }
 
-function probeDshOnPath(): string | null {
+const DSH_VERSION_PROBE_TIMEOUT_MS = 5000;
+
+/**
+ * 一次性异步子进程（取代原先的同步探测）：只用 spawn，超时后经 `options.kill` 收整棵进程树，
+ * 主进程事件循环在等待期间保持可响应。
+ *
+ * `options.kill` 是注入点，默认复用上面的 killProcessTree——`.cmd` + `shell:true` 场景
+ * 只杀直接子进程会留孙进程，等于把「阻塞」换成「泄漏」。
+ */
+export async function runChildOnce(
+	executable: string,
+	args: string[],
+	options: {
+		timeoutMs: number;
+		env?: Record<string, string>;
+		shell?: boolean;
+		kill?: (pid: number | undefined) => Promise<boolean>;
+	}
+): Promise<{ status: number | null; stdout: string; stderr: string }> {
+	const kill = options.kill ?? ((pid: number | undefined) => killProcessTree(pid, 1000));
+	return new Promise((resolve) => {
+		let stdout = "";
+		let stderr = "";
+		let settled = false;
+		// 仓库约定：window.* 定时器句柄一律用 number（见 view.ts:133）。
+		let timer: number | null = null;
+		let child: ChildProcess;
+		const finish = (status: number | null): void => {
+			if (settled) return;
+			settled = true;
+			if (timer) window.clearTimeout(timer);
+			resolve({ status, stdout, stderr });
+		};
+		try {
+			child = spawn(executable, args, {
+				env: options.env,
+				shell: options.shell ?? false,
+				stdio: ["ignore", "pipe", "pipe"],
+				windowsHide: true,
+			});
+		} catch {
+			resolve({ status: null, stdout: "", stderr: "" });
+			return;
+		}
+		child.stdout?.on("data", (chunk: Buffer) => {
+			stdout += chunk.toString("utf8");
+		});
+		child.stderr?.on("data", (chunk: Buffer) => {
+			stderr += chunk.toString("utf8");
+		});
+		child.once("error", () => finish(null));
+		child.once("close", (code) => finish(code));
+		timer = window.setTimeout(() => {
+			void kill(child.pid);
+			finish(null);
+		}, options.timeoutMs);
+	});
+}
+
+async function probeDshOnPath(): Promise<string | null> {
 	try {
 		const result =
 			process.platform === "win32"
-				? spawnSync("where", ["dsh"], { encoding: "utf8" })
-				: spawnSync("sh", ["-c", "command -v dsh"], { encoding: "utf8" });
+				? await runChildOnce("where", ["dsh"], { timeoutMs: DSH_VERSION_PROBE_TIMEOUT_MS })
+				: await runChildOnce("sh", ["-c", "command -v dsh"], { timeoutMs: DSH_VERSION_PROBE_TIMEOUT_MS });
 		if (result.status !== 0) return null;
 		const first = (result.stdout ?? "").split(/\r?\n/)[0]?.trim() ?? "";
 		return first || null;
@@ -354,7 +429,7 @@ function probeDshOnPath(): string | null {
 
 /**
  * Windows 上 npm 装出来的 dsh 是 .cmd 包装脚本（不是真正的 .exe），
- * Node 的 spawn / spawnSync 直接调用 .cmd / .bat 会抛 EINVAL，
+ * Node 的 spawn 直接调用 .cmd / .bat 会抛 EINVAL，
  * 必须显式走 shell；macOS / Linux 上 dsh 是带 shebang 的可执行文件。
  */
 function needsShellOnWindows(executable: string): boolean {
@@ -363,17 +438,16 @@ function needsShellOnWindows(executable: string): boolean {
 	);
 }
 
-function defaultResolveVersion(executable: string): string {
+async function defaultResolveVersion(executable: string): Promise<string> {
 	const environment = buildDshChildEnvironment({});
 	// Windows 上 npm 装出来的 dsh 是 .cmd 包装脚本（不是真正的 .exe），
-	// Node 的 spawn / spawnSync 直接调用 .cmd / .bat 会抛 EINVAL，
+	// Node 的 spawn 直接调用 .cmd / .bat 会抛 EINVAL，
 	// 必须显式走 shell；macOS / Linux 上 dsh 是带 shebang 的可执行文件。
 	const shell = needsShellOnWindows(executable);
-	const versionResult = spawnSync(executable, ["--version"], {
-		encoding: "utf8",
+	const versionResult = await runChildOnce(executable, ["--version"], {
 		env: environment,
 		shell,
-		timeout: 5000,
+		timeoutMs: DSH_VERSION_PROBE_TIMEOUT_MS,
 	});
 	if (versionResult.status !== 0) {
 		const diagnostic =
@@ -387,11 +461,10 @@ function defaultResolveVersion(executable: string): string {
 		`${versionResult.stdout ?? ""}\n${versionResult.stderr ?? ""}`
 	);
 	if (!version) throw new Error("dsh --version 未返回有效语义版本");
-	const helpResult = spawnSync(executable, ["--help"], {
-		encoding: "utf8",
+	const helpResult = await runChildOnce(executable, ["--help"], {
 		env: environment,
 		shell,
-		timeout: 5000,
+		timeoutMs: DSH_VERSION_PROBE_TIMEOUT_MS,
 	});
 	const helpOutput =
 		`${helpResult.stdout ?? ""}\n${helpResult.stderr ?? ""}`;
@@ -461,6 +534,97 @@ function allocateBackendPort(): Promise<number> {
 	});
 }
 
+function isPidAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return (error as NodeJS.ErrnoException).code === "EPERM";
+	}
+}
+
+function waitForPidExit(pid: number, timeoutMs: number): Promise<boolean> {
+	if (!isPidAlive(pid)) return Promise.resolve(true);
+	return new Promise((resolve) => {
+		const deadline = Date.now() + timeoutMs;
+		const poll = (): void => {
+			if (!isPidAlive(pid)) {
+				resolve(true);
+				return;
+			}
+			if (Date.now() >= deadline) {
+				resolve(false);
+				return;
+			}
+			window.setTimeout(poll, 25);
+		};
+		window.setTimeout(poll, 25);
+	});
+}
+
+/**
+ * 对 spawn 时记录的 pid 做进程树终止（报告 A4「停机」处方）。
+ *
+ * Windows 上 `child.kill("SIGTERM")` 会直接 TerminateProcess、handler 不执行，
+ * 而 `shell:true` 让真正的 dsh 成为 cmd.exe 的孙进程；只有 `taskkill /T` 才能把
+ * 整棵树收掉。**有意取舍**：win32 直接 `/F` 跳过了上面 DSH_UPSTREAM_SHUTDOWN_TIMEOUT_MS
+ * 那套 5s 优雅关闭合同——该平台的优雅关闭本来就不可达，强制终止才回到「进程树真的没了」
+ * 这一可验收状态。posix 才走 SIGTERM → graceMs → 仍存活再 SIGKILL。
+ *
+ * `options.spawn` 是测试注入点（ESM 下无法 vi.spyOn 导出的 spawn）。
+ */
+export async function killProcessTree(
+	pid: number | undefined,
+	graceMs: number,
+	options: { spawn?: typeof spawn } = {}
+): Promise<boolean> {
+	// 同时挡 undefined 与 0：process.kill(undefined, 0) 抛 ERR_INVALID_ARG_TYPE，
+	// 而 process.kill(0, 0) 不抛，会把整个进程组当成目标。
+	if (!pid) return false;
+	try {
+		process.kill(pid, 0);
+	} catch (error) {
+		// 先校验存活，防止 PID 复用后误杀无关进程树；EPERM 说明进程存在但无权探测。
+		if ((error as NodeJS.ErrnoException).code !== "EPERM") return false;
+	}
+	const spawnImpl = options.spawn ?? spawn;
+	if (process.platform === "win32") {
+		return await new Promise<boolean>((resolve) => {
+			let settled = false;
+			const finish = (value: boolean): void => {
+				if (settled) return;
+				settled = true;
+				resolve(value);
+			};
+			let killer: ChildProcess;
+			try {
+				killer = spawnImpl(
+					"taskkill",
+					["/PID", String(pid), "/T", "/F"],
+					{ windowsHide: true, stdio: "ignore" }
+				);
+			} catch {
+				finish(false);
+				return;
+			}
+			killer.once("error", () => finish(false));
+			killer.once("close", (code) => finish(code === 0));
+		});
+	}
+	try {
+		process.kill(pid, "SIGTERM");
+	} catch {
+		return false;
+	}
+	if (await waitForPidExit(pid, graceMs)) return true;
+	try {
+		process.kill(pid, "SIGKILL");
+	} catch {
+		return false;
+	}
+	return await waitForPidExit(pid, graceMs);
+}
+
 const DEFAULT_RUNTIME: DshProcessRuntime = {
 	spawnProcess: (plan, env) =>
 		spawnDshWithParentSupervisor(plan, env),
@@ -480,6 +644,7 @@ const DEFAULT_RUNTIME: DshProcessRuntime = {
 	wait: (milliseconds) =>
 		new Promise((resolve) => window.setTimeout(resolve, milliseconds)),
 	now: () => Date.now(),
+	killProcessTree: (pid, graceMs) => killProcessTree(pid, graceMs),
 };
 
 export class DshProcessManager {
@@ -496,6 +661,8 @@ export class DshProcessManager {
 	private readonly pollIntervalMs: number;
 	private readonly stopTimeoutMs: number;
 	private readonly runtime: DshProcessRuntime;
+	/** 版本号按进程生命周期缓存（报告 C2）：同一次 spawn 生命周期内不再重复探测。 */
+	private resolvedVersion: { executable: string; version: string } | null = null;
 
 	constructor(private readonly options: DshProcessManagerOptions) {
 		this.readyTimeoutMs = options.readyTimeoutMs ?? 30_000;
@@ -538,7 +705,7 @@ export class DshProcessManager {
 		}
 	}
 
-	resolveExecutable(): string {
+	async resolveExecutable(): Promise<string> {
 		const configured = this.options.getConfiguredExecutable().trim();
 		if (configured) {
 			if (!existsSync(configured)) {
@@ -546,7 +713,7 @@ export class DshProcessManager {
 			}
 			return configured;
 		}
-		const detected = probeDshOnPath();
+		const detected = await probeDshOnPath();
 		if (!detected) {
 			throw new Error(
 				"未找到 dsh CLI。请先安装 DeepSeek Harness，或在设置页填写 dsh 可执行路径。"
@@ -602,10 +769,11 @@ export class DshProcessManager {
 		this.disposed = true;
 		++this.generation;
 		this.startPromise = null;
+		this.resolvedVersion = null;
 		this.gateway?.setReady(false);
 		void this.gateway?.close();
 		if (this.child && this.child.exitCode === null) {
-			this.child.kill("SIGTERM");
+			void this.runtime.killProcessTree(this.child.pid, this.stopTimeoutMs);
 		}
 		this.setState("stopped");
 		return this.enqueue(() => this.stopManagedResources());
@@ -640,8 +808,8 @@ export class DshProcessManager {
 				throw new Error("Harness 端口已被未知或非本实例服务占用");
 			}
 
-			const executable = this.resolveExecutable();
-			const harnessVersion = this.runtime.resolveVersion(executable);
+			const executable = await this.resolveExecutable();
+			const harnessVersion = await this.resolveVersionCached(executable);
 			let backendPort = await this.runtime.allocateBackendPort();
 			if (backendPort === this.options.getPort()) {
 				backendPort = await this.runtime.allocateBackendPort();
@@ -781,6 +949,14 @@ export class DshProcessManager {
 		);
 	}
 
+	private async resolveVersionCached(executable: string): Promise<string> {
+		const cached = this.resolvedVersion;
+		if (cached && cached.executable === executable) return cached.version;
+		const version = await this.runtime.resolveVersion(executable);
+		this.resolvedVersion = { executable, version };
+		return version;
+	}
+
 	private async cleanupOwned(
 		child: ChildProcess | null,
 		gateway: DshGateway | null
@@ -804,9 +980,10 @@ export class DshProcessManager {
 
 	private async terminateChild(child: ChildProcess): Promise<void> {
 		if (child.exitCode !== null || child.signalCode !== null) return;
-		if (!child.killed) child.kill("SIGTERM");
-		if (await this.waitForChildExit(child, this.stopTimeoutMs)) return;
-		child.kill("SIGKILL");
+		// 统一走 killProcessTree（报告 A4 要求 :253/:608/:807 三处同一 helper）：
+		// Windows 上必须先 taskkill /T /F，任何先行的 SIGTERM 都会让 wrapper 提前退出，
+		// 使随后的 taskkill 报「找不到进程」而留下 node 孙进程。
+		await this.runtime.killProcessTree(child.pid, this.stopTimeoutMs);
 		await this.waitForChildExit(child, this.stopTimeoutMs);
 	}
 

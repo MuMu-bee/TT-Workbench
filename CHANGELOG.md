@@ -1,12 +1,35 @@
 # Changelog
 
+- 2026-10-25 审查问题清单落地(文档与验收记录批次,同上条目同日的后续提交):
+
+  按审查报告的问题编号逐条落地,只改文档、验收记录与守卫脚本。代码侧改动仅四处:`settings.ts` 导出 `TALOS_SETTING_TABS`(供文档守卫)、`process-sandbox.ts` 的用户提示改 tab 名、`local-voice-supply-chain.ts` 补文件头标注、`qwen-realtime-voice.ts` 的 `handleServerEvent()` 事件表化(行为不变)。
+
+  **F2 事件表化(行为不变)**
+  - `handleServerEvent()` 由 161 行的 if/else 链改为 `SERVER_EVENT_HANDLERS` 表 + 13 个 `onXxx()` 具名方法,分派器本身 5 行。
+  - 每个分支体逐字搬进同名方法,未登记的事件类型仍然静默忽略;`tests/qwen-realtime-voice.test.ts` 的 22 项行为用例是回归网。
+  - 单文件总行数 1142→1208(方法签名与事件表带来的净增),但受门的函数体量从 161 降到 5,已达 ROADMAP.md:33 的 ≤100 行目标。
+
+  **门禁新增**
+  - `npm run typecheck:tests`:tests 项目首次纳入类型检查(此前从未被检查过)。
+  - `npm run check:file-size`:体量棘轮门,防 `voice-panel.ts`(1534 行)与 `qwen-realtime-voice.ts`(1160 行)继续变大;`--targets` 模式按 ROADMAP 的 800/100 硬阈值判定。
+  - `npm run test:chat-gate:fixture`:功能硬门改用 `fixtures/chat-gate/` 合成夹具跑(正例 exit 0 / 反例 exit 1),接入 CI。
+  - `vitest.config.ts` 加 `coverage.thresholds`(lines 37 / security 78 / storage 81)。
+
+  **文档与验收记录**
+  - README:Windows 平台矩阵改为「默认 Plan-only + 显式开启后无隔离执行」;删 `claude-sdk.cjs`;安装清单删 Favicon 补 Mascot;tab 名改「对话与模型」;主题改回八套并注明 Macintosh/Swiss 已移除;版本徽章 1.4.0;撤下 `G1–G7` 与「发布权威」措辞;撤下失效规划稿推荐位。
+  - ACCEPTANCE:composition 失败归因从「测试 POSIX 风格」改为「产品侧脱敏未覆盖 Windows 根相对绝对路径」并单列「已知产品缺陷」;A5 判据改为同提交实测(删除不可复算的 926);修复 `1.3.1` 实机路径被制表符吃掉反斜杠。
+  - ROADMAP:批次二的三种说法收敛为一条;voice-panel 行数改 `wc -l` 实测 1534。
+  - `docs/`:design-qa 同日结论冲突加取消标注;multi-channel-execution 加失效横幅;wp7-upgrade-rollback 清掉 `contracts/` 空引用;wp7-mock-acceptance 把 `quyuan-v2.selftest.mjs` 判为未落地;g3 文档 Preview 入口改到对话输入栏;TALOS-标准化方案补完成度回填。
+
+  **验证**:`npx vitest run` → `Test Files 172 passed (172)` / `Tests 1158 passed (1158)`、0 失败;`npx tsc --noEmit --skipLibCheck` 与 `npx tsc -p tests/tsconfig.json --noEmit --skipLibCheck` 均退出码 0。
+
 - 2026-10-25 v1.4.0 Windows 无隔离执行后端(用户显式授权):
 
   用户明确表示本机无可损失资产、接受风险并要求 Windows 能真正运行本机 CLI。据此新增 **windows-approval-only** 后端。它不伪装成沙盒,而是把事实和边界写清楚:
 
   **行为**
   - 默认**关闭**:未开启时 Windows 仍失败关闭,状态栏给出开启路径与风险提示。
-  - 仅在设置「智能体与模型」中显式开启后可用(macOS 永不走此后端,不能降级掉 Seatbelt;Linux 也不支持)。
+  - 仅在设置「智能体与模型」中显式开启后可用(macOS 永不走此后端,不能降级掉 Seatbelt;Linux 也不支持)。(历史记录,保留原文;该 tab 现名为「对话与模型」,见 `src/settings.ts` 的 `TALOS_SETTING_TABS`。)
   - 不构造任何假隔离:`prepare()` 原样返回启动参数,不改写为 sandbox-exec 之类的包装。
   - `SandboxAvailability` 增加 `osIsolation` 字段,该后端恒为 `false`;UI 状态栏持续显示「无操作系统级隔离 · 每条命令经审批并写审计」,不沿用"沙盒"措辞。
 
@@ -50,13 +73,13 @@
   - 语音页在 OpenAI 兼容模式下仍提示"请先在设置中填写有效的**百炼**业务空间 ID",误导用户。
   - 新增 `voiceRealtimeLaunchHint` / `voiceRealtimeSetupHint`:按所选 Realtime 服务商给出可操作指引 —— 百炼模式提示业务空间 ID + API Key,自定义模式提示 Realtime 端点 + 密钥引用,且自定义模式提示中不再出现"百炼"字样。
 
-  **实机验收新增结论**:OhMyPi 18.2.8 被正确识别;Windows 上本机 Execute 按设计失败关闭并给出可操作指引(「Windows 当前缺少可验证的 CLI 隔离…请在"智能体与模型"中选择已配置的 API Provider」),与 README 平台边界一致。
+  **实机验收新增结论**:OhMyPi 18.2.8 被正确识别;Windows 上本机 Execute 按设计失败关闭并给出可操作指引(「Windows 当前缺少可验证的 CLI 隔离…请在"智能体与模型"中选择已配置的 API Provider」),与 README 平台边界一致。(历史记录,保留原文;当时 tab 名为「智能体与模型」,现名「对话与模型」。)
 
   验收:typecheck、lint(0 error 0 warning)、878 项测试(4 项既有 Windows 平台差异)、100 包许可证审计、生产构建与守卫全部通过;新增 2 项 Provider 提示测试。
 
 - 2026-10-25 v1.3.0 批次三(结构重构,行为不变):
 
-  **F6 契约边界修复**:新增 `contracts/provider-port.ts` 定义工作台对 Provider 的最小依赖面(ProviderPort/ProviderAskRequest/ProviderSecretPort/DirectApiProviderFactory);`adapters/api/direct-api-runtime-adapter.ts` 不再在主体直连 `ai/provider/*`,实现引用收敛到文件末尾的默认工厂(可被 `createProvider` 注入替换),依赖方向改为 adapters → contracts ← ai/provider。
+  **F6 契约边界修复**:新增 `contracts/provider-port.ts` 定义工作台对 Provider 的最小依赖面(ProviderPort/ProviderAskRequest/ProviderSecretPort/DirectApiProviderFactory);`adapters/api/direct-api-runtime-adapter.ts` 不再在主体直连 `ai/provider/*`,实现引用收敛到文件末尾的默认工厂(可被 `createProvider` 注入替换),依赖方向改为 adapters → contracts ← ai/provider。(历史记录，保留原文；1.x 后续版本已删除该端口 `ProviderSecretPort`——它全仓零引用，是假契约。)
 
   **F7 permissionMode 契约对齐**:契约字段改为说明性注释,明确"ApprovalBroker 是唯一授权层、适配器不据此放行工具、三档语义不逐一下发"——与三适配器实际实现一致,不再误导读者。(不使用 @deprecated 标记,避免内部合法使用点被 lint 误报。)
 
@@ -102,7 +125,7 @@
 
 > 本文件记录 TALOS 插件的开发变更历史。
 >
-> 起始日期：2026-06-23（v0.1.0）— 最近：2026-09-04
+> 起始日期：2026-06-23（v0.1.0）— 最近：2026-10-25
 
 
 - 2026-09-02 v0.4.3 版权防抄袭最小闭环：新增唯一版权文案常量，在设置页与 README 显示 Copyright © 2026 外脑玩家 Haaper 及未经书面许可禁止复制、修改、重新打包、分发、转售、白标、托管或商业服务的声明；专有 LICENSE 补充禁止使用、强制法律例外、授权终止与侵权处置条款，并增加一致性回归测试。本次按仓库所有者明确要求提交、推送并作为 v0.4.3 Release 更新上线。

@@ -52,6 +52,20 @@ export function defaultTab(id: LensModuleId): string | null {
 	return lensModule(id).tabs?.[0]?.[0] ?? null;
 }
 
+/**
+ * Q-ARC11：Lens 图标栏对「当前已激活的 voice 模块」仍会调 navigate()，
+ * 而 unmountVoice() 只在「离开 voice」时触发——反复点同一入口就会重复挂载
+ * 语音面板，叠出未关闭的 RTCPeerConnection 与麦克风轨道。
+ * 这里给出判重条件：目标与当前位置同为 voice 且页签相同 → 只重绘，不重挂。
+ */
+export function shouldSkipVoiceRenavigate(
+	location: { module: string; tab?: string | null },
+	module: string,
+	tab: string | null
+): boolean {
+	return location.module === "voice" && module === "voice" && location.tab === tab;
+}
+
 export interface LensState {
 	projectView: "board" | "list";
 	projectFilter: string;
@@ -69,7 +83,14 @@ export interface LensContext {
 	state: LensState;
 	tab: string | null;
 	navigate(module: LensModuleId, tab?: string): void;
+	/** 立即整页重绘：芯片筛选、翻页等离散点击用它。 */
 	rerender(): void;
+	/**
+	 * 合并重绘（Q-PER9）：搜索框逐字符输入走这条，避免每敲一个字符就 replaceChildren 整页。
+	 * flushRerender 让失焦 / 回车立刻生效，用户不会看到「输入了但列表没变」。
+	 */
+	rerenderDebounced(): void;
+	flushRerender(): void;
 	openNote(path: string, newTab?: boolean): void;
 	openDrawer(path: string): void;
 	drawerPath(): string | null;

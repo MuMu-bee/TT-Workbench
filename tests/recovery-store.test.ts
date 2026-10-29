@@ -101,4 +101,80 @@ describe("VaultRecoveryStore", () => {
 			})
 		).rejects.toThrow("private");
 	});
+
+	it("caps resident snapshots at maxSnapshots when every task is terminal", async () => {
+		const store = new VaultRecoveryStore(new MemoryFiles());
+		store.setTaskStateResolver(() => "completed");
+
+		// 上限 64 是方案提出的目标值，超量 capture 到 72 条。
+		const maxSnapshots = 64;
+		for (let index = 0; index < maxSnapshots + 8; index++) {
+			await store.capture({
+				taskId: `task-${index}`,
+				actionId: "create-note",
+				targetPaths: [`00 收件箱/note-${index}.md`],
+				createdAt: "2026-07-25T00:00:00.000Z",
+			});
+		}
+
+		const snapshots = (store as unknown as { snapshots: Map<string, unknown> })
+			.snapshots;
+
+		expect(snapshots.size).toBeLessThanOrEqual(maxSnapshots);
+		expect(store.evictedCount()).toBe(maxSnapshots + 8 - snapshots.size);
+	});
+
+	it("drops an evicted snapshot from has() and restore() raises 未找到恢复点", async () => {
+		const store = new VaultRecoveryStore(new MemoryFiles());
+		store.setTaskStateResolver(() => "reverted");
+
+		const evictedId = await store.capture({
+			taskId: "task-oldest",
+			actionId: "create-note",
+			targetPaths: ["00 收件箱/oldest.md"],
+			createdAt: "2026-07-25T00:00:00.000Z",
+		});
+		for (let index = 0; index < 64; index++) {
+			await store.capture({
+				taskId: `task-${index}`,
+				actionId: "create-note",
+				targetPaths: [`00 收件箱/note-${index}.md`],
+				createdAt: "2026-07-25T00:00:00.000Z",
+			});
+		}
+
+		// 淘汰对 restore 不是透明的：行为固化在此，别把它当成「仍然可恢复」。
+		expect(store.has(evictedId)).toBe(false);
+		await expect(store.restore(evictedId)).rejects.toThrow("未找到恢复点");
+	});
+
+	it("never evicts the snapshot of a task that is still running", async () => {
+		const files = new MemoryFiles();
+		files.files.set("00 收件箱/running.md", "before");
+		const store = new VaultRecoveryStore(files);
+		store.setTaskStateResolver((taskId) =>
+			taskId === "task-running" ? "running" : "completed"
+		);
+
+		// 最旧那条属于仍在 running 的任务。
+		const runningId = await store.capture({
+			taskId: "task-running",
+			actionId: "create-note",
+			targetPaths: ["00 收件箱/running.md"],
+			createdAt: "2026-07-25T00:00:00.000Z",
+		});
+		for (let index = 0; index < 72; index++) {
+			await store.capture({
+				taskId: `task-${index}`,
+				actionId: "create-note",
+				targetPaths: [`00 收件箱/note-${index}.md`],
+				createdAt: "2026-07-25T00:00:00.000Z",
+			});
+		}
+
+		expect(store.has(runningId)).toBe(true);
+		await files.write("00 收件箱/running.md", "after");
+		await store.restore(runningId);
+		expect(files.files.get("00 收件箱/running.md")).toBe("before");
+	});
 });

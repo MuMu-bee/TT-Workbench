@@ -72,13 +72,20 @@ export function voiceRealtimeSetupHint(
 	settings: VoicePanelLabelSettings & {
 		quyuanRealtimeEndpoint?: string;
 		quyuanRealtimeWorkspaceId?: string;
+		/** Q-ARC9：自定义端点的转写模型；为空则持续监听下唤醒词不可用。 */
+		quyuanRealtimeTranscriptionModel?: string;
 	},
 ): string {
 	if (normalizeRealtimeProviderKind(settings.quyuanRealtimeProviderKind ?? "dashscope")
 		=== "openai-compatible") {
-		return settings.quyuanRealtimeEndpoint?.trim()
+		if (!settings.quyuanRealtimeEndpoint?.trim()) {
+			return "请先在设置中填写 Realtime 端点与密钥引用";
+		}
+		// Q-ARC9：端点已填但转写模型为空 → 给出含「转写」的提示，
+		// 对应「input_audio_transcription 不下发 → 唤醒词静默失效」。
+		return settings.quyuanRealtimeTranscriptionModel?.trim()
 			? ""
-			: "请先在设置中填写 Realtime 端点与密钥引用";
+			: "请先在设置中填写 Realtime 转写模型，否则持续监听下唤醒词不可用";
 	}
 	return settings.quyuanRealtimeWorkspaceId?.trim()
 		? ""

@@ -1,12 +1,8 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { pluginSource as readPluginSource, viewSource as readViewSource } from "./helpers/source-text";
+import { pluginSource as readPluginSource, viewSource as readViewSource, expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 
-const root = fileURLToPath(new URL("../", import.meta.url));
 const main = readPluginSource();
 const view = readViewSource();
-const importer = readFileSync(`${root}src/agent-workbench/legacy/claudian-readonly-importer.ts`, "utf8");
 
 describe("D-TLP-034 ownership baseline", () => {
 	it("makes the TALOS plugin own the workbench by composition", () => {
@@ -23,8 +19,8 @@ describe("D-TLP-034 ownership baseline", () => {
 	});
 
 	it("never rewrites legacy Claudian sessions during startup", () => {
-		expect(importer).toContain("sourceAggregateBefore");
-		expect(importer).toContain("sourceAggregateAfter");
-		expect(importer).not.toContain("legacy.write");
+		expectSourceContains("src/agent-workbench/legacy/claudian-readonly-importer.ts", "sourceAggregateBefore");
+		expectSourceContains("src/agent-workbench/legacy/claudian-readonly-importer.ts", "sourceAggregateAfter");
+		expectSourceNotContains("src/agent-workbench/legacy/claudian-readonly-importer.ts", "legacy.write");
 	});
 });

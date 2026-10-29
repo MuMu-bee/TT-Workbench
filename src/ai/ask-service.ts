@@ -16,6 +16,13 @@ import type {
 
 export type AskNamespace = "chat" | "voice" | "command";
 
+/**
+ * runs 表的 LRU 上限（报告 C1 的建议值 32）。
+ * 每条记录最多驻留 `context-assembler.ts` 默认上限 24000 字符的脱敏正文，
+ * 故常驻内存上界是 32 × 24000，而不是「随会话数无限」。
+ */
+export const MAX_TRACKED_RUNS = 32;
+
 export interface AskInput extends VaultRetrievalInput {
 	sessionId: string;
 	namespace: AskNamespace;
@@ -70,9 +77,22 @@ interface RunRecord {
 
 export class TalosAskService {
 	private readonly sessions = new Map<string, string>();
+	/** 按插入序实现 LRU：命中即重排到队尾，超出上限时从队首淘汰。 */
 	private readonly runs = new Map<string, RunRecord>();
 
 	constructor(private readonly options: TalosAskServiceOptions) {}
+
+	/** 写入 runs 并按 LRU 淘汰最旧记录，把条目数钉在 MAX_TRACKED_RUNS。 */
+	private rememberRun(record: RunRecord): void {
+		// 先删再插：Map 的插入序即时间序，重复 runId 也要挪到队尾。
+		this.runs.delete(record.runId);
+		this.runs.set(record.runId, record);
+		while (this.runs.size > MAX_TRACKED_RUNS) {
+			const oldest = this.runs.keys().next().value;
+			if (oldest === undefined) break;
+			this.runs.delete(oldest);
+		}
+	}
 
 	async *ask(input: AskInput): AsyncIterable<AskEvent> {
 		const sessionKey = `${input.namespace}:${input.sessionId}`;
@@ -127,7 +147,7 @@ export class TalosAskService {
 			yield { type: "done", sessionId: sessionKey };
 			return;
 		}
-		this.runs.set(input.runId, {
+		this.rememberRun({
 			sessionKey,
 			runId: input.runId,
 			turnId: input.turnId,
@@ -169,7 +189,14 @@ export class TalosAskService {
 		providerId: string
 	): AsyncIterable<AskEvent> {
 		const run = this.runs.get(runId);
-		if (!run) throw new Error(`Ask run "${runId}" does not exist`);
+		if (!run) {
+			throw new Error(
+				`Ask run "${runId}" does not exist（仅保留最近 ${MAX_TRACKED_RUNS} 轮）`
+			);
+		}
+		// 一次性消费：review 是 runs 的唯一读取方，命中即删是一条真实的删除路径。
+		// 注意不要在 switchProvider 分支加会话清理——那会打断 wp7-e2e 的三次 ask + 一次 review。
+		this.runs.delete(runId);
 		yield* this.options.facade.reviewTurn(run.sessionKey, providerId, {
 			runId: `${runId}:review`,
 			turnId: `${run.turnId}:review`,

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { expectSourceContains } from "./helpers/source-text";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -15,14 +16,14 @@ describe("composer image gate", () => {
 	});
 
 	it("routes the button, paste and drop through the same gate", () => {
-		expect(composer).toContain("this.imageButton(),");
+		expectSourceContains("src/agent-workbench/ui/native-composer.ts", "this.imageButton(),");
 		expect(composer.match(/this\.acceptImages\(images\)/g)).toHaveLength(2);
 		expect(composer).not.toMatch(/void this\.addImages\(images\)\s*;\s*\}\s*\)\s*;/);
-		expect(composer).toContain("new Notice(IMAGE_INPUT_BLOCKED_REASON)");
+		expectSourceContains("src/agent-workbench/ui/native-composer.ts", "new Notice(IMAGE_INPUT_BLOCKED_REASON)");
 	});
 
 	it("shows the unavailable state instead of a live-looking button", () => {
-		expect(composer).toContain("button.disabled = true;");
+		expectSourceContains("src/agent-workbench/ui/native-composer.ts", "button.disabled = true;");
 		expect(css).toMatch(/\.claudian-input-nav-btn:disabled,\s*\.claudian-input-nav-btn\.is-unavailable \{[^}]*cursor: not-allowed;/);
 	});
 });

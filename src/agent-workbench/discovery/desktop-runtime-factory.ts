@@ -177,7 +177,9 @@ export class DesktopRuntimeFactory {
 				const negotiated = await connection.request<{ protocolVersion: number }>("negotiate_protocol", { protocolVersion: 2 });
 				if (negotiated.protocolVersion !== 2) throw new Error("OhMyPi RPC v2 协商失败");
 			} catch (error) { await connection.close(); throw error; }
-			return new OhMyPiRpcAdapter(new OhMyPiProcessPort(connection, probeRuntime), () => true, () => proxy.close());
+			// 第三个参数是**异步实时探针**，不是硬编码 true：`send()` 每回合 Execute 前
+			// 会重跑一次，spawn 前的 assertAvailable() 之后后端失效也能拦住。
+			return new OhMyPiRpcAdapter(new OhMyPiProcessPort(connection, probeRuntime), () => this.sandbox.availableNow(), () => proxy.close());
 		} catch (error) {
 			await proxy.close();
 			throw error;

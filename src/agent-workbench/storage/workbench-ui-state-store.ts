@@ -78,6 +78,8 @@ export class WorkbenchUiStateStore {
 	constructor(private readonly adapter: WorkbenchUiStateAdapter) {}
 
 	async load(): Promise<WorkbenchUiState | null> {
+		// this.tail 只用来等队列排空，本身不会 reject（见 save 的吞异常分支）；
+		// 下面 adapter.read() 的失败必须原样上抛，不能吞成 null——null 的语义是「从未保存过」。
 		await this.tail;
 		const raw = await this.adapter.read();
 		// null/undefined = 从未保存过标签状态（首次运行）；
@@ -89,7 +91,10 @@ export class WorkbenchUiStateStore {
 
 	save(value: WorkbenchUiState): Promise<void> {
 		const next = normalize(value);
-		this.tail = this.tail.then(() => this.adapter.write(next));
-		return this.tail;
+		// 与 conversation-input-ledger.ts 的事务模板同构：队列尾部赋成吞掉异常的 promise，
+		// 单次写失败只让这一次 save 的返回值 reject，不再毒化后续 save 与 load。
+		const operation = this.tail.then(() => this.adapter.write(next));
+		this.tail = operation.then(() => undefined, () => undefined);
+		return operation;
 	}
 }

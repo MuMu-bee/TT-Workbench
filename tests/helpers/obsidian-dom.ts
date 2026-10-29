@@ -1,7 +1,9 @@
-import { MiniDocument, MiniElement } from "./mini-dom";
+import { MiniDocument, MiniElement, MiniStyle, type MiniElementOptions } from "./mini-dom";
 
 // 在 MiniElement 上补齐 Obsidian 对 HTMLElement 的扩展（createDiv / createEl /
 // setAttr / setCssProps …），用于直接渲染并断言控制台模块的真实 DOM 输出。
+// 注意：MiniElement 现已自带 createDiv/createEl/createSpan/setText/setCssProps/style，
+// 本类只做「额外的测试专用能力」（title / setAttr / all / one）+ 更宽松的 attr 值类型。
 
 type ElementOptions = {
 	cls?: string | string[];
@@ -9,36 +11,48 @@ type ElementOptions = {
 	attr?: Record<string, string | number | boolean | null>;
 };
 
-class TestStyle {
-	width = "";
-	readonly props: Record<string, string> = {};
-
-	setProperty(name: string, value: string): void {
-		this.props[name] = value;
+/** 把宽松的 ElementOptions 归一成 MiniElement 能接受的字面量形状。 */
+function normalize(options: ElementOptions): MiniElementOptions {
+	const attr: Record<string, string> = {};
+	for (const [name, value] of Object.entries(options.attr ?? {})) {
+		if (value === null || value === false) continue;
+		attr[name] = String(value);
 	}
+	const cls = Array.isArray(options.cls) ? options.cls.join(" ") : options.cls;
+	return {
+		...(cls === undefined ? {} : { cls }),
+		...(options.text === undefined ? {} : { text: options.text }),
+		attr,
+	};
+}
+
+/** MiniStyle 的测试侧别名；MiniElement.style 的类型就是它。 */
+class TestStyle extends MiniStyle {
+	width = "";
 }
 
 export class ObsidianTestElement extends MiniElement {
-	readonly style = new TestStyle();
+	override readonly style = new TestStyle();
 	title = "";
 
-	createEl(tag: string, options: ElementOptions | string = {}): ObsidianTestElement {
+	override createEl(tag: string, options: ElementOptions | string = {}): ObsidianTestElement {
 		const info = typeof options === "string" ? { cls: options } : options;
 		const element = new ObsidianTestElement(tag, this.ownerDocument);
-		if (info.cls) element.className = Array.isArray(info.cls) ? info.cls.join(" ") : info.cls;
-		if (info.text !== undefined) element.textContent = info.text;
-		for (const [name, value] of Object.entries(info.attr ?? {})) {
-			if (value !== null && value !== false) element.setAttribute(name, String(value));
+		const normalized = normalize(info);
+		if (normalized.cls) element.className = normalized.cls;
+		if (normalized.text !== undefined) element.textContent = normalized.text;
+		for (const [name, value] of Object.entries(normalized.attr ?? {})) {
+			element.setAttribute(name, value);
 		}
 		this.appendChild(element);
 		return element;
 	}
 
-	createDiv(options?: ElementOptions | string): ObsidianTestElement {
+	override createDiv(options?: ElementOptions | string): ObsidianTestElement {
 		return this.createEl("div", options);
 	}
 
-	createSpan(options?: ElementOptions | string): ObsidianTestElement {
+	override createSpan(options?: ElementOptions | string): ObsidianTestElement {
 		return this.createEl("span", options);
 	}
 

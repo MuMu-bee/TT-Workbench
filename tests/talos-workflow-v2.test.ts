@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -27,7 +27,7 @@ describe("TALOS release governance v2", () => {
 		expect(view).toContain("(item.count / gates.length) * 100");
 		for (const state of ["done", "ready", "blocked", "todo"]) {
 			expect(view).toContain(`key: "${state}"`);
-			expect(css).toContain(`.state-${state}`);
+			expectSourceContains("styles.ui-v2.css", `.state-${state}`);
 		}
 	});
 
@@ -36,12 +36,12 @@ describe("TALOS release governance v2", () => {
 		expect(page).toContain("fillGates(view, ");
 		expect(page).toContain("fillTalosModules(view, ");
 		expect(page).toContain("talos-v2-module-panel");
-		expect(css).toContain(".talos-v2-module-panel .module-grid");
+		expectSourceContains("styles.ui-v2.css", ".talos-v2-module-panel .module-grid");
 	});
 
 	it("reflows gates and modules while respecting reduced motion", () => {
-		expect(css).toContain("@container workflow-v2 (max-width: 760px)");
-		expect(css).toContain("@container workflow-v2 (max-width: 520px)");
+		expectSourceContains("styles.ui-v2.css", "@container workflow-v2 (max-width: 760px)");
+		expectSourceContains("styles.ui-v2.css", "@container workflow-v2 (max-width: 520px)");
 		expect(css).toMatch(
 			/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.talos-v2-gate-chart__segment\s*\{[^}]*transition:\s*none/
 		);

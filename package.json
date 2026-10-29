@@ -6,9 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "node build-styles.mjs && node esbuild.config.mjs",
-    "build": "npm run licenses:check && tsc -noEmit -skipLibCheck && node build-styles.mjs && node esbuild.config.mjs production && node scripts/check-peer-status-bundle.mjs",
+    "build": "npm run licenses:check && tsc -noEmit -skipLibCheck && node build-styles.mjs && node esbuild.config.mjs production && node scripts/check-peer-status-bundle.mjs && node scripts/check-module-boundaries.mjs",
     "build:css": "node build-styles.mjs",
     "typecheck": "tsc --noEmit --skipLibCheck",
+    "typecheck:tests": "tsc -p tests/tsconfig.json --noEmit --skipLibCheck",
+    "check:file-size": "node scripts/check-file-size.mjs",
+    "check:boundaries": "node scripts/check-module-boundaries.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -19,7 +22,8 @@
     "licenses:check": "node third-party-licenses.mjs --check",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
     "lint": "eslint .",
-    "test:chat-gate": "node agent-workbench-chat-gate.selftest.mjs"
+    "test:chat-gate": "node agent-workbench-chat-gate.selftest.mjs",
+    "test:chat-gate:fixture": "node scripts/run-chat-gate-fixtures.mjs"
   },
   "keywords": [],
   "license": "SEE LICENSE IN LICENSE",

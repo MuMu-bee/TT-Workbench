@@ -89,6 +89,12 @@ export interface OutputPlatform {
 	count: number;
 	published: number;
 	pending: number;
+	/**
+	 * 未分类的独立计数：笔记没有 frontmatter，或 frontmatter 里既无发布状态也无发布链接/日期。
+	 * 它**不是** `count - published` 的残差——那样算出来的值恒等于 `pending`，
+	 * 「未分类」图例与图段就永远为 0（Q-QUA18 的对外可见口径错误）。
+	 */
+	unclassified: number;
 	readme: string;
 	latestTitle: string;
 	latestPath?: string;

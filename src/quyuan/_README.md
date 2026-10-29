@@ -5,15 +5,18 @@
 ## 当前边界
 
 **人格与治理（生产活跃）**
-- `contract.ts`：不可缩水的通用 Agent 能力合同。
 - `persona-context.ts`：首轮对话前完整加载 PERSONA、persona-memory、CONTEXT；缺一即失败。
 - `governance.ts`：写库前的铁律判定，不依赖具体 Provider。
-- `workbench-adapter.ts`：与 provider-neutral runtime 的稳定适配契约。
-- `module.ts`：把人格、治理与工作台适配器编排为一个屈原模块。
+
+> 能力契约以 `src/agent-workbench/contracts/runtime-adapter.ts` 的 `RuntimeId` /
+> 运行时能力表为唯一真源。本目录不再另立 provider 能力词汇表：原先那组「能力合同 +
+> 工作台适配器接口 + 编排模块 + 桶文件」（4 个文件）全仓 `implements` 为 0 处、
+> `new` 为 0 处、无任何 `src/` 内导入，已整组删除；此前保留下来的只是给测试读的孤岛。
 
 **实时语音（生产活跃，服务端可插拔）**
 - `voice-panel.ts`：语音面板（固定 dock + 字幕 + 唤醒词），生产麦克风路径为 Qwen Realtime WebRTC 独占。
 - `qwen-realtime-voice.ts`：Realtime 会话状态机（WebRTC + 数据通道 + 工具调用）。
+- 出库边界：语音历史经 `native-voice-driver.ts` 作为每轮 `historyText` 参与出库审计，且经 `inspectVaultContent` 过闸。
 - `realtime-provider.ts`：**服务端抽象**——`dashscope`（百炼 Qwen 预设）或 `openai-compatible`（自定义 Realtime 端点，两步握手）。
 - `runtime-policy.ts`：语音只读边界与联网搜索授权策略。
 - `voice-vault-tools.ts` / `voice-data-map.ts`：只读 Vault 工具与数据地图。

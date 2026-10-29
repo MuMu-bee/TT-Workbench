@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -41,7 +41,7 @@ describe("Capability center v2", () => {
 	it("charts only real group lengths and reflows naturally", () => {
 		expect(view).toContain("private fillCapabilityDistribution(");
 		expect(view).toContain("group.items.length / maxCount");
-		expect(css).toContain("@container knowledge-v2 (max-width: 520px)");
+		expectSourceContains("styles.ui-v2.css", "@container knowledge-v2 (max-width: 520px)");
 		expect(css).toMatch(
 			/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.capability-v2-distribution-row__track > span\s*\{[^}]*transition:\s*none/
 		);

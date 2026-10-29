@@ -72,6 +72,9 @@ export async function executeQuyuanVoiceVaultTool(plugin: TalosPlugin, input: {
 		maxReadLines: 200,
 		maxGrepHits: 40,
 		maxOutputChars: 6000,
+		// Q-PER8：grep_vault 的逐文件全文扫描上限。与上面 maxFiles: 3000（search_vault
+		// 的相关度排序候选上限）有意不同——grep 每篇都要读全文，search 只做打分。
+		maxScannedFiles: 500,
 	});
 	const audit = await auditQuyuanProviderEgress(plugin, {
 		namespace: "voice",

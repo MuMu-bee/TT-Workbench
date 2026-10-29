@@ -1,0 +1,53 @@
+{
+  "comment": "存量违规白名单。每条必须带 issue 或 reviewBy（到期复核日期），防止把 ROADMAP.md:34 的 F6 端口化未完成项永久「合法化」。清空 allowed 后 node scripts/check-module-boundaries.mjs 应报 6 条违规并以退出码 1 结束。",
+  "allowed": [
+    {
+      "file": "src/agent-workbench/adapters/api/direct-api-runtime-adapter.ts",
+      "rule": "adapters-legacy-to-ai-provider",
+      "specifier": "../../../ai/provider/anthropic-api-provider",
+      "note": "F6 端口化未完成的存量依赖",
+      "issue": "ROADMAP.md:34 contracts 边界修复（F6）",
+      "reviewBy": "2026-12-31"
+    },
+    {
+      "file": "src/agent-workbench/adapters/api/direct-api-runtime-adapter.ts",
+      "rule": "adapters-legacy-to-ai-provider",
+      "specifier": "../../../ai/provider/openai-compatible-provider",
+      "note": "F6 端口化未完成的存量依赖",
+      "issue": "ROADMAP.md:34 contracts 边界修复（F6）",
+      "reviewBy": "2026-12-31"
+    },
+    {
+      "file": "src/agent-workbench/adapters/api/direct-api-runtime-adapter.ts",
+      "rule": "adapters-legacy-to-ai-provider",
+      "specifier": "../../../ai/provider/provider-secret-store",
+      "note": "F6 端口化未完成的存量依赖",
+      "issue": "ROADMAP.md:34 contracts 边界修复（F6）",
+      "reviewBy": "2026-12-31"
+    },
+    {
+      "file": "src/agent-workbench/legacy/legacy-codex-credential-migrator.ts",
+      "rule": "adapters-legacy-to-ai-provider",
+      "specifier": "../../ai/provider/provider-secret-store",
+      "note": "F6 端口化未完成的存量依赖",
+      "issue": "ROADMAP.md:34 contracts 边界修复（F6）",
+      "reviewBy": "2026-12-31"
+    },
+    {
+      "file": "src/agent-workbench/legacy/legacy-codex-credential-migrator.ts",
+      "rule": "adapters-legacy-to-ai-provider",
+      "specifier": "../../ai/provider/secret-storage-runtime",
+      "note": "F6 端口化未完成的存量依赖",
+      "issue": "ROADMAP.md:34 contracts 边界修复（F6）",
+      "reviewBy": "2026-12-31"
+    },
+    {
+      "file": "src/agent-workbench/legacy/legacy-codex-credential-migrator.ts",
+      "rule": "adapters-legacy-to-ai-provider",
+      "specifier": "../../ai/provider/settings-migration",
+      "note": "F6 端口化未完成的存量依赖",
+      "issue": "ROADMAP.md:34 contracts 边界修复（F6）",
+      "reviewBy": "2026-12-31"
+    }
+  ]
+}

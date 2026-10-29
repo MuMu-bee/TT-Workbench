@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { InboxMovePlan } from "../src/inbox-triage";
 import { InboxTriagePanel, type InboxTriageSession } from "../src/ui/inbox-triage-panel";
 import type { InboxQueueItem } from "../src/types";
 import { createMiniHost, type MiniElement } from "./helpers/mini-dom";
@@ -8,23 +9,48 @@ const items: InboxQueueItem[] = [
 	{ path: "00-收件箱/随手记.md", title: "随手记", ageDays: 3, tags: [], linked: [] },
 ];
 
+/**
+ * Q-PER11 撞名用例专用夹具：前两条与 `items` 相同，第三条是同 basename 的
+ * `00-收件箱/子目录/loop 复盘.md`。默认夹具保持 2 条，既有断言（卡片数、`待分诊 1 条`、
+ * 「稍后」顺序）都不受影响。
+ */
+const itemsWithDuplicateBasename: InboxQueueItem[] = [
+	...items,
+	{ path: "00-收件箱/子目录/loop 复盘.md", title: "loop 复盘", ageDays: 5, tags: ["复盘"], linked: [] },
+];
+
 const targets = [
 	{ key: "insights" as const, label: "洞察", dir: "02-洞察" },
 	{ key: "assets" as const, label: "素材", dir: "03-素材" },
 ];
 
-function setup(overrides: { onApprove?: ReturnType<typeof vi.fn>; existing?: Set<string>; session?: InboxTriageSession } = {}) {
+function setup(overrides: {
+	// 显式对齐 InboxTriagePanel 的 onApprove 契约
+	// （inbox-triage-panel.ts:31 → (plan: InboxMovePlan) => Promise<{ok, message}>），
+	// 这样传进来的 mock 也有参数类型，不需要 cast。
+	onApprove?: (plan: InboxMovePlan) => Promise<{ ok: boolean; message: string }>;
+	existing?: Set<string>;
+	/** 有状态夹具：existingPaths 直接读这个集合，approve 后由用例往里加 plan.to。 */
+	existingSet?: Set<string>;
+	session?: InboxTriageSession;
+	/** 撞名用例要第三篇同 basename 的条目；默认仍是 2 条，既有断言不受影响。 */
+	queue?: InboxQueueItem[];
+} = {}) {
 	const { host, element } = createMiniHost();
-	const onApprove = overrides.onApprove ?? vi.fn(async () => ({ ok: true, message: "已归档" }));
+	const queue = overrides.queue ?? items;
+	const onApprove = overrides.onApprove ?? vi.fn(async (_plan: InboxMovePlan) => ({ ok: true, message: "已归档" }));
 	const onOpen = vi.fn();
 	const evaluate = vi.fn(() => ({ decision: "propose" as const, reason: "高风险影响" }));
+	const existingPaths = vi.fn(
+		() => overrides.existingSet ?? overrides.existing ?? new Set<string>()
+	);
 	const panel = new InboxTriagePanel({
 		parent: host,
-		items,
+		items: queue,
 		total: 2,
 		targets,
 		inboxDir: "00-收件箱",
-		existingPaths: () => overrides.existing ?? new Set<string>(),
+		existingPaths,
 		evaluate,
 		onOpen,
 		onApprove,
@@ -34,7 +60,7 @@ function setup(overrides: { onApprove?: ReturnType<typeof vi.fn>; existing?: Set
 	const cards = () => element.querySelectorAll(".inbox-triage-card");
 	const card = (path: string) => cards().find((item) => item.getAttribute("data-path") === path) as MiniElement;
 	const action = (scope: MiniElement, name: string) => scope.querySelector(`[data-action="${name}"]`) as MiniElement;
-	return { element, onApprove, onOpen, evaluate, cards, card, action };
+	return { element, onApprove, onOpen, evaluate, existingPaths, cards, card, action };
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -122,5 +148,38 @@ describe("InboxTriagePanel", () => {
 		action(card(items[0].path), "open-related").click();
 		expect(onOpen).toHaveBeenNthCalledWith(1, items[0].path);
 		expect(onOpen).toHaveBeenNthCalledWith(2, "02-洞察/循环.md");
+	});
+
+	it("resolves the vault path set once per 收下 instead of once per plan", () => {
+		// Q-PER11：propose() 与随后 mountProposal() 各调一次 planFor()，原来两次都重算整库路径。
+		const { card, action, existingPaths } = setup();
+		action(card(items[0].path), "accept").click();
+		expect(existingPaths).toHaveBeenCalledTimes(1);
+	});
+
+	it("invalidates the cached path set after a successful move so 撞名 is still caught", async () => {
+		// 有状态的假库：approve 成功后把 plan.to 加进集合，第 2 篇同名笔记必须撞名（inbox-triage.ts:94）。
+		const existingSet = new Set<string>();
+		const onApprove = vi.fn(async (plan: InboxMovePlan) => {
+			existingSet.add(plan.to);
+			return { ok: true, message: `已归档到 ${plan.to}` };
+		});
+		const { card, action, element, existingPaths } = setup({ onApprove, existingSet, queue: itemsWithDuplicateBasename });
+
+		// 第 1 篇：收下 → 提案里批准 → 真的落库。
+		action(card(items[0].path), "accept").click();
+		(element.querySelector('[data-action="approve"]') as MiniElement).click();
+		await flush();
+		expect(onApprove).toHaveBeenCalledTimes(1);
+		expect(existingSet.has("02-洞察/loop 复盘.md")).toBe(true);
+
+		// 第 2 篇（同 basename）：缓存若未失效就会漏判，这里必须看到撞名提示。
+		const duplicate = itemsWithDuplicateBasename[2].path;
+		action(card(duplicate), "accept").click();
+		expect(card(duplicate).textContent).toContain("目标已有同名笔记：02-洞察/loop 复盘.md");
+		expect(element.querySelector(".talos-proposal-panel")).toBeNull();
+
+		// 两次「收下」合计只做 2 次缓存未命中（无缓存时是 3 次：propose + mountProposal + 第二次 propose）。
+		expect(existingPaths).toHaveBeenCalledTimes(2);
 	});
 });

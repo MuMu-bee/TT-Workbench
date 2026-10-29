@@ -35,6 +35,9 @@ function legacy(): LegacySecretSettings {
 		aliyunApiKey: "aliyun-secret",
 		anthropicApiKey: "anthropic-secret",
 		openaiApiKey: "openai-secret",
+		// codexApiKey 是 LegacySecretField 的成员但 1.1.0 起不再迁移；此处给空串，
+		// 保持 :51 的 migrated 列表仍为 5 项（codex 凭据不再生成 profile）。
+		codexApiKey: "",
 		jarvisSttApiKey: "stt-secret",
 		providerSecretRefs: {},
 	};

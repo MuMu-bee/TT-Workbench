@@ -144,9 +144,9 @@ export function fillOutputClosureChart(view: TalosView, parent: HTMLElement, pla
 	}
 
 	for (const platform of platforms) {
-		const classified = platform.published + platform.pending;
-		const total = Math.max(platform.count, classified);
-		const unclassified = Math.max(0, total - classified);
+		// Q-QUA18：三桶都取真实计数，不再用算术残差。原式 classified = published + pending、
+		// pending = count - published（navigation.ts），算出的 unclassified 恒为 0。
+		const total = platform.published + platform.pending + platform.unclassified;
 		const row = parent.createDiv({ cls: "output-v2-bar-row" });
 		row.setAttribute("role", "button");
 		row.setAttribute("tabindex", "0");
@@ -170,13 +170,13 @@ export function fillOutputClosureChart(view: TalosView, parent: HTMLElement, pla
 		track.setAttribute("role", "img");
 		track.setAttribute(
 			"aria-label",
-			`${platform.name}：已发布 ${platform.published}，待闭环 ${platform.pending}，未分类 ${unclassified}`
+			`${platform.name}：已发布 ${platform.published}，待闭环 ${platform.pending}，未分类 ${platform.unclassified}`
 		);
 		if (total === 0) track.addClass("is-empty");
 		for (const segment of [
 			{ tone: "published", value: platform.published },
 			{ tone: "pending", value: platform.pending },
-			{ tone: "unclassified", value: unclassified },
+			{ tone: "unclassified", value: platform.unclassified },
 		]) {
 			if (segment.value <= 0 || total === 0) continue;
 			const fill = track.createSpan({

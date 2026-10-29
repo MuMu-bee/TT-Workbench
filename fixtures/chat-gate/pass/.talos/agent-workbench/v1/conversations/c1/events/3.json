@@ -1,0 +1,9 @@
+{
+  "eventId": "c1-t1-c",
+  "conversationId": "c1",
+  "turnId": "t1",
+  "runtimeId": "ohmypi",
+  "type": "turn.finished",
+  "timestamp": "2026-10-25T00:00:03.000Z",
+  "payload": { "reason": "completed" }
+}

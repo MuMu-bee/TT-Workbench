@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "conversationId": "c1",
+  "createdAt": "2026-10-25T00:00:00.000Z",
+  "updatedAt": "2026-10-25T00:00:03.000Z",
+  "title": "chat-gate 正例夹具",
+  "selection": { "runtimeId": "ohmypi" }
+}

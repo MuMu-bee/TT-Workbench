@@ -23,17 +23,33 @@ interface PortableIndex {
 
 const ROOT = ".talos/agent-workbench/v1";
 const INDEX = `${ROOT}/index.json`;
-const FORBIDDEN_KEY = /(?:secret|token|password|authorization|cookie|executablePath|vaultRoot)/i;
+// 报告 A1 原话是补 `api[-_]?key|access[-_]?key|credential|auth`。裸 `auth` 会命中
+// `unauthenticated` 这类状态字面量（contracts/runtime-adapter.ts）与 `authority`
+// 这类标识符，因此把 auth 收窄为独立段或 auth 前缀复合词。
+// 导出以便表驱动防漂移断言（对契约字段名清单验证「新增丢弃集合为空」）。
+export const FORBIDDEN_KEY = /(?:secret|token|password|authorization|cookie|executablePath|vaultRoot|api[-_]?key|access[-_]?key|credential|(?:^|[-_])auth(?:$|[-_])|auth(?:key|token|header|code)\b)/i;
 // Detection and redaction must be built from the same sources. A wider assertion
 // than sanitizer turns harmless native runtime metadata into a connection error.
 const POSIX_ABSOLUTE_SOURCE = String.raw`(^|[\s("'=:[{,<\x60])\/(?!\/)[^\s/"'<>)}\],]+(?:\/[^\s/"'<>)}\],]+)+`;
 const WINDOWS_ABSOLUTE_SOURCE = String.raw`\b[A-Za-z]:[\\\/][^\s"'<>)}\]]*`;
 const WINDOWS_UNC_SOURCE = String.raw`\\\\[^\\/\s"'<>)}\]]+[\\/][^\\/\s"'<>)}\]]+(?:[\\/][^\s"'<>)}\]]*)?`;
-const ABSOLUTE_PATH = new RegExp(`(?:${POSIX_ABSOLUTE_SOURCE}|${WINDOWS_ABSOLUTE_SOURCE}|${WINDOWS_UNC_SOURCE})`);
+/**
+ * Windows 单反斜杠根相对绝对路径（`\Users\x\state.json`）。两种形态轮流生效：
+ * 至少三段，或至少两段且末段带 1-8 位扩展名；段字符集刻意排除正则/LaTeX 元字符
+ * （`\d+`、`\w+`、`{}`、`()` 等），否则用户正文里的 `latex \alpha\beta` 会被整段吞掉。
+ * 已知残余：`\Users\bob` 这类「两段且无扩展名」的根相对路径不会命中——这是为
+ * 「零误伤用户正文」付出的代价，宁可漏一条也不改写用户消息。
+ */
+const WINDOWS_ROOTED_SOURCE = String.raw`(^|[\s("'=[{,<\x60])\\(?!\\)(?:[A-Za-z0-9._~@$\-]+(?:\\[A-Za-z0-9._~@$\-]+){2,}|[A-Za-z0-9._~@$\-]+(?:\\[A-Za-z0-9._~@$\-]+)*\\[A-Za-z0-9_~@$\-]+\.[A-Za-z0-9]{1,8})`;
+const ABSOLUTE_PATH = new RegExp(`(?:${POSIX_ABSOLUTE_SOURCE}|${WINDOWS_ABSOLUTE_SOURCE}|${WINDOWS_UNC_SOURCE}|${WINDOWS_ROOTED_SOURCE})`);
 const POSIX_ABSOLUTE = new RegExp(POSIX_ABSOLUTE_SOURCE, "g");
 const WINDOWS_ABSOLUTE = new RegExp(WINDOWS_ABSOLUTE_SOURCE, "g");
 const WINDOWS_UNC = new RegExp(WINDOWS_UNC_SOURCE, "g");
-const SECRET = /\b(?:bearer\s+[a-z0-9._-]+|sk-[a-z0-9_-]{12,})\b/gi;
+const WINDOWS_ROOTED = new RegExp(WINDOWS_ROOTED_SOURCE, "g");
+const SECRET = /\b(?:bearer\s+[a-z0-9._-]+|sk-[a-z0-9_-]{12,}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,})\b/gi;
+// SECRET 带 `g`，`.test()` 会受 lastIndex 影响（同一正则连跑两次得 true → false），
+// 断言路径必须用从同一份 source 派生的无 `g` 版本，两处正则只有一份 source。
+const SECRET_DETECT = new RegExp(SECRET.source, "i");
 
 function stableJson(value: unknown): string {
 	return `${JSON.stringify(value, null, 2)}\n`;
@@ -43,7 +59,7 @@ export function assertPortableValue(value: unknown, key = ""): void {
 	if (FORBIDDEN_KEY.test(key)) throw new Error(`portable 数据包含禁止字段：${key}`);
 	if (typeof value === "string") {
 		if (ABSOLUTE_PATH.test(value)) throw new Error("portable 数据不得包含本机绝对路径");
-		if (/\b(?:bearer\s+[a-z0-9._-]+|sk-[a-z0-9_-]{12,})\b/i.test(value)) {
+		if (SECRET_DETECT.test(value)) {
 			throw new Error("portable 数据不得包含凭据");
 		}
 		return;
@@ -70,6 +86,7 @@ export function sanitizePortableString(value: string, vaultRoot = ""): string {
 	result = result.replace(POSIX_ABSOLUTE, (_match, prefix: string) => prefix + "[本机路径已省略]");
 	result = result.replace(WINDOWS_ABSOLUTE, "[本机路径已省略]");
 	result = result.replace(WINDOWS_UNC, "[本机路径已省略]");
+	result = result.replace(WINDOWS_ROOTED, (_match, prefix: string) => prefix + "[本机路径已省略]");
 	return result;
 }
 
@@ -134,6 +151,26 @@ export class PortableConversationStore {
 		return next;
 	}
 
+	/**
+	 * manifest 读→写区间锁：touch / setLifecycle / patchManifest 都是「读 manifest
+	 * → 改 → 整份写回」，无锁时后写者会用陈旧快照覆盖前写者（报告 A2 实测：touch
+	 * 会把刚完成的 setLifecycle("archived") 无声回滚成 active）。
+	 *
+	 * 边界只到「入口方法的整个 read→write 区间」：updateManifest 本身**不进这把锁**，
+	 * 因为它内部调 upsertIndexEntry → withIndexLock；把 updateManifest 也包进来会自锁
+	 * （报告 A2 实测：嵌套后 `touch outcome: HUNG`）。append 也不加锁——它已有 eventId 幂等。
+	 */
+	private manifestWriteQueue: Promise<unknown> = Promise.resolve();
+
+	private withManifestLock<T>(operation: () => Promise<T>): Promise<T> {
+		const next = this.manifestWriteQueue.then(operation, operation);
+		this.manifestWriteQueue = next.then(
+			() => undefined,
+			() => undefined,
+		);
+		return next;
+	}
+
 	constructor(private readonly files: PortableFileAdapter) {}
 
 	private async ensure(path: string): Promise<void> {
@@ -176,12 +213,35 @@ export class PortableConversationStore {
 		await this.upsertIndexEntry(manifest);
 	}
 
+	/** 锁内使用的无锁 manifest 读取，供 touch/setLifecycle/patchManifest 复用（避免二次加锁）。 */
+	private async readManifest(conversationId: string): Promise<ConversationManifest> {
+		return JSON.parse(await this.files.read(manifestPath(conversationId))) as ConversationManifest;
+	}
+
 	async touch(conversationId: string, timestamp: string): Promise<void> {
-		const manifest = JSON.parse(await this.files.read(manifestPath(conversationId))) as ConversationManifest;
-		if (manifest.updatedAt >= timestamp) return;
-		await this.updateManifest({
-			...manifest,
-			updatedAt: timestamp,
+		await this.withManifestLock(async () => {
+			const manifest = await this.readManifest(conversationId);
+			if (manifest.updatedAt >= timestamp) return;
+			await this.updateManifest({
+				...manifest,
+				updatedAt: timestamp,
+			});
+		});
+	}
+
+	/**
+	 * 受锁的「读 manifest → 打补丁 → 写回」。ConversationService.patchManifest 走这里，
+	 * 锁字段与模板只在 store 上有一份，service 层不再各持一把锁。
+	 */
+	async patchManifest(
+		conversationId: string,
+		patch: (current: ConversationManifest) => ConversationManifest,
+	): Promise<ConversationManifest> {
+		return this.withManifestLock(async () => {
+			const current = await this.readManifest(conversationId);
+			const next = patch(current);
+			await this.updateManifest(next);
+			return next;
 		});
 	}
 
@@ -198,7 +258,10 @@ export class PortableConversationStore {
 	}
 
 	async load(conversationId: string): Promise<ConversationProjection> {
-		const manifest = JSON.parse(await this.files.read(manifestPath(conversationId))) as ConversationManifest;
+		// 先等 manifest 写队列排空，避免读到「touch 已写一半」的中间态。
+		// 本方法不参与加锁（锁内路径一律用 readManifest），故不会二次加锁。
+		await this.manifestWriteQueue;
+		const manifest = await this.readManifest(conversationId);
 		const listing = await this.files.list(eventsPath(conversationId));
 		const events: AgentEvent[] = [];
 		for (const file of listing.files.filter((name) => name.endsWith(".json")).sort()) {
@@ -288,12 +351,12 @@ export class PortableConversationStore {
 	}
 
 	async setLifecycle(id: string, lifecycle: ConversationManifest["lifecycle"]): Promise<void> {
-		const projection = await this.load(id);
-		await this.updateManifest({
-			...projection.manifest,
+		// 走 store 上的锁内实现：不再复用 load()（load 会 await 同一把锁的队列 = 自锁）。
+		await this.patchManifest(id, (current) => ({
+			...current,
 			lifecycle,
 			updatedAt: new Date().toISOString(),
-		});
+		}));
 	}
 
 	private async writeIndex(index: PortableIndex): Promise<void> {

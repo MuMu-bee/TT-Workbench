@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { AgentWorkbenchService } from "../src/agent-workbench/core/agent-workbench-service";
 import { ConversationService } from "../src/agent-workbench/core/conversation-service";
 import { WorkbenchConversationCoordinator } from "../src/agent-workbench/core/workbench-conversation-coordinator";
-import { ConversationInputLedger } from "../src/agent-workbench/storage/conversation-input-ledger";
+import { ConversationInputLedger, type ConversationInputLedgerAdapter } from "../src/agent-workbench/storage/conversation-input-ledger";
 import {
 	PortableConversationStore,
 	type PortableFileAdapter,
@@ -62,7 +62,7 @@ describe("Agent workbench preparation failures", () => {
 		const files = new MemoryFiles();
 		const conversations = new ConversationService(new PortableConversationStore(files));
 		let bindings: Record<string, unknown> | null = null;
-		let ledgerState: unknown = null;
+		let ledgerState: Awaited<ReturnType<ConversationInputLedgerAdapter["read"]>> = null;
 		const coordinator = new WorkbenchConversationCoordinator(
 			conversations,
 			new RuntimeBindingStore({

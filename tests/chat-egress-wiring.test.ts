@@ -1,8 +1,11 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { pluginSource as readPluginSource } from "./helpers/source-text";
+import { pluginSource as readPluginSource, expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 
-const projectRoot = new URL("../", import.meta.url).pathname;
+// `new URL("../").pathname` 在 win32 上产出 `/C:/...`，拼接会得到 `C:\C:\...`；
+// 统一走 fileURLToPath 取真实绝对路径。
+const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const inputController = readFileSync(
 	`${projectRoot}src/agent-workbench/core/agent-execution-coordinator.ts`,
 	"utf8"
@@ -34,14 +37,14 @@ describe("chat egress wiring", () => {
 
 	it("fails closed when the TALOS egress audit bridge is missing", () => {
 		// D-WP7 安全合同：审计桥缺失必须抛错阻断，不得静默放行。
-		expect(inputController).not.toContain(
+		expectSourceNotContains("src/agent-workbench/core/agent-execution-coordinator.ts", 
 			"if (!bridge.auditQuyuanChatEgress) return;"
 		);
 		const guard = inputController.indexOf("if (preflight && !preflight.allowed)");
 		const thrower = inputController.indexOf("Provider 出库隐私审计未通过");
 		expect(guard).toBeGreaterThan(-1);
 		expect(thrower).toBeGreaterThan(guard);
-		expect(inputController).toContain("preflightEgress?");
+		expectSourceContains("src/agent-workbench/core/agent-execution-coordinator.ts", "preflightEgress?");
 	});
 
 	it("persists metadata-only chat audits through the shared audit store", () => {

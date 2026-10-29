@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { pluginSource as readPluginSource, viewSource as readViewSource } from "./helpers/source-text";
+import { pluginSource as readPluginSource, viewSource as readViewSource, expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const mainSource = readPluginSource();
@@ -56,8 +56,8 @@ describe("assistant layout regression", () => {
 		expect(quyuanStyles).toMatch(
 			/\.talos-console:is\(\.section-chat, \[data-talos-page="jarvis"\]\) \.app \{[^}]*flex: 1 1 auto;[^}]*height: 100%;[^}]*min-height: 0;/s
 		);
-		expect(quyuanStyles).toContain("--tq-view-height: 100%;");
-		expect(quyuanStyles).not.toContain(
+		expectSourceContains("styles.quyuan-shell.css", "--tq-view-height: 100%;");
+		expectSourceNotContains("styles.quyuan-shell.css", 
 			"--tq-view-height: calc(100svh - 76px)"
 		);
 	});

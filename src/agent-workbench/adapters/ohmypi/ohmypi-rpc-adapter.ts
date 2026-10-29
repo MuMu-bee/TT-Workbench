@@ -6,6 +6,7 @@ import { RuntimeEventFactory } from "../shared/event-factory";
 import type { ProtocolFrame } from "../shared/protocol-frame";
 import { runtimePrompt } from "../../contracts/execution-request";
 import { decodeRuntimeImages } from "../shared/image-input";
+import { ohMyPiNativeCapabilities } from "../../config/runtime-capabilities";
 
 export interface OhMyPiRpcPort {
 	probe(signal?: AbortSignal): Promise<RuntimeProbe>;
@@ -90,7 +91,7 @@ export class OhMyPiRpcAdapter implements AgentRuntimeAdapter {
 	private activeModel: string | undefined;
 	private readonly pendingUiRequests = new Map<string, { method: string; options: string[] }>();
 	private readonly events = new RuntimeEventFactory(this.id);
-	constructor(private readonly port: OhMyPiRpcPort, private readonly sandboxReady: () => boolean, private readonly onDispose: () => Promise<void> = async () => {}) {}
+	constructor(private readonly port: OhMyPiRpcPort, private readonly sandboxReady: () => Promise<boolean>, private readonly onDispose: () => Promise<void> = async () => {}) {}
 	probe(signal?: AbortSignal) { return this.port.probe(signal); }
 	async listModels(): Promise<ModelDescriptor[]> {
 		const result = await this.port.request<{ models: Array<{
@@ -126,7 +127,10 @@ export class OhMyPiRpcAdapter implements AgentRuntimeAdapter {
 	async synchronizeContext(input: { context: string }): Promise<void> { this.pendingContext = input.context; }
 	async *send(turn: RuntimeTurn): AsyncIterable<AgentEvent> {
 		if (!this.binding) throw new Error("OhMyPi native session 尚未绑定");
-		if (turn.workflow === "execute" && !this.sandboxReady()) throw new Error("OhMyPi sandbox 未 ready，Execute 已失败关闭");
+		// 每回合 Execute 前再自查一次后端可用性：spawn 前的 assertAvailable() 之后
+		// 若后端失效（Mac 上 sandbox-exec 被移除、Windows 上关掉审批式执行），
+		// 这一层必须能真正拦住，而不是恒真放行。
+		if (turn.workflow === "execute" && !(await this.sandboxReady())) throw new Error("OhMyPi sandbox 未 ready，Execute 已失败关闭");
 		if (turn.model && turn.model !== this.activeModel) await this.selectModel(turn.model);
 		if (turn.reasoning) await this.port.request("set_thinking_level", { level: turn.reasoning });
 		const requestPrompt = runtimePrompt(turn);
@@ -163,12 +167,7 @@ export class OhMyPiRpcAdapter implements AgentRuntimeAdapter {
 	async messages(): Promise<unknown[]> { const result = await this.port.request<{ messages: unknown[] }>("get_messages", {}); return result.messages; }
 	async dispose(): Promise<void> { try { await this.cancel(); await this.port.close(); } finally { await this.onDispose(); this.binding = null; this.pendingUiRequests.clear(); } }
 	capabilities(): RuntimeCapabilities {
-		return {
-			session: { resume: "native", fork: "native", compact: "native", rewind: "unavailable", steer: "native" },
-			input: { text: "native", image: "native", vaultFile: "talos-emulated", selection: "talos-emulated" },
-			tools: { shell: "native", edit: "native", mcp: "native", skills: "native", subagents: "native", askUser: "native" },
-			control: { plan: "native", reasoning: "native", serviceTier: "unavailable", usage: "native" },
-			security: { nativeApproval: "native", nativeSandbox: "talos-emulated", networkPolicy: "talos-emulated", externalPathGrant: "talos-emulated" },
-		};
+		// Q-ARC4：唯一真源在 config/runtime-capabilities.ts，本方法不再维护一份字面量副本。
+		return ohMyPiNativeCapabilities();
 	}
 }

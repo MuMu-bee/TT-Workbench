@@ -153,7 +153,10 @@ class FakePeer implements RealtimePeerConnectionPort {
 
 const activeSessions: QwenRealtimeVoiceSession[] = [];
 
-function createHarness(timeouts?: QwenRealtimeConfig["timeouts"]) {
+function createHarness(
+	timeouts?: QwenRealtimeConfig["timeouts"],
+	transcriptionModel?: string
+) {
 	const stream = new FakeStream();
 	const peer = new FakePeer();
 	const audio: RealtimeAudioPort = {
@@ -199,6 +202,7 @@ function createHarness(timeouts?: QwenRealtimeConfig["timeouts"]) {
 		wakeAliases: ["屈原", "曲原"],
 		sleepWord: "退下",
 		...(timeouts ? { timeouts } : {}),
+		...(transcriptionModel ? { transcriptionModel } : {}),
 		exchangeSdp,
 		executeVaultTool,
 		executeWebSearch,
@@ -291,6 +295,28 @@ describe("Qwen Omni Realtime WebRTC session", () => {
 			"search_vault",
 			"web_search",
 		]);
+	});
+
+	// Q-ARC9：input_audio_transcription 是否下发决定唤醒状态机能否工作
+	// （唯一入口是转写 completed）。这里把两种情形都钉死。
+	it("sends the configured transcription model in session.update", async () => {
+		const h = createHarness(undefined, "x-asr");
+		await h.session.start();
+
+		const update = h.peer.channel.sent.find((event) =>
+			event.type === "session.update"
+		) as { session?: { input_audio_transcription?: unknown } } | undefined;
+		expect(update?.session?.input_audio_transcription).toEqual({ model: "x-asr" });
+	});
+
+	it("omits input_audio_transcription when no transcription model is configured", async () => {
+		const h = createHarness();
+		await h.session.start();
+
+		const update = h.peer.channel.sent.find((event) =>
+			event.type === "session.update"
+		) as { session?: { input_audio_transcription?: unknown } } | undefined;
+		expect(update?.session?.input_audio_transcription).toBeUndefined();
 	});
 
 	it("uses only the explicit current transcript for one web search per turn", async () => {
@@ -712,6 +738,69 @@ describe("Qwen Omni Realtime WebRTC session", () => {
 			inputTranscripts: 0,
 			outputTranscripts: 0,
 		});
+	});
+
+	// Q-QUA13：取消是正常用户路径（打断/休眠/停止按钮），不得走 failTurn 的错误通知。
+	it("treats a cancelled response as a normal turn ending without an error notice", async () => {
+		const h = createHarness();
+		await h.session.start();
+		h.session.setAwake(true);
+		h.session.sendText("请回答这个问题");
+		h.peer.channel.message({ type: "response.created" });
+		h.peer.channel.message({
+			type: "response.audio_transcript.delta",
+			response_id: "cancelled-response",
+			delta: "一半",
+		});
+		h.state.mockClear();
+
+		h.peer.channel.message({
+			type: "response.done",
+			response: { status: "cancelled" },
+		});
+
+		expect(h.error).not.toHaveBeenCalled();
+		expect(h.state.mock.calls.flat()).not.toContain("error");
+		expect(h.audit).toHaveBeenCalledWith(expect.objectContaining({
+			reasonCode: "response-cancelled",
+		}));
+		expect(h.session.debugSnapshot()).toMatchObject({
+			state: "listening",
+			pendingToolCalls: 0,
+			handledToolCalls: 0,
+			inputTranscripts: 0,
+			outputTranscripts: 0,
+		});
+	});
+
+	it("clears pending tool calls on cancel instead of staying in tool-running", async () => {
+		const h = createHarness();
+		h.executeVaultTool.mockImplementationOnce(() => new Promise<string>(() => {}));
+		await h.session.start();
+		h.session.setAwake(true);
+		h.session.sendText("查一下项目状态");
+		h.peer.channel.message({
+			type: "response.function_call_arguments.done",
+			name: "search_vault",
+			call_id: "cancel-tool",
+			arguments: JSON.stringify({ query: "项目状态", module: "projects" }),
+		});
+		expect(h.session.debugSnapshot().pendingToolCalls).toBe(1);
+		h.state.mockClear();
+
+		h.peer.channel.message({
+			type: "response.done",
+			response: { status: "cancelled" },
+		});
+
+		expect(h.session.debugSnapshot()).toMatchObject({
+			state: "listening",
+			pendingToolCalls: 0,
+			handledToolCalls: 0,
+		});
+		expect(h.state).toHaveBeenLastCalledWith("listening");
+		expect(h.state.mock.calls.flat()).not.toContain("tool-running");
+		expect(h.error).not.toHaveBeenCalled();
 	});
 
 	it("clears cancelled protocol errors and malformed events without leaving a stuck turn", async () => {

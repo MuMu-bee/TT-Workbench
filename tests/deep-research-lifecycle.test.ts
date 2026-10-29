@@ -58,7 +58,10 @@ function harness(writeGate: Promise<void> = Promise.resolve()) {
 			create: vi.fn(async (path: string, body: string) => {
 				await writeGate;
 				created.push({ path, body });
-				return new TFile(path);
+				// 运行期拿到的是本文件 vi.mock("obsidian") 里的 MockTFile（构造入参 path）；
+				// obsidian.d.ts 的 TFile 声明没有构造参数，故按 mock 的构造签名声明类型。
+				const MockTFile = TFile as unknown as new (path: string) => TFile;
+				return new MockTFile(path);
 			}),
 			modify: vi.fn().mockResolvedValue(undefined),
 		},
@@ -78,9 +81,9 @@ describe("Deep Research lifecycle", () => {
 	it("does not complete until the child closes and the report is written", async () => {
 		const child = new FakeChild();
 		const spawn = vi.fn(() => child) as never;
-		let releaseWrite = () => undefined;
+		let releaseWrite: () => void = () => undefined;
 		const writeGate = new Promise<void>((resolve) => {
-			releaseWrite = resolve;
+			releaseWrite = () => resolve();
 		});
 		const { app, created, settings } = harness(writeGate);
 		let completed = false;

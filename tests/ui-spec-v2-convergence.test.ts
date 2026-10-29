@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -71,26 +72,26 @@ describe("UI spec v2 convergence (D-TLP-012 / C-4)", () => {
 
 	it("hides the console view header for top-aligned content", () => {
 		// 2026-08-23 仓库所有者指令：去除「TALOS 控制台」标题行、界面顶对齐
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			'.workspace-leaf-content[data-type="talos-console-view"] .view-header'
 		);
-		expect(css).toContain("display: none");
+		expectSourceContains("styles.talos.css", "display: none");
 	});
 
 	it("cleans up the stray divider line above the console content", () => {
 		// 2026-08-23 仓库所有者指令：标题栏隐藏后页签行与内容间的原生分割线清除
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			'.workspace-tabs:has(.workspace-leaf-content[data-type="talos-console-view"])'
 		);
-		expect(css).toContain("> .workspace-tab-header-container");
+		expectSourceContains("styles.talos.css", "> .workspace-tab-header-container");
 	});
 
 	it("detaches the floating active-tab outline in the console tab group", () => {
 		// 2026-08-23 实机反馈：基准线移除后 mod-root 激活页签描边与圆弧
 		// 伪元素悬空成超长红线；同作用域摘掉 box-shadow，左栏不受影响
-		expect(css).toContain(".workspace-tab-header.is-active {");
-		expect(css).toContain(".workspace-tab-header.is-active::before");
-		expect(css).toContain(".workspace-tab-header.is-active::after");
+		expectSourceContains("styles.talos.css", ".workspace-tab-header.is-active {");
+		expectSourceContains("styles.talos.css", ".workspace-tab-header.is-active::before");
+		expectSourceContains("styles.talos.css", ".workspace-tab-header.is-active::after");
 	});
 
 	it("brings the secondary page tabs into the thick-border ladder", () => {
@@ -99,30 +100,30 @@ describe("UI spec v2 convergence (D-TLP-012 / C-4)", () => {
 		// 根因修正：实机 visualTheme 未写入（默认 aurora），几何现代
 		// 作用域不命中，故规范块改为 .talos-console[data-talos-theme]
 		// 全主题作用域（比 layout-overrides 基规则高一级特异性）。
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console[data-talos-theme] .talos-page-tabs {"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console[data-talos-theme] .talos-page-tab {"
 		);
-		expect(css).toContain("min-height: 40px");
-		expect(css).toContain("clamp(14px, 0.98cqw, 17px)");
+		expectSourceContains("styles.talos.css", "min-height: 40px");
+		expectSourceContains("styles.talos.css", "clamp(14px, 0.98cqw, 17px)");
 	});
 
 	it("strengthens the settings header and side nav with the spec signature", () => {
 		// 2026-08-23 仓库所有者指令：设置页顶部模块与左侧导航模块统一
 		// 2px 墨线 + 直角 + 6px 硬投影，选中项 2px 墨线 + 4px 内嵌强调条。
 		// 根因修正：同上当主题作用域修正（--gm-* 经 var() 回退）。
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console[data-talos-theme] .talos-inline-settings__header"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			"box-shadow: 6px 6px 0 var(--gm-ink, var(--text-normal))"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console[data-talos-theme] .talos-settings--console .talos-settab.is-active"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			"box-shadow: inset 4px 0 0 var(--ac, var(--interactive-accent))"
 		);
 	});
@@ -136,13 +137,13 @@ describe("UI spec v2 convergence (D-TLP-012 / C-4)", () => {
 		// 以 !important 压制全部按钮背景/文字色），特异性永远无法赢
 		// !important，故本规则声明全部加 !important（同级比特异性，
 		// 0,5,0 胜 0,1,2）。
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console[data-talos-theme] .talos-page-tab:hover:not(.is-active)"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			"background-color: var(--gm-ink, var(--text-normal)) !important"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			"color: var(--gm-paper, var(--background-primary)) !important"
 		);
 	});
@@ -153,13 +154,13 @@ describe("UI spec v2 convergence (D-TLP-012 / C-4)", () => {
 		// （激活项保持墨线+强调条不反色）。根因修正：同上——声明加
 		// !important 越过 vault 主题毯式按钮规则；选中项墨线同样
 		// 需要 !important（毯式规则含 border-color !important）。
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console[data-talos-theme] .talos-settings--console .talos-settab:hover:not(.is-active)"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console[data-talos-theme] .talos-settings--console .talos-settab:hover:not(.is-active)::before"
 		);
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			"border-color: var(--gm-ink, var(--text-normal)) !important"
 		);
 	});
@@ -182,11 +183,11 @@ describe("UI spec v2 convergence phase 2 · voice panel (C-4)", () => {
 	});
 
 	it("removes the retired side tabs and keeps direct controls theme-safe", () => {
-		expect(qcss).not.toContain(".tq-side-tab");
-		expect(qcss).not.toContain(".tq-side-composer");
-		expect(qcss).toContain(".tq-control-btn {");
-		expect(qcss).toContain(".tq-control-btn--danger {");
-		expect(qcss).toContain(".tq-go-chat {");
+		expectSourceNotContains("styles.quyuan-shell.css", ".tq-side-tab");
+		expectSourceNotContains("styles.quyuan-shell.css", ".tq-side-composer");
+		expectSourceContains("styles.quyuan-shell.css", ".tq-control-btn {");
+		expectSourceContains("styles.quyuan-shell.css", ".tq-control-btn--danger {");
+		expectSourceContains("styles.quyuan-shell.css", ".tq-go-chat {");
 	});
 
 	it("lifts voice panel off-ladder font sizes into the ladder", () => {
@@ -210,7 +211,7 @@ describe("UI spec v2 convergence phase 2 · voice panel (C-4)", () => {
 		// tq 按钮的 0,1,0 字号规则在内嵌语境本就无效——它们只管辖独立
 		// 屈原工作台视图。钉死此约束，防止后来者再改 tq 按钮字号
 		// 却看不到效果。
-		expect(css).toContain(
+		expectSourceContains("styles.talos.css", 
 			".talos-console button, .talos-console input, .talos-console textarea { font: inherit; }"
 		);
 	});
@@ -229,13 +230,13 @@ describe("UI spec v2 convergence phase 2 · voice panel (C-4)", () => {
 			".tq-stage",
 			"--tq-ball-size: clamp(500px, min(60cqi, 86cqh), 820px)"
 		)).toBe(true);
-		expect(qcss).toContain("@container tq-stage (max-width: 1200px)");
-		expect(qcss).toContain("clamp(380px, min(58cqi, 82cqh), 560px)");
-		expect(qcss).toContain("@container tq-stage (max-width: 800px)");
-		expect(qcss).toContain("clamp(300px, min(46cqi, 78cqh), 340px)");
-		expect(qcss).toContain("@container tq-stage (max-width: 520px)");
-		expect(qcss).toContain("clamp(190px, min(44cqi, 74cqh), 230px)");
-		expect(qcss).toContain("clamp(180px, min(44cqi, 76cqh), 230px)");
+		expectSourceContains("styles.quyuan-shell.css", "@container tq-stage (max-width: 1200px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(380px, min(58cqi, 82cqh), 560px)");
+		expectSourceContains("styles.quyuan-shell.css", "@container tq-stage (max-width: 800px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(300px, min(46cqi, 78cqh), 340px)");
+		expectSourceContains("styles.quyuan-shell.css", "@container tq-stage (max-width: 520px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(190px, min(44cqi, 74cqh), 230px)");
+		expectSourceContains("styles.quyuan-shell.css", "clamp(180px, min(44cqi, 76cqh), 230px)");
 	});
 
 	it("lets the selected TALOS theme own the voice surface while preserving host fallbacks", () => {
@@ -255,12 +256,12 @@ describe("UI spec v2 convergence phase 2 · voice panel (C-4)", () => {
 		expect(blockHas(".talos-console.theme-data-stream .tq-voice", "color-scheme: dark")).toBe(true);
 		expect(blockHas(".talos-console.theme-soft-relief .tq-voice", "--tq-surface: #dfe2ed")).toBe(true);
 		expect(blockHas(".talos-console.theme-soft-relief .tq-voice", "color-scheme: light")).toBe(true);
-		expect(qcss).not.toContain("--tq-surface: #ffffff !important");
-		expect(qcss).not.toContain("--tq-surface: #050810 !important");
+		expectSourceNotContains("styles.quyuan-shell.css", "--tq-surface: #ffffff !important");
+		expectSourceNotContains("styles.quyuan-shell.css", "--tq-surface: #050810 !important");
 		// 浅色导航回退排除四个内建深色 TALOS 主题。
-		expect(qcss).toContain(":not(.theme-data-stream)");
-		expect(qcss).toContain(":not(.theme-cosmos-dark)");
-		expect(qcss).toContain(":where(body.theme-light)");
+		expectSourceContains("styles.quyuan-shell.css", ":not(.theme-data-stream)");
+		expectSourceContains("styles.quyuan-shell.css", ":not(.theme-cosmos-dark)");
+		expectSourceContains("styles.quyuan-shell.css", ":where(body.theme-light)");
 		// 新 dock、转写与静态降级都只消费同一组 tq 主题/模块变量。
 		expect(blockHas(".tq-voice-dock", "var(--tq-surface)")).toBe(true);
 		expect(blockHas(".tq-transcript-editor", "var(--tq-module-surface)")).toBe(true);
@@ -269,8 +270,8 @@ describe("UI spec v2 convergence phase 2 · voice panel (C-4)", () => {
 			"body.theme-light .talos-console.theme-geometric-modern .tq-voice",
 			"--tq-surface: #f3eedf !important"
 		)).toBe(true);
-		expect(qcss).not.toContain("body.theme-light .tq-voice .tq-bg");
-		expect(qcss).toContain("--tq-ball-surface: #ffffff");
-		expect(qcss).toContain("background: var(--tq-ball-eye)");
+		expectSourceNotContains("styles.quyuan-shell.css", "body.theme-light .tq-voice .tq-bg");
+		expectSourceContains("styles.quyuan-shell.css", "--tq-ball-surface: #ffffff");
+		expectSourceContains("styles.quyuan-shell.css", "background: var(--tq-ball-eye)");
 	});
 });

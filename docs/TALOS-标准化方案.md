@@ -3,6 +3,21 @@
 > 目标：把「外脑玩家 Haaper 的超级大脑」从**一个人的笔记本**，抽象成**任何人都能装、都能用的产品**。
 > 本轮只做标准化，不动定价、不做新插件。
 > 生成日期：2026-07-14
+>
+> **状态：未回填（规划稿）**。验收标准见第七节，当前逐条状态如下（依据：报告事实，不新增推断）：
+
+| 第七节第 N 条 | 标准 | 当前状态 | 依据 |
+|---|---|---|---|
+| 1 | clone 到全新空 Obsidian 库能跑（初始化向导 + 屈原启动 + 控制台渲染） | **未复核** | 报告未给出；本轮未做实机空库验证 |
+| 2 | 全库 grep 不到 `Haaper`、`2026-06-19`、`741` 等个人字面量 | **不通过** | `src/settings.ts:972` 的「你是屈原，Haaper 的语音助手……」、`src/ui/pages/knowledge-pages.ts:160`/`:165` 的 `Haaper · Identity`、`src/settings.ts:204` 的 `freezeStartDate: "2026-06-19"` |
+| 3 | 所有目录路径只来自 `schema.ts` 或 `settings.ts`，`view.ts` 无裸中文路径字面量 | **未复核** | 报告未给出；本轮未逐行审计 `view.ts` 的路径字面量 |
+| 4 | 真实数据不在交付包 | **未复核** | 报告未给出；本轮未做交付包内容审计 |
+
+补充说明：
+
+- **`741` 已满足**：本轮实测 `grep -rn "741" src/ --include=*.ts` = 0（回填前全仓仅本文件自身 2 处，均在第七节第 2 条），故第 2 条只需修 `Haaper` 与 `2026-06-19`。
+- 第 2 条自带豁免范围（`manifest.json` 作者署名与 CHANGELOG 历史）。本轮实测 `grep -rn "Haaper" src/` 共 11 行：`legal.ts` 2、`settings.ts` 1、`data/schema.ts` 1、`welcome-easter-egg.ts` 5、`knowledge-pages.ts` 2。其中 `legal.ts` 的版权常量、`manifest.json` 的 `author`、`welcome-easter-egg.ts` 里的 GitHub URL 是否属该豁免**报告未给出，需作者判断**；不得擅自把运行期文案算进豁免。
+- 第四节 `TALOS-Vault-Template/`：本轮实测 `ls -d TALOS-Vault-Template` 退出码 2，即**当前未创建**。它仍是本方案的头号交付物，但没有落地，故「没有它插件就是空壳」这一判断今天依然成立。
 
 ---
 
@@ -103,7 +118,7 @@ pendingApprovalsPath / candidatesPath / healthLogPath / reportsFolder
 
 ## 四、必须新建：TALOS 标准库模板（补上致命缺口）
 
-这是本次标准化的**头号交付物**，没有它插件就是空壳。
+这是本次标准化的**头号交付物**，没有它插件就是空壳。**当前未创建**：本轮实测 `ls -d TALOS-Vault-Template` 退出码 2（`No such file or directory`）。
 
 新建一个可随插件分发的空白骨架 `TALOS-Vault-Template/`，客户拿到后直接作为 Obsidian 库打开，或用初始化向导生成。它包含：
 

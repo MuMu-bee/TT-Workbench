@@ -103,13 +103,16 @@ describe("evaluateActionRisk", () => {
 		["external publish", { effects: ["external-publish"] }],
 		["shell", { effects: ["shell"] }],
 	] as const)("always proposes for %s", (_label, overrides) => {
+		// 表里的 effects 因 `as const` 是 readonly 元组，而 TalosActionRequest.effects
+		// 是可变数组（types.ts:33）。这里显式复制成可变数组即可，不需要把整个对象
+		// 强转成 Partial<TalosActionRequest>，断言强度不变。
 		const result = evaluateActionRisk(
 			definition({
 				risk: "B",
 				reversible: true,
 				writeScope: ["**"],
 			}),
-			request(overrides as Partial<TalosActionRequest>)
+			request({ ...overrides, effects: [...overrides.effects] })
 		);
 
 		expect(result.decision).toBe("propose");

@@ -38,6 +38,16 @@ export class ProcessSandbox {
 		return this.availabilityPromise;
 	}
 
+	/**
+	 * 逐回合实时探针。**不能**复用 `availability()`：后者把结果永久 memo 在
+	 * `availabilityPromise` 上，用在这里就退化成又一个常量，第二层防线重新空转。
+	 * 探针抛错时失败关闭返回 false，让上层拿到明确的「sandbox 未 ready」，
+	 * 而不是一个不透明的探针异常。
+	 */
+	async availableNow(): Promise<boolean> {
+		try { return (await this.inspectAvailability()).available; } catch { return false; }
+	}
+
 	private async inspectAvailability(): Promise<SandboxAvailability> {
 		if (this.platform === "win32" && this.approvalOnly.enabled) {
 			// 用户显式接受风险:无 OS 级隔离。本后端只保证"每条命令经审批 + 全量审计",
@@ -51,7 +61,7 @@ export class ProcessSandbox {
 		}
 		if (this.platform !== "darwin") {
 			const message = this.platform === "win32"
-				? "Windows 当前未开启 CLI 执行。若确需在本机运行智能体，请在「设置 → TT工作台 → 智能体与模型」中开启「Windows 无隔离执行（每条命令审批）」。该模式没有操作系统级隔离，请自行评估风险。"
+				? "Windows 当前未开启 CLI 执行。若确需在本机运行智能体，请在「设置 → TT工作台 → 对话与模型」中开启「Windows 无隔离执行（每条命令审批）」。该模式没有操作系统级隔离，请自行评估风险。"
 				: `${this.platform} 当前缺少可验证的 CLI 隔离，本机智能体 Execute 已失败关闭。`;
 			return {
 				available: false,

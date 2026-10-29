@@ -9,8 +9,9 @@
  * 出库审计与会话级一次性授权全部保留。
  */
 
-export type QuyuanRealtimeProviderKind = "dashscope" | "openai-compatible";
+import { assertAllowedEndpoint } from "../agent-workbench/contracts/provider-profile";
 
+export type QuyuanRealtimeProviderKind = "dashscope" | "openai-compatible";
 export interface QuyuanRealtimeProviderSettings {
 	quyuanRealtimeProviderKind: string;
 	quyuanRealtimeEndpoint: string;
@@ -19,7 +20,12 @@ export interface QuyuanRealtimeProviderSettings {
 	quyuanRealtimeRegion: string;
 	quyuanRealtimeModel: string;
 	quyuanRealtimeVoice: string;
+	/** Q-ARC9：自定义端点的转写模型；留空则持续监听下唤醒词不可用（面板会拒绝启动）。 */
+	quyuanRealtimeTranscriptionModel?: string;
 }
+
+/** 百炼固定转写模型（唤醒状态机唯一入口是转写 completed）。 */
+export const DASHSCOPE_REALTIME_TRANSCRIPTION_MODEL = "qwen3-asr-flash-realtime";
 
 export const DASHSCOPE_REALTIME_MODELS = [
 	"qwen3.5-omni-flash-realtime",
@@ -64,7 +70,7 @@ export function quyuanRealtimeSecretRef(settings: QuyuanRealtimeProviderSettings
 /** 面板侧会话参数解析:百炼保持白名单兜底,自定义端点按设置直通(带字符校验)。 */
 export function resolveQuyuanRealtimeSessionConfig(
 	settings: QuyuanRealtimeProviderSettings,
-): { kind: QuyuanRealtimeProviderKind; model: string; voice: string } {
+): { kind: QuyuanRealtimeProviderKind; model: string; voice: string; transcriptionModel?: string } {
 	const kind = normalizeRealtimeProviderKind(settings.quyuanRealtimeProviderKind);
 	const voiceRaw = settings.quyuanRealtimeVoice.trim();
 	if (kind === "dashscope") {
@@ -74,25 +80,36 @@ export function resolveQuyuanRealtimeSessionConfig(
 		const voice = (DASHSCOPE_REALTIME_VOICES as readonly string[]).includes(voiceRaw)
 			? voiceRaw
 			: "Tina";
-		return { kind, model, voice };
+		// Q-ARC9：百炼恒有转写模型（否则 input_audio_transcription 不下发，唤醒词失效）。
+		return { kind, model, voice, transcriptionModel: DASHSCOPE_REALTIME_TRANSCRIPTION_MODEL };
 	}
 	const model = settings.quyuanRealtimeModel.trim();
 	if (!/^[\w.\-/]{1,128}$/.test(model)) {
 		throw new Error("自定义 Realtime 模型名称无效(仅允许字母数字与 . _ - / )");
 	}
 	const voice = voiceRaw.replace(/[\r\n\0]/g, "").slice(0, 64) || "alloy";
-	return { kind, model, voice };
+	// Q-ARC9：自定义端点的转写模型由用户配置；允许为空（此时面板在持续监听下会拒绝启动并提示）。
+	const transcriptionModel = (settings.quyuanRealtimeTranscriptionModel ?? "").trim();
+	return { kind, model, voice, transcriptionModel };
 }
 
-/** 自定义 Realtime 端点校验:仅 HTTPS 或 loopback,禁止 userinfo。 */
+/**
+ * 自定义 Realtime 端点校验:仅 HTTPS 或 loopback,禁止 userinfo。
+ *
+ * Q-SEC7：判定收敛到 `contracts/provider-profile.ts` 的 `assertAllowedEndpoint`
+ * （本函数只留薄封装）。收编前这里是第二套独立判定——它拒 userinfo 而 profile 侧不拒，
+ * 两处已经分叉；现在任意 scheme + loopback 与 userinfo 都只有一处口径。
+ *
+ * 两条既有约定必须保留：
+ * ① 先 `replace(/\/$/, "")` 再解析——`tests/realtime-provider.test.ts` 断言
+ *    `https://api.x/v1/realtime/` → `https://api.x/v1/realtime`（去尾斜杠）；
+ * ② 返回 `url.toString()`（路径为空时为裸端补 `/`）——`src/plugin/quyuan-voice-tools.ts:226`
+ *    正是拿它拼 `/sessions`，所以不要去尾斜杠。
+ */
 export function validateRealtimeEndpoint(rawUrl: string): string {
-	const trimmed = rawUrl.trim().replace(/\/$/, "");
-	const url = new URL(trimmed);
-	if (url.protocol !== "https:" && !["localhost", "127.0.0.1", "::1"].includes(url.hostname)) {
-		throw new Error("Realtime 端点必须使用 HTTPS 或 loopback");
-	}
-	if (url.username || url.password) {
-		throw new Error("Realtime 端点不允许携带 userinfo");
-	}
+	const url = new URL(rawUrl.trim().replace(/\/$/, ""));
+	// 传 toString() 而不是 trimmed 原文：让唯一的断言函数看到规范化后的 URL，
+	// 返回值仍由本函数给出，两个契约（消尾斜杠 / 补尾斜杠）都不变。
+	assertAllowedEndpoint(url.toString(), "Realtime 端点");
 	return url.toString();
 }

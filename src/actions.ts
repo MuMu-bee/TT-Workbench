@@ -212,17 +212,33 @@ export async function approveAndExecuteApprovalWithMockModel(
 			});
 			await app.vault.modify(target, `${original.trimEnd()}\n${append}`);
 
-			const recorded = applyApprovalExecutionRecord(approved.content, {
-				title,
-				targetPath: spec.targetPath,
-				date,
-				time,
-				executor: spec.executor,
+			// Q-QUA2：写回必须建立在「此刻磁盘上的最新内容」之上。
+			// 执行是长异步（runtime 内多次 await），期间用户可能点掉别的卡片，
+			// 或其它入口改写同一文件；用 :166 的旧快照整份覆盖会把这些决策整体回滚。
+			// 所以这里走 vault.process 的读-改-写：在回调里对最新 data 重放审批决策，
+			// 再叠加执行回执；任一步失败直接抛错，交给 TalosTaskRunner 的 failed 分支，
+			// 不写半成品。
+			await app.vault.process(approvalFile, (data) => {
+				const replayed = applyPendingApprovalDecision(data, {
+					title,
+					decision: "approve",
+					date,
+					operator: "TT",
+				});
+				if (!replayed.ok) throw new Error(replayed.message);
+
+				const recorded = applyApprovalExecutionRecord(replayed.content, {
+					title,
+					targetPath: spec.targetPath,
+					date,
+					time,
+					executor: spec.executor,
+				});
+				if (!recorded.ok) throw new Error(recorded.message);
+				successMessage = recorded.message;
+				return recorded.content;
 			});
-			if (!recorded.ok) throw new Error(recorded.message);
-			await app.vault.modify(approvalFile, recorded.content);
-			successMessage = recorded.message;
-			return { message: recorded.message };
+			return { message: successMessage };
 		},
 	});
 	if (task.state !== "completed") {

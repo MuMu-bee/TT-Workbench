@@ -1,9 +1,14 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+	compareVaultPaths,
 	executeVoiceVaultTool,
 	type VoiceVaultToolOptions,
 } from "../src/quyuan/voice-vault-tools";
 import type { VoiceVaultSearchPort } from "../src/quyuan/voice-vault-search";
+
+const sourceRoot = fileURLToPath(new URL("../", import.meta.url));
 
 const options: VoiceVaultToolOptions = {
 	configDir: ".config",
@@ -67,6 +72,22 @@ describe("realtime voice Vault read tools", () => {
 			"00-收件箱/甲.md",
 		]);
 		expect(result.operation).toBe("Glob");
+	});
+
+	it("pins the vault path comparison to codepoint order with a fixed sign", () => {
+		// 固定符号，不写「两次跑一致」：任何 ICU/locale 变化或排序语义改动都会让这条红。
+		// 码点序下 "子" (U+5B50) < "甲" (U+7532)，故为 -1。
+		expect(compareVaultPaths("00-收件箱/甲.md", "00-收件箱/子目录/乙.md")).toBe(1);
+		expect(compareVaultPaths("00-收件箱/子目录/乙.md", "00-收件箱/甲.md")).toBe(-1);
+		expect(compareVaultPaths("00-收件箱/甲.md", "00-收件箱/甲.md")).toBe(0);
+	});
+
+	it("never sorts vault paths with the machine locale", () => {
+		const source = readFileSync(
+			`${sourceRoot}src/quyuan/voice-vault-tools.ts`,
+			"utf8"
+		);
+		expect(source).not.toMatch(/\.localeCompare\(/);
 	});
 
 	it("reads an exact safe Markdown file by line range", async () => {
@@ -222,6 +243,70 @@ describe("realtime voice Vault read tools", () => {
 
 		expect(output.total_matches).toBe(9);
 		expect(peakReads).toBe(3);
+	});
+
+	it("caps grep candidate scanning at maxScannedFiles and reports the truncation", async () => {
+		const files = Object.fromEntries(Array.from({ length: 900 }, (_, index) => [
+			`04-项目/${String(index).padStart(3, "0")}.md`,
+			`第 ${index} 个 TPI-222 记录`,
+		]));
+		let readCalls = 0;
+		const port: VoiceVaultSearchPort = {
+			async listPaths() {
+				return Object.keys(files);
+			},
+			async read(path) {
+				readCalls += 1;
+				return files[path] ?? "";
+			},
+		};
+
+		const result = await executeVoiceVaultTool(port, "grep_vault", {
+			query: "TPI-222",
+			module: "projects",
+			max_hits: 40,
+		}, { ...options, maxScannedFiles: 100 });
+		const output = JSON.parse(result.output) as {
+			candidate_files: number;
+			scanned_files_limited: boolean;
+			exact_count: boolean;
+		};
+
+		// 断言挂在候选维度（candidate_files / readCalls），不是 scanned_files。
+		expect(output.candidate_files).toBe(900);
+		expect(output.scanned_files_limited).toBe(true);
+		expect(output.exact_count).toBe(false);
+		expect(readCalls).toBeLessThanOrEqual(100);
+	});
+
+	it("keeps exact_count true and reads every candidate when under maxScannedFiles", async () => {
+		const files = Object.fromEntries(Array.from({ length: 10 }, (_, index) => [
+			`04-项目/${String(index).padStart(3, "0")}.md`,
+			`第 ${index} 个 TPI-333 记录`,
+		]));
+		let readCalls = 0;
+		const port: VoiceVaultSearchPort = {
+			async listPaths() {
+				return Object.keys(files);
+			},
+			async read(path) {
+				readCalls += 1;
+				return files[path] ?? "";
+			},
+		};
+
+		const result = await executeVoiceVaultTool(port, "grep_vault", {
+			query: "TPI-333",
+			module: "projects",
+		}, { ...options, maxScannedFiles: 100 });
+		const output = JSON.parse(result.output) as {
+			scanned_files_limited: boolean;
+			exact_count: boolean;
+		};
+
+		expect(output.scanned_files_limited).toBe(false);
+		expect(output.exact_count).toBe(true);
+		expect(readCalls).toBe(10);
 	});
 
 	it("keeps conceptual search module-scoped and treats returned text as data", async () => {

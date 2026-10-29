@@ -1,0 +1,9 @@
+{
+  "eventId": "c1-t1-a",
+  "conversationId": "c1",
+  "turnId": "t1",
+  "runtimeId": "ohmypi",
+  "type": "user.message",
+  "timestamp": "2026-10-25T00:00:01.000Z",
+  "payload": { "text": "合成问题：缺 turn.finished 时应当红。" }
+}

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -26,8 +26,8 @@ describe("Project scenes workflow v2", () => {
 		expect(view).toContain("project.progress?.done || 0");
 		expect(view).toContain("(doneTasks / totalTasks) * 100");
 		expect(view).toContain('role", "img"');
-		expect(css).toContain("conic-gradient(");
-		expect(css).toContain("--project-progress");
+		expectSourceContains("styles.ui-v2.css", "conic-gradient(");
+		expectSourceContains("styles.ui-v2.css", "--project-progress");
 	});
 
 	it("ranks important projects before the complete project map", () => {
@@ -45,8 +45,8 @@ describe("Project scenes workflow v2", () => {
 		expect(projectPage).toContain(
 			'cls: `project-card priority-${project.priority}`'
 		);
-		expect(css).toContain("@container workflow-v2 (max-width: 900px)");
-		expect(css).toContain("@container workflow-v2 (max-width: 560px)");
+		expectSourceContains("styles.ui-v2.css", "@container workflow-v2 (max-width: 900px)");
+		expectSourceContains("styles.ui-v2.css", "@container workflow-v2 (max-width: 560px)");
 		expect(css).not.toMatch(
 			/\.projects-v2-primary\s*\{[^}]*min-height/s
 		);

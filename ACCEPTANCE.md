@@ -1,6 +1,7 @@
 # ACCEPTANCE — TT工作台 (TT-Workbench) 1.0.0 验收清单
 
 > 验收日期:2026-10-25。基线:上游 `fb365d0`(v0.4.9)。验收环境:Windows 11 x64 / Node 22 / 权威环境为仓库 CI(Ubuntu)。
+> 数字口径:本表数字随提交变化,以**同提交** `npx vitest run` 的输出为准,不沿用历史自述值。
 
 | # | 验收标准 | 验证方式 | 结果 |
 |---|---|---|---|
@@ -8,8 +9,8 @@
 | A2 | 插件 id / 包名统一为 `tt-workbench` | `manifest.json` id 与 `package.json` name 均为 `tt-workbench`;`versions.json` 含 1.0.0 | ✅ 通过 |
 | A3 | UI 标题与命令名无残留"TALOS"自指 | 全 src 字符串字面量扫描:剩余 39 处均属保留类别(署名/TalosBall 资产/vault 数据路径/死代码链),见 MODIFICATIONS.md"刻意保留"节;ribbon、视图标题、设置页、欢迎页均已品牌化 | ✅ 通过 |
 | A4 | typecheck 与 lint 通过 | `npx tsc --noEmit --skipLibCheck` 退出码 0;`npx eslint .` 0 error 0 warning | ✅ 通过 |
-| A5 | 测试通过数 ≥ 基线(926)且无基线外新失败 | `npx vitest run`:937 通过 / 5 失败;5 项失败与品牌化前完全一致,均为上游测试自身 Windows 兼容问题(路径拼接 `C:\C:`、反斜杠断言、PATH 探测),上游 CI(Ubuntu)同批测试通过 | ✅ 通过 |
-| A6 | 构建与许可证审计通过 | `npm run build`:108 生产包许可证审计 + typecheck + 样式构建(981KB→849KB) + esbuild production + peer-status 守卫 + claude-sdk split 守卫全部 pass;三个 selftest(quyuan/approval-actions/approval-executor)通过 | ✅ 通过 |
+| A5 | 同提交 `npx vitest run` 的 failed 数不增加,且 passed 数不低于上一次记录值 | 判据已改:原先的「通过数 ≥ 基线(926)」不可用——926 是 1.1.0 时段的历史自述值,本仓库无法复算(浅克隆仅 1 个提交、全仓 `it.skip`/`it.todo` 为 0,942→894 的差额无来源),不能当基线。取数命令:`NO_COLOR=1 npx vitest run 2>&1 \| grep -E "Tests +[0-9]+ failed"`(裸跑会在 `Tests` 与数字间插 ANSI 色码,`grep -cE` 得 0),或 `--reporter=json` 解析。逐次记录:① 2026-10-25 首记 937 通过 / 5 失败;② 审计时点实测 890 通过 / 4 失败(本行据此判未达标);③ 本轮同提交实测 0 失败(见「已知平台差异与测试可移植性缺陷」小节的处置),failed 数不增加、passed 数上升。 | ❌ 未达标(审计时点 890 通过 / 4 失败;本轮同提交已 0 失败,待发布记录确认后由作者回填 ✅) |
+| A6 | 构建与许可证审计通过 | `npm run build`:108 生产包许可证审计 + typecheck + 样式构建(981KB→849KB) + esbuild production + peer-status 守卫全部 pass;三个 selftest(quyuan/approval-actions/approval-executor)通过。「claude-sdk split 守卫」(`scripts/check-claude-sdk-split.mjs`)已随 1.1.0 删除 Claude 运行时一并移除,该脚本已不在 `scripts/`(现存 `check-module-boundaries.mjs`/`check-peer-status-bundle.mjs`/`check-file-size.mjs`/`run-chat-gate-fixtures.mjs`/`sync-lens-css.mjs`);构建产物清单里也已不含 `claude-sdk.cjs` | ✅ 通过 |
 | A7 | 原作者署名保留于三处以上 | ① `src/legal.ts` `TALOS_COPYRIGHT_NOTICE`(版权常量逐字保留) ② `README.md` "与 TALOS 的关系"+"许可"章节 ③ `esbuild.config.mjs` banner ④ 设置页页脚 `TALOS_SETTINGS_COPYRIGHT_DESC` ⑤ 欢迎页"原项目与作者(TALOS)"区块 ⑥ `MODIFICATIONS.md` 基线声明 | ✅ 通过 |
 | A8 | GitHub 公开仓库 CI 绿 | 仓库 `TT-Workbench` 推送后 GitHub Actions 五道门(lint/typecheck/test/selftests/license/build)运行结论见下方"CI 记录" | ✅ 通过(见下) |
 | A9 | 修改文件逐文件可追溯 | `MODIFICATIONS.md` 由 `git diff --name-status fb365d0 HEAD` 生成:2 新增 / 2 删除 / 49 修改,与实际 diff 一致 | ✅ 通过 |
@@ -48,7 +49,7 @@
 
 ## 1.3.1 实机验收(Obsidian 1.14.5 + computer use,2026-10-25)
 
-**验收环境**:独立测试库 `C:UsersTTDocuments	t-workbench-test`(不触碰用户既有 knowledge-vault / Obsidian Vault),插件部署至 `.obsidian/plugins/tt-workbench`,Obsidian 1.14.5,Windows x64。
+**验收环境**:独立测试库 `<盘符>:\Users\<用户名>\Documents\tt-workbench-test`(不触碰用户既有 knowledge-vault / Obsidian Vault),插件部署至 `.obsidian/plugins/tt-workbench`,Obsidian 1.14.5,Windows x64。原始记录里该路径的反斜杠被一个制表符顶掉了,渲染成「盘符冒号 + 用户名 + Documents」后直接接一个制表符再接 `t-workbench-test`;盘符与用户名报告未给出,故此处以占位形式记录,实机复跑时按本机实际路径替换 `<盘符>` 与 `<用户名>`。
 
 | # | 检查项 | 方法 | 结果 |
 |---|---|---|---|
@@ -107,12 +108,37 @@
 | B7 | 文档同步:README(运行时/语音/安装清单)、CHANGELOG 1.1.0、MODIFICATIONS 1.1.0 节 | ✅ |
 | B8 | 破坏性变更明示:Claude/Codex 本机运行时不再可用(codex 系设置字段转迁移兼容) | ✅ CHANGELOG/README 注明 |
 
-## 已知平台差异(非缺陷,不在验收排除范围)
+## 已知平台差异与测试可移植性缺陷
 
-上游测试在 Windows 本地存在 5 项与代码无关的失败(上游 CI 全绿):
-1. `chat-egress-wiring.test.ts` — `new URL("../").pathname` 在 Windows 产生 `C:\C:\...` 拼接 bug(测试自身缺陷);
-2. `agent-workbench-composition.test.ts` — 用 POSIX 风格 `\synthetic-home` 做路径包含断言,未考虑 win32 反斜杠规范化;
-3. `agent-workbench-desktop-runtime-discovery.test.ts` — 依赖受控 PATH 的 GUI shell 探测,Windows 桌面环境差异;
-4. `talos-ball-pose-equivalence.test.mjs` — 依赖字节级文件读取的确定性基线,受 CRLF 历史影响;
-5. `voice-vault-tools.test.ts` — 同类平台计数差异。
-处置:已列入 ROADMAP 批次二(上游测试 Windows 兼容化);权威验收以 CI(Ubuntu)为准。
+上游测试在 Windows 本地曾存在 5 项失败(上游 CI 全绿)。这 5 项并非同一类问题,按报告判定拆开:**2 项属产品缺陷**(见下方「已知产品缺陷」)、**2 项属测试可移植性缺陷**、**1 项属夹具问题** —— 所以本小节的标题不能再说「全为与代码无关」。
+1. `chat-egress-wiring.test.ts` — `new URL("../").pathname` 在 Windows 产生 `C:\C:\...` 拼接 bug(测试可移植性缺陷,应改 `fileURLToPath`);
+2. `agent-workbench-desktop-runtime-discovery.test.ts` — 夹具用 `#!/bin/sh` 脚本,win32 上不可执行(夹具问题);
+3. `talos-ball-pose-equivalence.test.mjs` — `vendorRoot.pathname` 在 Windows 产生同类拼接(测试可移植性缺陷,应改 `fileURLToPath`),并叠加字节级文件读取的确定性基线受 CRLF 历史影响。
+处置:已列入 ROADMAP 批次二(上游测试 Windows 兼容化),由 CI 双 OS matrix 强制;权威验收以 CI(Ubuntu)为准。
+**当前状态**:上述 3 项与本轮修复的 2 项产品缺陷均已转绿 —— 本轮 `NO_COLOR=1 npx vitest run` 实测 `Test Files 172 passed (172)` / `Tests 1158 passed (1158)`、0 失败。
+
+## 已知产品缺陷
+
+- `agent-workbench-composition.test.ts` — 产品侧 `sanitizePortableString` 未覆盖 Windows 根相对绝对路径(`\synthetic-home\…`),该形态 `redacted=false`、`assertRejects=false`;测试断言方向正确,不得改弱。
+  **前置依赖**:实际修复在 `src/agent-workbench/storage/portable-conversation-store.ts` 的 sanitize/assert 判定函数(见 Q-SEC1 / A1),本文件只负责把归因写对。旧归因「测试用 POSIX 风格 `\synthetic-home`、未考虑 win32 反斜杠规范化」方向错误。
+  状态:该产品缺口已在本轮修复——sanitize/assert 新增 `WINDOWS_ROOTED` 形态判定,`tests/agent-workbench-composition.test.ts:142` 的 `expect(portableBytes).not.toContain(syntheticHome)` 保持原强度并转为通过。
+- `voice-vault-tools.test.ts` — 产品侧 `voice-vault-tools.ts:163`/`:269` 之前使用默认 locale 的 `localeCompare`,`sourcePaths` 顺序随 ICU 版本与 locale 变化;旧归因「同类平台计数差异」方向错误,这是产品行为不确定,不是平台差异。
+  已修:两处排序收敛为 `compareVaultPaths` 单一导出函数,改用码点序;`tests/voice-vault-tools.test.ts` 用固定符号断言 + 静态断言(`.localeCompare(` 计数 = 0)钉死,跨 ICU 变化可被发现。
+
+## 覆盖率基线快照(Q-TES7 记录)
+
+以下为 `npx vitest run --coverage` 的分目录行覆盖,后续只允许上升:
+
+| 范围 | 报告实测(已排除 5 个失败文件) | 本仓库当前实测 |
+|---|---|---|
+| 全局 lines | 37.89%(5774/15237) | 49.13%(7800/15875) |
+| `src/agent-workbench/security/**` | 78.2%(11 文件) | 81.7%(309/378),0% 文件 0 个 |
+| `src/agent-workbench/storage/**` | 81.3%(7 文件) | 96.7%(434/449) |
+| `src/agent-workbench/core/**` | 62.1%(6 文件) | 报告未给同口径分母,未实测 |
+| `src/harness/**` | 54.2%(5 文件) | 报告未给同口径分母,未实测 |
+| `src/quyuan/**` | 39.0%(31 文件) | 报告未给同口径分母,未实测 |
+| `src/ui/**` | 28.1%(36 文件) | 报告未给同口径分母,未实测 |
+| `src/data/**` | 23.4%(5 文件) | 报告未给同口径分母,未实测 |
+| `src/agent-workbench/ui/**` | 10.0%(16 文件) | 报告未给同口径分母,未实测 |
+
+覆盖率门槛见 `vitest.config.ts` 的 `test.coverage.thresholds`(全局 lines 37、security 78、storage 81,只锁报告给出的 lines 值)。

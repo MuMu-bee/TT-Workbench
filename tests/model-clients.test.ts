@@ -48,7 +48,7 @@ function recorder(): {
 	thinking: string[];
 	tools: Array<{ id: string; name: string; input: Record<string, unknown> }>;
 	usage: Array<{ inputTokens: number; outputTokens: number; contextWindow: number }>;
-	done: Array<"end" | "tool_use">;
+	done: Array<"end" | "tool_use" | "cancelled">;
 	errors: Error[];
 } {
 	const state = {
@@ -56,7 +56,7 @@ function recorder(): {
 		thinking: [] as string[],
 		tools: [] as Array<{ id: string; name: string; input: Record<string, unknown> }>,
 		usage: [] as Array<{ inputTokens: number; outputTokens: number; contextWindow: number }>,
-		done: [] as Array<"end" | "tool_use">,
+		done: [] as Array<"end" | "tool_use" | "cancelled">,
 		errors: [] as Error[],
 	};
 	return {
@@ -228,6 +228,43 @@ describe("AnthropicModelClient", () => {
 		const rec = recorder();
 		await client.stream(rec.handlers);
 		expect(rec.errors.map((e) => e.message)).toEqual(["Anthropic HTTP 401"]);
+	});
+
+	it("reports cancelled instead of end when the request is aborted", async () => {
+		// fetcher 在 signal 上等 abort，随后以 AbortError 拒绝——模拟真实取消路径。
+		const client = new AnthropicModelClient(
+			{ endpoint: "", thinkingLevel: "off" },
+			"claude-sonnet-4",
+			"sys",
+			WITH_KEY,
+			((_input: RequestInfo | URL, init?: RequestInit) =>
+				new Promise<Response>((_resolve, reject) => {
+					const signal = init?.signal;
+					if (!signal) {
+						reject(new Error("missing signal"));
+						return;
+					}
+					const fail = (): void => {
+						const error = new Error("请求已取消");
+						error.name = "AbortError";
+						reject(error);
+					};
+					if (signal.aborted) {
+						fail();
+						return;
+					}
+					signal.addEventListener("abort", fail, { once: true });
+				}))
+		);
+		const rec = recorder();
+		const streaming = client.stream(rec.handlers);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		client.abort();
+		await streaming;
+
+		// 取消不是正常结束：stop 面必须是 cancelled，且不应记成一次错误。
+		expect(rec.done).toEqual(["cancelled"]);
+		expect(rec.errors).toEqual([]);
 	});
 });
 

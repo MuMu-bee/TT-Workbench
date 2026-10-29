@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
@@ -39,8 +39,8 @@ describe("System health v2", () => {
 	});
 
 	it("uses a container breakpoint and natural page height", () => {
-		expect(css).toContain("container: system-v2 / inline-size");
-		expect(css).toContain("@container system-v2 (max-width: 820px)");
+		expectSourceContains("styles.ui-v2.css", "container: system-v2 / inline-size");
+		expectSourceContains("styles.ui-v2.css", "@container system-v2 (max-width: 820px)");
 		expect(css).not.toMatch(
 			/\.system-v2-primary\s*\{[^}]*min-height/s
 		);

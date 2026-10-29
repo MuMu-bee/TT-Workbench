@@ -6,7 +6,8 @@ import { DesktopRuntimeFactory } from "../src/agent-workbench/discovery/desktop-
 const profile: ProviderProfile = {
 	id: "openai-compatible",
 	displayName: "OpenAI-compatible API",
-	runtimeId: "codex",
+	// RuntimeId 契约已收窄为 "ohmypi"（runtime-adapter.ts:9）；profile 也只能挂它。
+	runtimeId: "ohmypi",
 	protocol: "openai-chat",
 	endpoint: "https://gateway.test/v1",
 	models: ["model-x"],
@@ -23,6 +24,18 @@ function sse(text: string): Response {
 		status: 200,
 		headers: { "content-type": "text/event-stream" },
 	});
+}
+
+/**
+ * 旧版本落盘的 provider profile 形状：`runtimeId` 仍是历史字符串。
+ *
+ * 契约已把它收窄成 `RuntimeId = "ohmypi"`（runtime-adapter.ts:9），所以这种数据在
+ * 类型层面已不可能由正常构造产生——它只会从磁盘 JSON 反序列化得到。这里显式命名这个
+ * 「磁盘形态」，供「不匹配守卫仍生效」那条断言使用；其余用例一律走合法 `profile`。
+ */
+function legacyDiskProfile(): ProviderProfile {
+	const disk: unknown = JSON.parse(JSON.stringify({ ...profile, runtimeId: "codex" }));
+	return disk as ProviderProfile;
 }
 
 describe("DirectApiRuntimeAdapter", () => {
@@ -43,13 +56,17 @@ describe("DirectApiRuntimeAdapter", () => {
 			() => "synthetic-secret",
 			async () => sse("factory reply"),
 		);
-		await expect(factory.create("claude", {
+		// 1.1.0 之前落盘的 profile 里 runtimeId 还是历史字符串，读取层按未知 runtime 处理
+		// （runtime-adapter.ts:5-8）。这里刻意构造「旧版磁盘数据」这一非法落点来验证守卫
+		// 仍然生效——契约类型本身已不接受该值，所以此处的一次断言是「模拟反序列化」的
+		// 唯一入口，不是绕过类型：正常路径的 profile 仍由上面的 `profile` 常量提供。
+		await expect(factory.create("ohmypi", {
 			vaultRoot: "C:\\synthetic-vault",
-			providerProfile: profile,
+			providerProfile: legacyDiskProfile(),
 			approve: async () => "deny",
 		})).rejects.toThrow("profile 与 runtime 不匹配");
 
-		const adapter = await factory.create("codex", {
+		const adapter = await factory.create("ohmypi", {
 			vaultRoot: "C:\\synthetic-vault",
 			providerProfile: profile,
 			approve: async () => "deny",
@@ -80,7 +97,7 @@ describe("DirectApiRuntimeAdapter", () => {
 			providerProfileId: profile.id,
 		});
 		expect(binding).toMatchObject({
-			runtimeId: "codex",
+			runtimeId: "ohmypi",
 			providerProfileId: profile.id,
 			protocolVersion: "talos-direct-api-v1",
 		});
@@ -158,5 +175,52 @@ describe("DirectApiRuntimeAdapter", () => {
 		})) events.push(event);
 		expect(events.map((event) => event.type)).toEqual(["error"]);
 		expect(String(events[0]?.payload.message)).toContain("响应格式不受支持");
+	});
+
+	/**
+	 * Q-ARC5：tool-skipped 不再被静默丢弃。
+	 *
+	 * 改动前实测：注入 `{type:"tool-skipped",toolCallId:"tc-1",reason:"review-mode"}` 后输出
+	 * 仍为 ["assistant.delta","assistant.final","turn.finished"]、tc-1 完全不出现
+	 * （mapEvent 末尾的万能兜底把它与 tool-result/done 一起吞了）。
+	 */
+	it("surfaces tool-skipped instead of silently dropping it", async () => {
+		const adapter = new DirectApiRuntimeAdapter({
+			profile,
+			resolveSecret: () => "synthetic-secret",
+			// 直接注入 provider 事件序列：不经过 HTTP，只验 mapEvent 的映射。
+			createProvider: () => ({
+				id: profile.id,
+				kind: "api",
+				async *chat() {
+					yield { type: "text" as const, text: "部分输出" };
+					yield { type: "tool-skipped" as const, toolCallId: "tc-1", reason: "review-mode" as const };
+					yield { type: "done" as const };
+				},
+				cancel: async () => undefined,
+			}),
+		});
+		await adapter.createSession({
+			conversationId: "conversation-1",
+			vaultRoot: "C:\\synthetic-vault",
+			providerProfileId: profile.id,
+		});
+		const events = [];
+		for await (const event of adapter.send({
+			conversationId: "conversation-1",
+			turnId: "turn-skipped",
+			text: "用工具",
+			workflow: "plan",
+		})) events.push(event);
+		// tc-1 能在输出事件里被检索到（方案给的两个判据任一即可，这里用最直接的检索）。
+		expect(JSON.stringify(events.map((event) => event.payload))).toMatch(/tc-1/);
+		// 文本与收尾事件仍然照旧产出，说明新增分支没有改变既有语义。
+		expect(events.map((event) => event.type)).toEqual([
+			"assistant.delta",
+			"notice",
+			"assistant.final",
+			"turn.finished",
+		]);
+		await adapter.dispose();
 	});
 });

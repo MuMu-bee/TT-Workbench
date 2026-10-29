@@ -22,6 +22,12 @@ export interface ActionRequest {
 	network?: { protocol: string; host: string; port?: number };
 	reason?: string;
 	destructive: boolean;
+	/**
+	 * 目标路径因深度上限未能完整解析（`tool-action-normalizer.ts` 的
+	 * `MAX_TARGET_SCAN_DEPTH`）。与「入参本来就没有路径」（grep/glob/search 的
+	 * pattern-only）必须区分：后者是合法只读工具，用空数组判空会误伤。
+	 */
+	targetsTruncated?: boolean;
 }
 
 export interface ApprovalDecision {

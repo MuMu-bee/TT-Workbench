@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { expectSourceContains } from "./helpers/source-text";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -10,12 +11,12 @@ const block = css.slice(css.indexOf("对话内容区分用户与回复"));
 
 describe("chat message roles", () => {
 	it("labels user messages and replies, with the reply's runtime", () => {
-		expect(renderer).toContain('message.replaceChildren(this.roleLabel(message.ownerDocument, "user"));');
-		expect(renderer).toContain('message.appendChild(this.roleLabel(message.ownerDocument, "assistant", runtimeId));');
+		expectSourceContains("src/agent-workbench/ui/native-event-renderer.ts", 'message.replaceChildren(this.roleLabel(message.ownerDocument, "user"));');
+		expectSourceContains("src/agent-workbench/ui/native-event-renderer.ts", 'message.appendChild(this.roleLabel(message.ownerDocument, "assistant", runtimeId));');
 		expect(renderer.match(/this\.ensureAssistant\(event\.turnId, event\.runtimeId\)/g)).toHaveLength(2);
-		expect(renderer).toContain('label.textContent = "你";');
-		expect(renderer).toContain('name.textContent = "TT";');
-		expect(renderer).toContain('label.setAttribute("aria-hidden", "true");');
+		expectSourceContains("src/agent-workbench/ui/native-event-renderer.ts", 'label.textContent = "你";');
+		expectSourceContains("src/agent-workbench/ui/native-event-renderer.ts", 'name.textContent = "TT";');
+		expectSourceContains("src/agent-workbench/ui/native-event-renderer.ts", 'label.setAttribute("aria-hidden", "true");');
 	});
 
 	it("styles the user as a right-aligned tinted bubble and the reply as full-width text", () => {

@@ -5,10 +5,10 @@ import { setIcon, type App } from "obsidian";
 import type { Collected } from "../talos-view-model";
 import type { VaultPaths } from "../../data/schema";
 import type { TalosPeerStatusState } from "../../peer-status/talos-peer-status";
-import { append, el, icon, type LensChild } from "./lens-dom";
+import { append, debounce, el, icon, type LensChild } from "./lens-dom";
 import { buildLensData, type LensData } from "./lens-data";
 import { LensDrawer } from "./lens-drawer";
-import { LENS_MODULES, LENS_RAIL_SHORTCUTS, defaultTab, lensModule, type LensContext, type LensModuleId, type LensState } from "./lens-pages";
+import { LENS_MODULES, LENS_RAIL_SHORTCUTS, defaultTab, lensModule, shouldSkipVoiceRenavigate, type LensContext, type LensModuleId, type LensState } from "./lens-pages";
 import { renderOverviewRhythm, renderOverviewToday } from "./lens-overview";
 import { renderCollect, renderIdentity, renderKnowledge, renderOutput } from "./lens-library";
 import { renderProjects } from "./lens-projects";
@@ -16,6 +16,12 @@ import { renderPreferences, renderSystem } from "./lens-system";
 import { renderVoice } from "./lens-voice";
 
 export const LENS_ROOT_ID = "talos-data-app-preview";
+
+/**
+ * Q-PER9：搜索框输入的合并窗口。报告 C3 给的范围是 200-250ms，取 220ms
+ * （native-composer.ts 的输入防抖是 200ms，同一交互量级）。
+ */
+const SEARCH_DEBOUNCE_MS = 220;
 
 export interface LensHost {
 	app: App;
@@ -51,6 +57,11 @@ export class LensConsole {
 	private popover: Popover = null;
 	private readonly scroll = new Map<string, number>();
 	private readonly state: LensState = { projectView: "board", projectFilter: "all", queries: {}, deckPages: {}, ovExpand: null };
+	/**
+	 * Q-PER9：搜索框的合并重绘。必须挂在实例上：`context()` 每轮 renderPage 都重建，
+	 * 挂在 ctx 闭包里会丢掉还没触发的定时器。
+	 */
+	private readonly rerenderDebounced = debounce(() => this.renderPage({ keepScroll: true }), SEARCH_DEBOUNCE_MS);
 
 	constructor(private readonly host: LensHost, container: HTMLElement) {
 		const doc = container.ownerDocument;
@@ -104,6 +115,13 @@ export class LensConsole {
 		}
 		this.scroll.set(this.locationKey(this.location), this.page.scrollTop);
 		if (this.location.module === "voice" && module !== "voice") this.host.unmountVoice();
+		// Q-ARC11：对同一 voice 模块 + 同一页签重复 navigate 时只重绘，不再走
+		// content() → mountVoice 的重挂路径（否则会叠出未关闭的 WebRTC 连接与麦克风轨道）。
+		// 保留一次 renderPage()，不丢「点同模块刷新内容」的既有体验。
+		if (shouldSkipVoiceRenavigate(this.location, module, nextTab)) {
+			this.renderPage();
+			return;
+		}
 		this.location = next;
 		if (nextTab) this.tabsByModule.set(module, nextTab);
 		if (!this.openModules.includes(module)) this.openModules.push(module);
@@ -259,6 +277,8 @@ export class LensConsole {
 			tab: this.location.tab,
 			navigate: (module, tab) => this.navigate(module, tab),
 			rerender: () => this.renderPage({ keepScroll: true }),
+			rerenderDebounced: () => this.rerenderDebounced.run(),
+			flushRerender: () => this.rerenderDebounced.flush(),
 			openNote: (path, newTab = false) => this.host.openNote(path, newTab),
 			openDrawer: (path) => void this.drawer.open(path),
 			drawerPath: () => this.drawer.selectedPath,
@@ -334,6 +354,7 @@ export class LensConsole {
 	dispose(): void {
 		if (this.location.module === "voice") this.host.unmountVoice();
 		this.root.ownerDocument.removeEventListener("pointerdown", this.onOutsidePointer, true);
+		this.rerenderDebounced.cancel();
 		this.drawer.dispose();
 		this.root.remove();
 	}

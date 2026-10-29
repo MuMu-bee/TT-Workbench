@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -8,26 +9,26 @@ const settings = readFileSync(`${root}src/settings.ts`, "utf8");
 
 describe("simplified settings", () => {
 	it("merges folder mapping and data sources into one library tab", () => {
-		expect(settings).toContain('type TabId = "ui" | "library" | "channel" | "voice";');
-		expect(settings).not.toContain("renderSchema(");
-		expect(settings).not.toContain("renderData(");
-		expect(settings).toContain('new Setting(c).setName("模块目录").setHeading();');
-		expect(settings).toContain('new Setting(c).setName("统计来源文件").setHeading();');
+		expectSourceContains("src/settings.ts", 'type TabId = "ui" | "library" | "channel" | "voice";');
+		expectSourceNotContains("src/settings.ts", "renderSchema(");
+		expectSourceNotContains("src/settings.ts", "renderData(");
+		expectSourceContains("src/settings.ts", 'new Setting(c).setName("模块目录").setHeading();');
+		expectSourceContains("src/settings.ts", 'new Setting(c).setName("统计来源文件").setHeading();');
 	});
 
 	it("derives the inbox and diary write folders from the module mapping instead of asking twice", () => {
-		expect(settings).not.toContain('"收件箱目录", "Inbox 计数 + 写入", "inboxFolder"');
-		expect(settings).not.toContain('"日记目录", "New Diary 写入", "dailyFolder"');
-		expect(settings).toContain("this.plugin.talosSettings.inboxFolder = schema.inbox;");
-		expect(settings).toContain("this.plugin.talosSettings.dailyFolder = schema.logs;");
+		expectSourceNotContains("src/settings.ts", '"收件箱目录", "Inbox 计数 + 写入", "inboxFolder"');
+		expectSourceNotContains("src/settings.ts", '"日记目录", "New Diary 写入", "dailyFolder"');
+		expectSourceContains("src/settings.ts", "this.plugin.talosSettings.inboxFolder = schema.inbox;");
+		expectSourceContains("src/settings.ts", "this.plugin.talosSettings.dailyFolder = schema.logs;");
 		expect(settings.match(/this\.syncWriteFolders\(\);/g)?.length).toBeGreaterThanOrEqual(3);
 	});
 
 	it("drops settings without effect and headings without settings", () => {
-		expect(settings).not.toContain('"Eyebrow 小标题"');
-		expect(settings).not.toContain('setName("权限").setHeading()');
-		expect(settings).not.toContain('setName("OhMyPi").setHeading()');
-		expect(settings).not.toContain("隐私与计费：");
+		expectSourceNotContains("src/settings.ts", '"Eyebrow 小标题"');
+		expectSourceNotContains("src/settings.ts", 'setName("权限").setHeading()');
+		expectSourceNotContains("src/settings.ts", 'setName("OhMyPi").setHeading()');
+		expectSourceNotContains("src/settings.ts", "隐私与计费：");
 	});
 
 	it("keeps every setting that still drives behaviour", () => {

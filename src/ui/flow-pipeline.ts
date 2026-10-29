@@ -26,6 +26,9 @@ export function flowStations(d: Collected): FlowStation[] {
 	const queue = Number(metricValue(d.output.metrics, "今日待发")) || 0;
 	const total = d.output.platforms.reduce((sum, platform) => sum + Math.max(platform.count, platform.published + platform.pending), 0);
 	const published = d.output.platforms.reduce((sum, platform) => sum + platform.published, 0);
+	// Q-QUA18：待闭环只数 pending 桶，不再用「总数减已发布」的残差——那会把未分类
+	// 也算成待闭环，让指标显示「6 待闭环」而同一页面图显示「3 待闭环 + 3 未分类」。
+	const totalPending = d.output.platforms.reduce((sum, platform) => sum + platform.pending, 0);
 	return [
 		{
 			key: "inbox",
@@ -63,7 +66,9 @@ export function flowStations(d: Collected): FlowStation[] {
 			key: "published",
 			label: "已发",
 			value: `${published}/${total}`,
-			sub: total > published ? `${total - published} 待闭环` : "全部闭环",
+			// 条件也换成 totalPending：只改插值的话，只有未分类笔记时这里会显示「0 待闭环」
+			// 而不是「全部闭环」，与同一页面的图（未分类单列一段）仍然自相矛盾。
+			sub: totalPending > 0 ? `${totalPending} 待闭环` : "全部闭环",
 			pageKey: "output",
 			stuck: total > published,
 		},

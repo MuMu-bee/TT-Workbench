@@ -9,7 +9,17 @@ function safeConfigDir(configDir: string): string {
 }
 
 export function protectedVaultSubpaths(configDir: string): string[] {
-	return [safeConfigDir(configDir), ".talos/private", ".talos/secrets", ".talos/credentials"];
+	return [
+		safeConfigDir(configDir),
+		".talos/private",
+		".talos/secrets",
+		".talos/credentials",
+		// talos 管理目录(审计、权限规则、绑定、外部出库审计)。这是 OS 沙箱拒绝清单
+		// (desktop-runtime-factory → process-sandbox 的 deniedVaultSubpaths)的唯一来源,
+		// 只补 broker 侧常量等于只做了纵深防御的一半。
+		".talos/audit",
+		".talos/agent-workbench/v1",
+	];
 }
 
 /** 兼容别名:历史测试与调用方使用旧名。 */

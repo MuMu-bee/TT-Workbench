@@ -15,8 +15,16 @@ concurrency:
 
 jobs:
   ci:
-    name: Lint · Typecheck · Test · License · Build
-    runs-on: ubuntu-latest
+    name: Lint · Typecheck · Test · License · Build (${{ matrix.os }})
+    # 双 OS matrix：ROADMAP.md:11「npx vitest run 在 Windows 与 Ubuntu 均 0 失败」
+    # 这条验收在单 OS 的 CI 上结构上无法被验证，故先建立 matrix。
+    # 阶段一（当前）：Windows leg 只跑 Unit tests 且 continue-on-error，把红面变成可见
+    # 而不阻塞合并；其余门只在 ubuntu leg 跑。转绿后再去掉 continue-on-error。
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,36 +39,83 @@ jobs:
         run: npm ci
 
       - name: Lint
+        if: matrix.os == 'ubuntu-latest'
         run: npm run lint
 
       - name: Typecheck
+        if: matrix.os == 'ubuntu-latest'
         run: npm run typecheck
 
+      # Q-TES1：tests 项目此前从未被类型检查（主 tsconfig 只 include src/**/*.ts）。
+      # 只加 noEmit、不加 references：主 tsconfig 没有 composite，被 references 指向会报
+      # TS6306/TS6310，本轮不碰 build 链。
+      - name: Typecheck tests
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run typecheck:tests
+
       - name: Unit tests
+        # 阶段一允许 windows leg 失败：可见但不阻塞合并（见文件头注释）。
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
         run: npm test
 
+      # Q-TES7：覆盖率门。阈值只用报告实测的 lines；测试不全绿时 vitest 不产出
+      # coverage summary，阈值也不会被评估，故该 step 放在 Unit tests 之后。
+      - name: Coverage
+        if: matrix.os == 'ubuntu-latest'
+        run: node --version && npm run test:coverage
+
       - name: Quyuan selftest
+        if: matrix.os == 'ubuntu-latest'
         run: npm run test:quyuan
 
       - name: Approval-actions selftest
+        if: matrix.os == 'ubuntu-latest'
         run: npm run test:approval-actions
 
       - name: Approval-executor selftest
+        if: matrix.os == 'ubuntu-latest'
         run: npm run test:approval-executor
 
+      # Q-TES9：功能硬门的合成夹具跑法（正例 exit 0 / 反例 exit 1）。
+      # 真实 Vault 跑法保留为手工入口 `npm run test:chat-gate <vaultRoot>`。
+      - name: Chat gate fixtures
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run test:chat-gate:fixture
+
+      - name: Module boundaries
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run check:boundaries
+
+      # Q-ARC12：体量棘轮门（拆分进度见 ROADMAP.md:31-33）。
+      - name: File size
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run check:file-size
+
       - name: License audit
+        if: matrix.os == 'ubuntu-latest'
         run: npm run licenses:check
 
       - name: Production build
+        if: matrix.os == 'ubuntu-latest'
         run: npm run build
 
+      # claude-sdk.cjs 已于 1.1.0 随 Claude 运行时移除（与 esbuild.config.mjs:91-92 的注释呼应）。
+      # 它的存在性由 `test ! -e claude-sdk.cjs` 断言；产物清单里不得再列它。
+      - name: Assert claude-sdk.cjs is gone
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          test -f main.js
+          test -f styles.css
+          test -f manifest.json
+          test ! -e claude-sdk.cjs
+
       - name: Upload build artifacts
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: tt-workbench-build
           path: |
             main.js
-            claude-sdk.cjs
             styles.css
             manifest.json
           if-no-files-found: error

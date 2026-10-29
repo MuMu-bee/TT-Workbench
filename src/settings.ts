@@ -155,6 +155,7 @@ export interface TalosSettings {
 	quyuanRealtimeRegion: string; // cn-beijing | ap-southeast-1
 	quyuanRealtimeModel: string; // Realtime 模型（百炼白名单内，或自定义端点的自由配置）
 	quyuanRealtimeVoice: string; // Realtime 音色
+	quyuanRealtimeTranscriptionModel: string; // Q-ARC9：自定义端点的转写模型；留空则持续监听下唤醒词不可用
 	quyuanVoiceRecognitionEnabled: boolean; // 屈原语音识别模式：false 时释放麦克风且不监听唤醒词
 	quyuanVoiceInputMode: "continuous" | "push-to-talk"; // 默认持续监听；失败时降级为点击说话
 	quyuanVoiceSessionJson: string; // 独立 voice namespace 会话，不与 TALOS 文字对话会话混用
@@ -259,6 +260,7 @@ export const DEFAULT_SETTINGS: TalosSettings = {
 	quyuanRealtimeRegion: "cn-beijing",
 	quyuanRealtimeModel: "qwen3.5-omni-flash-realtime",
 	quyuanRealtimeVoice: "Tina",
+	quyuanRealtimeTranscriptionModel: "",
 	quyuanVoiceRecognitionEnabled: true,
 	quyuanVoiceInputMode: "continuous",
 	quyuanVoiceSessionJson: "",
@@ -287,7 +289,7 @@ type FreeTextSettingKey = Exclude<
 
 type TabId = "ui" | "library" | "channel" | "voice";
 
-interface TalosSettingTabDefinition {
+export interface TalosSettingTabDefinition {
 	id: TabId;
 	label: string;
 	description: string;
@@ -295,7 +297,8 @@ interface TalosSettingTabDefinition {
 }
 
 // 2026-10-08 简化：目录映射与数据源合并为「库与数据」；API 配置与对话侧栏共用同一窗口。
-const TALOS_SETTING_TABS: readonly TalosSettingTabDefinition[] = [
+// 导出供文档一致性守卫断言「README / src 里提到的 tab 名都在这个 label 集合内」。
+export const TALOS_SETTING_TABS: readonly TalosSettingTabDefinition[] = [
 	{
 		id: "ui",
 		label: "界面",
@@ -861,6 +864,14 @@ export class TalosSettingTab extends PluginSettingTab {
 				"SecretStorage 中的密钥引用 ID（先在 Provider 密钥处保存）；留空使用 quyuan-realtime-key。",
 				"quyuanRealtimeSecretRef",
 				"quyuan-realtime-key"
+			);
+			// Q-ARC9：转写模型决定 input_audio_transcription 是否下发；缺它时持续监听下唤醒词无效。
+			this.textIn(
+				c,
+				"Realtime 转写模型",
+				"自定义端点用于语音转写的模型名（如 whisper-1）。留空则持续监听模式下唤醒词不可用，面板会拒绝启动并降级为点击说话。",
+				"quyuanRealtimeTranscriptionModel",
+				"whisper-1"
 			);
 		}
 		this.secretIn(

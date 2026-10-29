@@ -81,6 +81,7 @@ describe("inbox triage pure layer", () => {
 			},
 			{
 				noteWriteScopes: ["00-收件箱/**"],
+				publishWriteScopes: ["<publish>", "输出/**"],
 				inboxTriageReadScopes: ["00-收件箱/**"],
 				inboxTriageWriteScopes: ["00-收件箱/**", "02-洞察/**"],
 			}

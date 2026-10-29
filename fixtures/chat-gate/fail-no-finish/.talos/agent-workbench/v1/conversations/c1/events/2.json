@@ -1,0 +1,9 @@
+{
+  "eventId": "c1-t1-b",
+  "conversationId": "c1",
+  "turnId": "t1",
+  "runtimeId": "ohmypi",
+  "type": "assistant.final",
+  "timestamp": "2026-10-25T00:00:02.000Z",
+  "payload": { "text": "合成答案：写完了，但回合没结束。" }
+}

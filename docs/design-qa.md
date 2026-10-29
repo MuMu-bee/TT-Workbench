@@ -1,8 +1,11 @@
 # TALOS Theme Design QA
 
+> 本文件含多条以日期分节的 QA 记录；同一日期出现相互矛盾的结论时以文末最新一节为准，已作废的结论以 ⚠️ 标注。
+
 ## WP7 Task 15R Unified Console QA · 2026-07-25
 
 - Result: passed. Task 16 was not started.
+- ⚠️ 本结论已被本文件末节「WP7 Obsidian 人工视觉与交互 QA · 2026-07-25」的 `final result: failed` 取代（见本文件末尾该节的 `final result` 行，其中列出未通过原因）。同日结论以 `failed` 为准，本节仅作过程记录保留。
 - Production composition: the unified console, approval actions and Provider tool
   proposals share one builtin action registry, `TalosTaskRunner`,
   `MemoryTaskStore` and `VaultRecoveryStore`.
@@ -29,7 +32,7 @@
   build in the real test Vault without exercising B/C writes.
 - Automated regression: 46 test files / 245 tests, typecheck, lint, build,
   approval self-tests, Quyuan self-test and the 108-package license audit all
-  passed.
+  passed.（**历史快照，非当前值**：2026-07-25 时点记录；当前实测为 `Test Files 172 passed` / `Tests 1158 passed`，以同提交 `npx vitest run` 输出为准。）
 
 final result: passed
 
@@ -748,11 +751,11 @@ final result: passed
 
 ## WP7 Obsidian 人工视觉与交互 QA · 2026-07-25
 
-- 完整记录：`docs/qa/wp7-obsidian-acceptance.md`。
+- 完整记录：`docs/qa/wp7-obsidian-acceptance.md`（本链接即该次 QA 的完整证据）。
 - 部署备份、三产物同步和逐文件校验通过；部署 canonical registry 保持 12 条。
 - 六个一级页面、三组二级页和跨页任务抽屉可由 Obsidian 可访问性树确认；Voice 独立 namespace 与持续监听失败后降级为点击说话通过。
 - 生产组合层没有把现有 `ActionButton`、`TalosTaskRunner`、内建 A/B/C 动作、取消和恢复/撤销控制接入统一工作台；系统中心的 Provider 设置仍是占位引导。
 - Obsidian 截图缓冲与当前可访问性树不一致，无法提供可信的宽/窄窗口视觉证据；真实 Vault 截图未写入仓库。
 - 新鲜定向验证：5 files、20 tests 通过，但该结果只证明核心/组件与 Task 14 合成链路，不能替代生产点击验收。
 
-final result: failed
+final result: failed（本文件对 2026-07-25 的权威结论，覆盖文件头「WP7 Task 15R Unified Console QA · 2026-07-25」那节被标注为 ⚠️ 的 `passed`）

@@ -532,6 +532,23 @@ export default class TalosPlugin extends Plugin {
 		await this.syncAgentWorkbenchProviderProfiles();
 	}
 
+	/**
+	 * Q-PER10：语音会话的轻量落盘。
+	 *
+	 * 语音会话只改 quyuanVoiceSessionJson 这一段数据，不该穿透全量保存链
+	 * （saveProviderConfigToVault + 迁移检查 + profile 同步 + 清空重建
+	 * askService / promptFacade）。这里只做「归一化 + loadData + saveData」。
+	 *
+	 * 注意：quyuanVoiceInputMode / quyuanVoiceRecognitionEnabled 仍走
+	 * saveTalosSettings（它们是 provider 相关设置），见 voice-panel 的 this.save?.()。
+	 */
+	async saveTalosVoiceSession(): Promise<void> {
+		enforceRealtimeVoiceIoSettings(this.talosSettings);
+		const loaded: unknown = await this.loadData();
+		const stored = isRecord(loaded) ? loaded : {};
+		await this.saveData({ ...stored, talos: this.talosSettings });
+	}
+
 
 	private async syncCodexHarnessEnvironment(): Promise<void> {
 		return syncCodexHarnessEnvironment(this);

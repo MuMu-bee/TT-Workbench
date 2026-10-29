@@ -34,7 +34,7 @@ function host(): { el: HTMLElement; dom: ObsidianTestElement } {
 }
 
 function platform(overrides: Partial<OutputPlatform>): OutputPlatform {
-	return { name: "抖音", count: 0, published: 0, pending: 0, readme: "out/README.md", latestTitle: "—", ...overrides };
+	return { name: "抖音", count: 0, published: 0, pending: 0, unclassified: 0, readme: "out/README.md", latestTitle: "—", ...overrides };
 }
 
 beforeEach(() => opened.mockClear());
@@ -124,7 +124,9 @@ describe("distribution charts", () => {
 	it("splits output bars into published, pending and unclassified shares", () => {
 		const { el, dom } = host();
 		fillOutputClosureChart(view, el, [
-			platform({ name: "抖音", count: 10, published: 5, pending: 3 }),
+			// unclassified 必须显式给出：它是独立计数，不是 count - published 的残差。
+			// 原来的 count:10 + published:5 + pending:3 靠残差凑出 2，navigation.ts 产不出这种数据。
+			platform({ name: "抖音", count: 10, published: 5, pending: 3, unclassified: 2 }),
 			platform({ name: "公众号", count: 0 }),
 		]);
 		const [first, second] = dom.all("output-v2-bar-track");
@@ -235,6 +237,9 @@ describe("inbox charts", () => {
 		clusters: [],
 		recent: [],
 		ageBuckets: [],
+		// InboxDigest.queue 是必填（types.ts:127-135）；navigation.ts:218 的真实
+		// 产出也总是带 queue，夹具缺它会让「图表函数只读自己那几个字段」这个前提失真。
+		queue: [],
 		...overrides,
 	});
 
@@ -262,10 +267,14 @@ describe("inbox charts", () => {
 			count: 200,
 			oldestDays: 40,
 			ageBuckets: [
-				{ label: "≤7d", count: 199, tone: "fresh" },
-				{ label: "8–30d", count: 0, tone: "warm" },
-				{ label: ">30d", count: 1, tone: "stale" },
-			] as InboxDigest["ageBuckets"],
+				// tone 必须取自 InboxAgeBucket 的合法集合（types.ts:110-114 →
+				// "info" | "good" | "warn" | "hot"），navigation.ts:196-201 的真实产出
+				// 也用这四个。原来写的 fresh/warm/stale 既不是契约值也没有对应 CSS，
+				// 靠 `as InboxDigest["ageBuckets"]` 强转掩盖；换回合法值后不需要强转。
+				{ label: "≤7d", count: 199, tone: "good" },
+				{ label: "8–30d", count: 0, tone: "warn" },
+				{ label: ">30d", count: 1, tone: "hot" },
+			],
 		}));
 		expect(dom.one("age-dist-title").textContent).toBe("积压年龄 · 共 200 篇 · 最老 40d");
 		expect(dom.all("age-seg").map((seg) => seg.style.width)).toEqual(["99.5%", "1.5%"]);

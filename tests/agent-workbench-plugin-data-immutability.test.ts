@@ -1,13 +1,8 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { pluginSource as readPluginSource, viewSource as readViewSource } from "./helpers/source-text";
+import { pluginSource as readPluginSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
-const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const mainSource = readPluginSource();
 const viewSource = readViewSource();
-const storageSource = readFileSync(`${projectRoot}src/agent-workbench/storage/obsidian-workbench-storage.ts`, "utf8");
-const importerSource = readFileSync(`${projectRoot}src/agent-workbench/legacy/claudian-readonly-importer.ts`, "utf8");
 
 describe("agent workbench plugin data immutability", () => {
 	it("stores TALOS-owned settings, permissions and bindings only in the sidecar namespace", () => {
@@ -27,11 +22,11 @@ describe("agent workbench plugin data immutability", () => {
 	});
 
 	it("uses atomic TALOS sidecar writes and keeps old source bytes read-only", () => {
-		expect(storageSource).toContain("writeJsonAtomic");
-		expect(storageSource).toContain("await this.flush()");
-		expect(storageSource).toContain("await this.replace(temporary, file)");
-		expect(importerSource).toContain("sourceAggregateBefore");
-		expect(importerSource).toContain("sourceAggregateAfter");
-		expect(importerSource).toContain("旧 Claudian 源数据在导入期间发生变化");
+		expectSourceContains("src/agent-workbench/storage/obsidian-workbench-storage.ts", "writeJsonAtomic");
+		expectSourceContains("src/agent-workbench/storage/obsidian-workbench-storage.ts", "await this.flush()");
+		expectSourceContains("src/agent-workbench/storage/obsidian-workbench-storage.ts", "await this.replace(temporary, file)");
+		expectSourceContains("src/agent-workbench/legacy/claudian-readonly-importer.ts", "sourceAggregateBefore");
+		expectSourceContains("src/agent-workbench/legacy/claudian-readonly-importer.ts", "sourceAggregateAfter");
+		expectSourceContains("src/agent-workbench/legacy/claudian-readonly-importer.ts", "旧 Claudian 源数据在导入期间发生变化");
 	});
 });

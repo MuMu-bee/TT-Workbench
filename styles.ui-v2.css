@@ -362,7 +362,7 @@
    defaults above, so this v2 contract must outrank them explicitly. Keep the
    scene clipped to the header, but reserve enough room for the antenna glow and
    the vault scene's -7px lift instead of cutting the bot at the top edge. */
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"])
 	.module-hero .talos-pixel-patrol.talos-ui-page-header__scene.in-module-hero {
 	--talos-pixel-safe-stage-height: 86px;
 	--talos-pixel-safe-bot-top: 28px;
@@ -373,33 +373,33 @@
 	--pixel-scale: 1.25;
 }
 
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"])
 	.module-hero .talos-pixel-patrol.in-module-hero .talos-pixel-bot {
 	top: var(--talos-pixel-safe-bot-top);
 }
 
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"])
 	.module-hero .talos-pixel-patrol.in-module-hero .talos-pixel-track {
 	top: auto;
 	bottom: var(--talos-pixel-safe-track-bottom);
 }
 
-.talos-console[data-talos-page="overview"] .talos-ui-overview-header {
+.talos-console[data-talos-page="today"] .talos-ui-overview-header {
 	min-height: 176px;
 	padding: var(--talos-space-4) var(--talos-space-6) 66px;
 }
 
-.talos-console[data-talos-page="overview"] .talos-ui-overview-header .hero-head {
+.talos-console[data-talos-page="today"] .talos-ui-overview-header .hero-head {
 	grid-template-columns: minmax(0, 1fr) 88px;
 	gap: var(--talos-space-4);
 }
 
-.talos-console[data-talos-page="overview"] .talos-ui-overview-header .logo-module {
+.talos-console[data-talos-page="today"] .talos-ui-overview-header .logo-module {
 	width: 80px;
 	height: 72px;
 }
 
-.talos-console[data-talos-page="overview"] .talos-ui-page {
+.talos-console[data-talos-page="today"] .talos-ui-page {
 	display: block;
 	container: overview-v2 / inline-size;
 }
@@ -424,21 +424,21 @@
 	min-width: 0;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-data-column > .talos-ui-kpi-strip {
+.talos-console[data-talos-page="today"] .overview-v2-data-column > .talos-ui-kpi-strip {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--talos-space-3);
 	margin: 0;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-chart-panel {
+.talos-console[data-talos-page="today"] .overview-v2-chart-panel {
 	min-width: 0;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-chart-panel .spark {
+.talos-console[data-talos-page="today"] .overview-v2-chart-panel .spark {
 	min-height: 150px;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-distribution {
+.talos-console[data-talos-page="today"] .overview-v2-distribution {
 	display: grid;
 	gap: var(--talos-space-2);
 }
@@ -580,23 +580,23 @@
 	color: var(--talos-ui-muted);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-approval-panel {
+.talos-console[data-talos-page="today"] .overview-v2-approval-panel {
 	display: grid;
 	gap: var(--talos-space-3);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-approval-group {
+.talos-console[data-talos-page="today"] .overview-v2-approval-group {
 	min-width: 0;
 	padding-top: var(--talos-space-3);
 	border-top: 1px solid var(--talos-ui-line-subtle);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-approval-group:first-of-type {
+.talos-console[data-talos-page="today"] .overview-v2-approval-group:first-of-type {
 	padding-top: 0;
 	border-top: 0;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-approval-group__head {
+.talos-console[data-talos-page="today"] .overview-v2-approval-group__head {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -604,11 +604,11 @@
 	margin-bottom: var(--talos-space-2);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-approval-group__head strong {
+.talos-console[data-talos-page="today"] .overview-v2-approval-group__head strong {
 	font-size: var(--talos-type-body);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-approval-group__head span {
+.talos-console[data-talos-page="today"] .overview-v2-approval-group__head span {
 	min-width: 24px;
 	padding: 2px 7px;
 	border: 1px solid var(--talos-ui-line);
@@ -617,13 +617,13 @@
 	text-align: center;
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-approval-panel .approval-actions {
+.talos-console[data-talos-page="today"] .overview-v2-approval-panel .approval-actions {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--talos-space-2);
 }
 
-.talos-console[data-talos-page="overview"] .overview-v2-kanban-panel {
+.talos-console[data-talos-page="today"] .overview-v2-kanban-panel {
 	min-width: 0;
 }
 
@@ -702,7 +702,7 @@
 }
 
 @container overview-v2 (max-width: 520px) {
-	.talos-console[data-talos-page="overview"] .overview-v2-data-column > .talos-ui-kpi-strip {
+	.talos-console[data-talos-page="today"] .overview-v2-data-column > .talos-ui-kpi-strip {
 		grid-template-columns: 1fr;
 	}
 
@@ -1607,7 +1607,7 @@
 	}
 }
 /* System dashboard archetype and Health center · D-TLP-019 */
-.talos-console[data-talos-archetype="dashboard"]:not([data-talos-page="overview"]) .talos-ui-page {
+.talos-console[data-talos-archetype="dashboard"]:not([data-talos-page="today"]) .talos-ui-page {
 	container: system-v2 / inline-size;
 }
 
@@ -3301,7 +3301,7 @@ body[data-talos-vault-theme] .talos-console
    标题统一回到 --talos-type-page（24–32px），只改字号、保留各主题字体与颜色；
    主卡按内容高度，说明压成一行；像素小人保留为 56px 身份带。
    ============================================================ */
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero .module-hero-copy h1.module-hero-title {
 	max-width: none;
 	margin: 2px 0 2px;
@@ -3309,12 +3309,12 @@ body[data-talos-vault-theme] .talos-console
 	line-height: 1.1;
 }
 
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero .module-hero-main {
 	min-height: 0;
 }
 
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero .talos-ui-page-header__description {
 	margin-top: 2px;
 	overflow: hidden;
@@ -3322,7 +3322,7 @@ body[data-talos-vault-theme] .talos-console
 	white-space: nowrap;
 }
 
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero .talos-pixel-patrol.talos-ui-page-header__scene.in-module-hero {
 	--talos-pixel-safe-stage-height: 56px;
 	--talos-pixel-safe-bot-top: 4px;
@@ -3357,12 +3357,12 @@ body[data-talos-vault-theme] .talos-console
    可点击的指标卡在悬停 / 聚焦时保留 3px 轻抬起作为交互反馈。
    各主题的边框粗细与配色（2026-07 实机反馈确定）保持不变。
    ============================================================ */
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero :is(.module-hero-main, .module-hero-main:hover, .module-hero-stat) {
 	box-shadow: none;
 }
 
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero .module-hero-stat.is-interactive:is(:hover, :focus-visible) {
 	box-shadow: 3px 3px 0 color-mix(in srgb, var(--talos-ui-ink) 70%, transparent);
 }
@@ -3372,12 +3372,12 @@ body[data-talos-vault-theme] .talos-console
    2026-07-08 起指标统一取 --rose，在 Bauhaus 等主题里是色板外的粉色。
    强调色改为跟随本页 --ac，数字本身用主题墨色。
    ============================================================ */
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero {
 	--module-unified-ac: var(--ac);
 }
 
-.talos-console[data-talos-archetype]:not([data-talos-page="overview"]):not([data-talos-page="jarvis"])
+.talos-console[data-talos-archetype]:not([data-talos-page="today"]):not([data-talos-page="jarvis"])
 	.talos-ui-page-header.module-hero .module-hero-stat {
 	--stat-ac: var(--talos-ui-ink);
 }

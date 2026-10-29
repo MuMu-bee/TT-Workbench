@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { viewSource as readViewSource } from "./helpers/source-text";
+import { viewSource as readViewSource, expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const switcher = readFileSync(
@@ -13,13 +13,13 @@ const css = readFileSync(`${root}styles.ui-v2.css`, "utf8");
 
 describe("AI chat workspace v2", () => {
 	it("removes the duplicate title and keeps only the channel switch", () => {
-		expect(switcher).not.toContain("talos-harness-switcher__header");
-		expect(switcher).not.toContain("talos-chat-workspace-header");
-		expect(switcher).not.toContain("TALOS WORKSPACE");
-		expect(switcher).toContain(
+		expectSourceNotContains("src/harness/harness-switcher.ts", "talos-harness-switcher__header");
+		expectSourceNotContains("src/harness/harness-switcher.ts", "talos-chat-workspace-header");
+		expectSourceNotContains("src/harness/harness-switcher.ts", "TALOS WORKSPACE");
+		expectSourceContains("src/harness/harness-switcher.ts", 
 			'bar.dataset.talosComponent = "chat-channel-switch"'
 		);
-		expect(switcher).toContain('"AI 工作区切换"');
+		expectSourceContains("src/harness/harness-switcher.ts", '"AI 工作区切换"');
 	});
 
 	it("mounts the switch at the bottom of navigation and only on chat", () => {
@@ -28,7 +28,7 @@ describe("AI chat workspace v2", () => {
 		expect(navMount).toBeGreaterThan(-1);
 		// 2026-10-08：主区不再挂双通道切换，宿主保留为空并由 :empty 隐藏。
 		expect(view).not.toContain("getSwitchHost: () => view.chatSwitchHostEl");
-		expect(switcher).toContain("this.attachSwitchControl()");
+		expectSourceContains("src/harness/harness-switcher.ts", "this.attachSwitchControl()");
 		expect(css).toMatch(
 			/\.talos-console\s+\.talos-chat-nav-switch-host\s*\{[^}]*display:\s*none;/s
 		);
@@ -47,7 +47,7 @@ describe("AI chat workspace v2", () => {
 			"this.root?.remove()",
 			"this.switchBar?.remove()",
 		]) {
-			expect(switcher).toContain(contract);
+			expectSourceContains("src/harness/harness-switcher.ts", contract);
 		}
 		const suspendStart = switcher.indexOf("async suspend()");
 		const suspendEnd = switcher.indexOf("focusComposer()", suspendStart);
@@ -55,20 +55,20 @@ describe("AI chat workspace v2", () => {
 		expect(suspend).toContain("this.root?.remove()");
 		expect(suspend).toContain("this.switchBar?.remove()");
 		expect(suspend).not.toContain(".destroy()");
-		expect(switcher).toContain("await channel.workbench.destroy()");
+		expectSourceContains("src/harness/harness-switcher.ts", "await channel.workbench.destroy()");
 	});
 
 	it("exposes active channel state accessibly", () => {
-		expect(switcher).toContain('setAttribute("role", "switch")');
-		expect(switcher).toContain('"aria-checked"');
-		expect(switcher).toContain('"aria-pressed"');
-		expect(switcher).toContain("root.dataset.activeChannel");
-		expect(switcher).toContain("switchBar.dataset.activeChannel");
+		expectSourceContains("src/harness/harness-switcher.ts", 'setAttribute("role", "switch")');
+		expectSourceContains("src/harness/harness-switcher.ts", '"aria-checked"');
+		expectSourceContains("src/harness/harness-switcher.ts", '"aria-pressed"');
+		expectSourceContains("src/harness/harness-switcher.ts", "root.dataset.activeChannel");
+		expectSourceContains("src/harness/harness-switcher.ts", "switchBar.dataset.activeChannel");
 	});
 
 	it("uses compact navigation reflow and preserves switch motion", () => {
-		expect(css).toContain("container: chat-nav-switch / inline-size");
-		expect(css).toContain(
+		expectSourceContains("styles.ui-v2.css", "container: chat-nav-switch / inline-size");
+		expectSourceContains("styles.ui-v2.css", 
 			"@container chat-nav-switch (max-width: 210px)"
 		);
 		expect(css).toMatch(

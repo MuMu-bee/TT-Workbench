@@ -195,7 +195,10 @@ describe("旧版工作台设置迁移(升级路径)", () => {
 		);
 		await expect(store.load()).resolves.toMatchObject({ selection: { runtimeId: "ohmypi" } });
 	});
-	it("丢弃本版不支持的旧协议 profile,保留其余可用配置", async () => {
+	// Q-SEC7：本版不支持的旧协议 profile 不再被静默丢弃，而是「保留 + 标注无效」
+	// （端点收严后若继续丢弃，用户存量的非法端点会无声消失，而丢弃路线无法断言用户是否看到提示）。
+	// 可用的那一条仍然照旧可用。
+	it("保留本版不支持的旧协议 profile 并标注无效,其余可用配置不受影响", async () => {
 		const { WorkbenchSettingsStore } = await import("../src/agent-workbench/storage/workbench-settings-store");
 		const store = new WorkbenchSettingsStore(
 			{
@@ -215,7 +218,14 @@ describe("旧版工作台设置迁移(升级路径)", () => {
 			{ has: () => true },
 		);
 		const loaded = await store.load();
-		expect(loaded.providers.map((p) => p.id)).toEqual(["openai-compatible"]);
-		expect(loaded.providers[0]?.runtimeId).toBe("ohmypi");
+		// ① 两条都在（条数不下降）；② 不支持的被标无效且禁用；③ 合法的那条仍可用。
+		expect(loaded.providers.map((p) => p.id)).toEqual(["openai-compatible", "hermes"]);
+		const hermes = loaded.providers.find((p) => p.id === "hermes");
+		expect(hermes?.enabled).toBe(false);
+		expect(hermes?.invalidReason).toMatch(/协议|OhMyPi/);
+		const usable = loaded.providers.find((p) => p.id === "openai-compatible");
+		expect(usable?.runtimeId).toBe("ohmypi");
+		expect(usable?.invalidReason).toBeUndefined();
+		expect(usable?.enabled).toBe(true);
 	});
 });

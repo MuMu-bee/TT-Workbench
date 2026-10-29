@@ -30,6 +30,20 @@ const SPECIFICATIONS: Record<RuntimeId, RuntimeSpecification> = {
 	},
 };
 
+/**
+ * 按 id 查规格。入参必须是 `string` 而非 `RuntimeId`：`RuntimeId` 已收窄为
+ * `"ohmypi"`，写成 `RuntimeId` 时 `Object.hasOwn` 守卫在 TS 里不可达（死代码），
+ * 而真实磁盘上的旧 manifest 里仍可能是 `"codex"`/`"claude"`
+ * （`contracts/runtime-adapter.ts:5-7` 承诺「读取层按未知 runtime 降级处理」）。
+ */
+function specificationFor(runtimeId: string): RuntimeSpecification | undefined {
+	return Object.hasOwn(SPECIFICATIONS, runtimeId)
+		? (SPECIFICATIONS as Record<string, RuntimeSpecification | undefined>)[runtimeId]
+		: undefined;
+}
+
+const UNKNOWN_RUNTIME_REASON = "未知运行时 id，已降级为不可用时运行时";
+
 function parseVersion(value: string): [number, number, number] | null {
 	const match = value.match(/(?:^|[\s/v])(\d+)\.(\d+)(?:\.(\d+))?/i);
 	return match ? [Number(match[1]), Number(match[2]), Number(match[3] ?? 0)] : null;
@@ -46,10 +60,13 @@ function atLeast(actual: [number, number, number], minimum: [number, number, num
 export class RuntimeDiscoveryService {
 	constructor(private readonly host: RuntimeProbeHost, private readonly timeoutMs = 4_000) {}
 
-	installUrl(runtimeId: RuntimeId): string { return SPECIFICATIONS[runtimeId].installUrl; }
+	installUrl(runtimeId: RuntimeId): string | undefined { return specificationFor(runtimeId)?.installUrl; }
 
 	async probe(runtimeId: RuntimeId, profile?: RuntimeProfile): Promise<RuntimeProbe> {
-		const specification = SPECIFICATIONS[runtimeId];
+		const specification = specificationFor(runtimeId);
+		// 未知 runtime 直接降级，不调 this.host.resolve：否则会用 `undefined.command`
+		// 拼候选并抛出不可读的 TypeError。
+		if (!specification) return { runtimeId, status: "degraded", reason: UNKNOWN_RUNTIME_REASON };
 		const candidates = [profile?.executablePath, specification.command, ...specification.fixedPaths].filter((item): item is string => Boolean(item));
 		const executable = await this.host.resolve(candidates);
 		if (!executable) return { runtimeId, status: "not-installed", reason: "未找到可执行文件" };

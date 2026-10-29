@@ -13,7 +13,13 @@ export class OhMyPiProcessPort implements OhMyPiRpcPort {
 	request<T>(method: string, params: Record<string, unknown>) { return this.connection.request<T>(method, params); }
 	async *prompt(params: Record<string, unknown>, signal?: AbortSignal): AsyncIterable<ProtocolFrame> {
 		const frames = this.connection.subscribe();
-		await this.connection.request("prompt", { message: params.text, streamingBehavior: params.streamingBehavior });
+		// Q-QUA11：白名单式挑字段会把 `params.images` 静默丢掉（上游 ohmypi-rpc-adapter.ts:137-139
+		// 确实构造了 images，且声明 input.image: "native"）。这里改为整体透传，
+		// 只把工作台内部的 `text` 键改名成 RPC 的 `message` 并从帧里删掉，
+		// 其余键（images / streamingBehavior / 未来新增的）原样进帧。
+		const body: Record<string, unknown> = { ...params, message: params.text };
+		delete body.text;
+		await this.connection.request("prompt", body);
 		let activeRun = false;
 		for await (const frame of frames) {
 			if (signal?.aborted) break;

@@ -12,40 +12,16 @@ import {
 	voiceRealtimeSetupHint,
 } from "../src/quyuan/voice-panel-labels";
 import { confirmationQuestion, showVoiceConfirmCard } from "../src/quyuan/voice-confirm-card";
-import { createMiniHost, MiniElement } from "./helpers/mini-dom";
+import { createMiniHost } from "./helpers/mini-dom";
 
-/** 为 MiniElement 补上 Obsidian 扩展方法(mini-dom 只模拟标准 DOM)。 */
+/**
+ * MiniElement 现在自带 Obsidian 的 HTMLElement 扩展（createDiv / createEl / createSpan /
+ * setText / setCssProps / empty / toggleClass / style），见 tests/helpers/mini-dom.ts。
+ * 原来这里那份 asObsidianElement 打补丁范式已无必要，且补丁返回值是 unknown，
+ * 会拖累 tsc；改为直接断言宿主类型。
+ */
 function asObsidianElement(element: unknown): HTMLElement {
-	const el = element as MiniElement & {
-		empty?: () => void;
-		createDiv?: (options?: { cls?: string; attr?: Record<string, string>; text?: string }) => unknown;
-		createEl?: (tag: string, options?: { cls?: string; attr?: Record<string, string> }) => unknown;
-		createSpan?: (options?: { text?: string }) => unknown;
-		toggleClass?: (token: string, value?: boolean) => void;
-	};
-	el.empty = () => {
-		el.children.length = 0;
-	};
-	el.createDiv = (options) => {
-		const child = el.ownerDocument.createElement("div") as unknown as MiniElement & Record<string, unknown>;
-		if (options?.cls) child.className = options.cls;
-		if (options?.text) child.textContent = options.text;
-		for (const [key, value] of Object.entries(options?.attr ?? {})) child.attributes.set(key, value);
-		el.children.push(child);
-		return asObsidianElement(child);
-	};
-	el.createEl = (tag, options) => {
-		const child = el.ownerDocument.createElement(tag);
-		if (options?.cls) child.className = options.cls;
-		for (const [key, value] of Object.entries(options?.attr ?? {})) child.attributes.set(key, value);
-		el.children.push(child);
-		return asObsidianElement(child);
-	};
-	el.createSpan = (options) => el.createEl?.("span", { text: options?.text });
-	el.toggleClass = (token, value) => {
-		el.classList.toggle(token, value);
-	};
-	return el as unknown as HTMLElement;
+	return element as HTMLElement;
 }
 
 describe("voice panel labels", () => {
@@ -154,16 +130,25 @@ describe("provider-aware voice hints", () => {
 
 	it("points OpenAI-compatible users at endpoint and key ref, never Bailian", () => {
 		const hint = voiceRealtimeSetupHint({ quyuanRealtimeProviderKind: "openai-compatible" });
-		expect(hint).toContain("Realtime 端点");
-		expect(hint).not.toContain("百炼");
+		expect(hint.includes("Realtime 端点")).toBe(true);
+		expect(hint.includes("百炼")).toBe(false);
+		// Q-ARC9：端点已填但转写模型为空 → 含「转写」的提示（否则持续监听下唤醒词静默失效）；
+		// 端点与转写模型都填好才返回空串。
 		expect(
 			voiceRealtimeSetupHint({
 				quyuanRealtimeProviderKind: "openai-compatible",
 				quyuanRealtimeEndpoint: "https://api.openai.com/v1/realtime",
+			}).includes("转写"),
+		).toBe(true);
+		expect(
+			voiceRealtimeSetupHint({
+				quyuanRealtimeProviderKind: "openai-compatible",
+				quyuanRealtimeEndpoint: "https://api.openai.com/v1/realtime",
+				quyuanRealtimeTranscriptionModel: "x-asr",
 			}),
 		).toBe("");
 		expect(
-			voiceRealtimeLaunchHint({ quyuanRealtimeProviderKind: "openai-compatible" }),
-		).toContain("自定义 Realtime 端点");
+			voiceRealtimeLaunchHint({ quyuanRealtimeProviderKind: "openai-compatible" }).includes("自定义 Realtime 端点"),
+		).toBe(true);
 	});
 });

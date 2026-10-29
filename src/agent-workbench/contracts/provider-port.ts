@@ -12,17 +12,25 @@
 import type { RuntimeId } from "./runtime-adapter";
 import type { ProviderProfile } from "./provider-profile";
 
-/** 与 `ai/provider/types` 的 AskEvent 保持结构兼容(工作台只需要这些字段)。 */
+/**
+ * 与 `ai/provider/types` 的 AskEvent 形状一致，由
+ * `adapters/shared/provider-event-compat.ts` 的 Covers 断言守漂移。
+ * 不写成 `export type ProviderAskEvent = AskEvent`：那会让 contracts 反向 import 实现层，
+ * 与本文件开头自述的「adapters → contracts ← ai/provider」方向相反。
+ */
 export type ProviderAskEvent =
 	| { type: "text"; text: string }
 	| { type: "thinking"; text: string }
 	| { type: "tool-request"; toolCallId: string; name: string; input: Record<string, unknown> }
 	| { type: "tool-result"; toolCallId: string; output: unknown; isError: boolean }
+	| { type: "tool-skipped"; toolCallId: string; reason: "already-executed" | "review-mode" }
 	| { type: "usage"; inputTokens: number; outputTokens: number }
-	| { type: "error"; message: string; retryable?: boolean }
+	// retryable 必填，与 ai/provider/types.ts:45 对齐；保持可选会让 Covers 断言因可选性差异而失败
+	// （本会话实测：只补 tool-skipped 仍有 TS2322，差异就是这一处可选性）。
+	| { type: "error"; message: string; retryable: boolean }
 	| { type: "done"; sessionId?: string };
 
-/** 与 `ai/provider/types` 的 AskRequest 结构一致(工作台不新增字段)。 */
+/** 字段与 `ai/provider/types` 的 AskRequest 一致(工作台不新增字段)。 */
 export interface ProviderAskRequest {
 	runId: string;
 	turnId: string;
@@ -42,11 +50,6 @@ export interface ProviderPort {
 	chat(request: ProviderAskRequest): AsyncIterable<ProviderAskEvent>;
 	cancel(runId: string): Promise<void>;
 	resume?(sessionId: string): Promise<void>;
-}
-
-export interface ProviderSecretPort {
-	get(id: string): string | null;
-	has(id: string): boolean;
 }
 
 export interface ProviderPortFactoryInput {

@@ -53,6 +53,37 @@ describe("secret policy", () => {
 		).toEqual({ blocked: false, reasons: [] });
 	});
 
+	it.each([
+		["export OPENAI_API_KEY=abcdefghijklmnop", "env-assignment"],
+		["git clone https://oauth2:ghp_abcdefghijklmnopqrst@github.com/x/y.git", "command-credential"],
+		["mysql -pS3cr3tPassw0rd -u root", "cli-password"],
+	])("blocks command-line credential shape %s", (content, reason) => {
+		expect(inspectVaultContent("30 洞察/note.md", content)).toEqual({
+			blocked: true,
+			reasons: [reason],
+		});
+	});
+
+	// 负例语料覆盖上一版正则的实测误报面：这些是正常笔记/命令行文本，
+	// 一旦命中就会让 `context-assembler.ts:39` 整篇丢内容。
+	it.each([
+		"max_tokens=8192",
+		"monkey=1",
+		"hockey=2",
+		"secretary=小王",
+		"ssh -p22 deploy@host",
+		"docker run -p8080:80 nginx",
+		"python -m pip install -p3 foo",
+		"curl https://api.example.com/v1",
+		"page=2",
+		"node --loader=tsx app.ts",
+	])("does not treat normal text as a command-line credential: %s", (content) => {
+		expect(inspectVaultContent("30 洞察/note.md", content)).toEqual({
+			blocked: false,
+			reasons: [],
+		});
+	});
+
 	it("normalizes path separators before inspection", () => {
 		expect(
 			inspectVaultPath(".config\\plugins\\talos\\data.json", {

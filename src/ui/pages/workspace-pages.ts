@@ -104,7 +104,8 @@ export async function renderJarvisPage(view: TalosView, page: HTMLElement): Prom
 				view.plugin,
 				view.plugin.talosSettings,
 				() => view.plugin.saveTalosSettings(),
-				(pageKey) => view.navigateToPage(pageKey)
+				(pageKey) => view.navigateToPage(pageKey),
+				() => view.plugin.saveTalosVoiceSession()
 			);
 		}
 		view.jarvis.mount(page);
@@ -376,6 +377,10 @@ function renderInboxTriageQueue(view: TalosView, page: HTMLElement, d: Collected
 	panel.setAttribute("data-workflow-section", "triage-queue");
 	const runtime = view.plugin.getConsoleActionRuntime();
 	const definition = runtime.registry.get("triage-inbox-note");
+	// Q-PER11：整库路径映射（含附件）一次页面渲染只算一次；成功移动后置空重算，
+	// 否则第 2 篇同名笔记的撞名判定会拿到旧集合。panel 每次 renderPage 都新建，
+	// 闭包存活期正好等于一次页面渲染。
+	let pathsCache: ReadonlySet<string> | null = null;
 	new InboxTriagePanel({
 		parent: panel,
 		items: queue,
@@ -387,7 +392,7 @@ function renderInboxTriageQueue(view: TalosView, page: HTMLElement, d: Collected
 			dir: view.paths.dir(key),
 		})),
 		session: view.inboxTriageSession,
-		existingPaths: () => new Set(view.app.vault.getFiles().map((file) => file.path)),
+		existingPaths: () => (pathsCache ??= new Set(view.app.vault.getFiles().map((file) => file.path))),
 		evaluate: (request) =>
 			definition
 				? evaluateActionRisk(definition, request)
@@ -402,6 +407,7 @@ function renderInboxTriageQueue(view: TalosView, page: HTMLElement, d: Collected
 				approvalGranted: true,
 			});
 			if (task.state === "completed") {
+				pathsCache = null;
 				new Notice(`已归档到 ${plan.to}`);
 				return { ok: true, message: `已归档到 ${plan.to}` };
 			}

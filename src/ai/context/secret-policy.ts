@@ -11,7 +11,10 @@ export type SecretBlockReason =
 	| "sensitive-header"
 	| "cookie"
 	| "private-key"
-	| "api-key";
+	| "api-key"
+	| "env-assignment"
+	| "command-credential"
+	| "cli-password";
 
 export interface SecretInspection {
 	blocked: boolean;
@@ -144,6 +147,29 @@ export function inspectVaultContent(
 		)
 	) {
 		return blocked("api-key");
+	}
+	// 环境变量赋值：大写整词 + 下划线分段，**不带 i**。
+	// 加 i 会让 max_tokens=8192 / monkey=1 / hockey=2 / secretary=小王 这类正常笔记
+	// 整篇被判 blocked（`context-assembler.ts:39` 会丢内容）。
+	if (
+		/(?:^|\n)[ \t]*(?:export[ \t]+)?[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL)[A-Z0-9_]*[ \t]*=[ \t]*\S+/.test(
+			content
+		)
+	) {
+		return blocked("env-assignment");
+	}
+	// URL userinfo（内嵌凭据）：scheme://user:secret@host
+	if (/[a-z][a-z0-9+.-]*:\/\/[^\s/:@]+:[^\s/@]+@/i.test(content)) {
+		return blocked("command-credential");
+	}
+	// CLI 口令：**只限定会读口令的客户端**。不用「-p 后含数字」的启发式——
+	// 那会命中 ssh -p22 / docker run -p8080:80 / pip install -p3，且漏掉 mysql -pMyPassword。
+	if (
+		/(?:^|\s)(?:mysql|mysqldump|psql|pg_dump|redis-cli|mongosh|mongo|sqlcmd)\b[^\n]*\s-p(?!\s)\S+/i.test(
+			content
+		)
+	) {
+		return blocked("cli-password");
 	}
 	return ALLOWED;
 }

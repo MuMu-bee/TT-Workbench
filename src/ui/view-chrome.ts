@@ -32,6 +32,8 @@ export function buildShell(view: TalosView): void {
 
 	buildSidebar(view, sidebar);
 	buildMain(view, main);
+	// buildMain 才建出 cosmos 状态区的时钟节点，这里补进已建好的时钟引用。
+	view.clockRefs = { ...view.clockRefs, cosmosClock: view.cosmosClockEl };
 }
 
 export function buildThemeAtmosphere(view: TalosView, bg: HTMLElement): void {
@@ -69,10 +71,24 @@ export function buildSidebar(view: TalosView, side: HTMLElement): void {
 	clockCard.setCssProps({ "--ac": "#38E1FF" });
 	const clock = clockCard.createDiv({ cls: "clock" });
 	const cl = clock.createDiv();
-	view.timeEl = cl.createDiv({ cls: "time", text: "--:--" });
+	// Q-QUA20：固定 5 节点结构一次性建好（span:hh / em / span:mm / em / span:ss），
+	// 之后每秒只就地 setText，不再 empty() 重建 5 个节点。
+	view.timeEl = cl.createDiv({ cls: "time" });
+	const hhEl = view.timeEl.createSpan({ cls: "clock-hh", text: "--" });
+	view.timeEl.createEl("em", { text: ":" });
+	const mmEl = view.timeEl.createSpan({ cls: "clock-mm", text: "--" });
+	view.timeEl.createEl("em", { text: ":" });
+	const ssEl = view.timeEl.createSpan({ cls: "clock-ss", text: "--" });
 	cl.createDiv({ cls: "sub", text: "ASIA/SHANGHAI" });
 	view.dateEl = clock.createDiv({ cls: "date" });
 	view.weekEl = clockCard.createDiv({ cls: "week" });
+	view.clockRefs = {
+		hh: hhEl,
+		mm: mmEl,
+		ss: ssEl,
+		date: view.dateEl,
+		cosmosClock: view.cosmosClockEl ?? null,
+	};
 
 	// 导航
 	const navCard = side.createEl("section", { cls: "card pagenav-card" });

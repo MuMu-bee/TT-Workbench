@@ -51,6 +51,12 @@ export class InboxTriagePanel {
 	private proposalPath: string | null = null;
 	private proposal: ProposalPanel | null = null;
 	private busy = false;
+	/**
+	 * Q-PER11：一次「收下」里 propose() 与随后 mountProposal() 会各调一次 planFor()，
+	 * 每次都要把整库（含附件）路径映射一遍。按分诊周期缓存，成功移动 / 改判 / 卸载时失效，
+	 * 否则 inbox-triage.ts 的撞名判定会读到旧集合而漏判。
+	 */
+	private existingCache: ReadonlySet<string> | null = null;
 
 	constructor(private readonly options: InboxTriagePanelOptions) {
 		const deferred = options.session?.deferred ?? [];
@@ -78,6 +84,7 @@ export class InboxTriagePanel {
 	}
 
 	unmount(): void {
+		this.existingCache = null;
 		this.proposal?.unmount();
 		this.proposal = null;
 		this.root?.remove();
@@ -161,6 +168,7 @@ export class InboxTriagePanel {
 			this.topics.set(path, "已改判");
 			this.status.delete(path);
 			if (this.proposalPath === path) this.proposalPath = null;
+			this.existingCache = null;
 			this.render();
 		});
 		controls.appendChild(select);
@@ -192,6 +200,12 @@ export class InboxTriagePanel {
 		return this.options.session?.deferred.includes(path) ?? false;
 	}
 
+	/** 路径集合按「一次收下」为周期缓存；所有会让库内容变化的入口都把它置空。 */
+	private existing(): ReadonlySet<string> {
+		if (this.existingCache === null) this.existingCache = this.options.existingPaths();
+		return this.existingCache;
+	}
+
 	private planFor(path: string): ReturnType<typeof planInboxMove> | null {
 		const key = this.choice.get(path);
 		const target = this.options.targets.find((option) => option.key === key);
@@ -201,11 +215,13 @@ export class InboxTriagePanel {
 			inboxDir: this.options.inboxDir,
 			targetKey: target.key,
 			targetDir: target.dir,
-			existingPaths: this.options.existingPaths(),
+			existingPaths: this.existing(),
 		});
 	}
 
 	private propose(path: string): void {
+		// 新的一次「收下」：重取集合，别拿上一轮的结果判撞名。
+		this.existingCache = null;
 		const result = this.planFor(path);
 		if (!result) return;
 		if (!result.ok) {
@@ -256,11 +272,16 @@ export class InboxTriagePanel {
 		if (this.busy) return;
 		this.busy = true;
 		this.proposalPath = null;
+		// 移动成功后库里的路径集合会变，缓存必须失效（与下面的 result.ok 同一次「收下」）。
+		this.existingCache = null;
 		this.status.set(path, "正在归档…");
 		this.render();
 		try {
 			const result = await this.options.onApprove(plan);
-			if (result.ok) this.done.add(path);
+			if (result.ok) {
+				this.done.add(path);
+				this.existingCache = null;
+			}
 			this.status.set(path, result.message);
 		} catch (error) {
 			this.status.set(path, error instanceof Error ? error.message : String(error));

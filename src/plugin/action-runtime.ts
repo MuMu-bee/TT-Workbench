@@ -2,6 +2,7 @@
 import { type ConsoleActionRuntime, createConsoleActionRuntime } from "../console-action-runtime";
 import { Notice, TFile, normalizePath } from "obsidian";
 import { TRIAGE_TARGET_KEYS } from "../inbox-triage";
+import { noteRootsFromSchema, noteScopesFromSchema } from "../action-core/note-scopes";
 import { VaultRecoveryStore } from "../task-core/recovery-store";
 import { createWindowTimerHost, partialTaskResult } from "../task-core/task-runner";
 import type TalosPlugin from "../main";
@@ -9,20 +10,11 @@ import { ensureVaultFolder } from "./quyuan-diagnostics";
 
 export function createTalosActionRuntime(plugin: TalosPlugin): ConsoleActionRuntime {
 	const actionTimers = createWindowTimerHost(activeWindow);
-	const noteRoots = Array.from(
-		new Set(
-			[
-				plugin.talosSettings.inboxFolder,
-				plugin.talosSettings.dailyFolder,
-				plugin.paths.dir("insights"),
-				plugin.paths.dir("output"),
-				"00 收件箱",
-				"01 日志",
-				"30 洞察",
-				"70 输出",
-			].map((path) => normalizePath(path))
-		)
+	// 写白名单只从 TalosVaultSchema 派生（`plugin.paths` 内部是 VaultPaths(resolveSchema(...))）。
+	const noteRoots = noteRootsFromSchema(plugin.paths.schema).map((path) =>
+		normalizePath(path)
 	);
+	const noteScopes = noteScopesFromSchema(plugin.paths.schema);
 	const executeCallback = async (input: unknown): Promise<unknown> => {
 		if (
 			!input ||
@@ -124,6 +116,7 @@ export function createTalosActionRuntime(plugin: TalosPlugin): ConsoleActionRunt
 		},
 		scopes: {
 			noteWriteScopes: noteRoots.map((path) => `${path}/**`),
+			publishWriteScopes: noteScopes.publishWriteScopes,
 			inboxTriageReadScopes: [`${normalizePath(plugin.talosSettings.inboxFolder)}/**`],
 			inboxTriageWriteScopes: [
 				`${normalizePath(plugin.talosSettings.inboxFolder)}/**`,

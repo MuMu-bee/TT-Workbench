@@ -3,6 +3,7 @@
 > 基线上游:`WAINAO-Haaper/talos-plugin` @ commit `fb365d0`(v0.4.9,2026-10-13)。
 > 本清单满足 TALOS Personal Use Source License 1.0 第 2 节"modified files are clearly identified"的要求,由 `git diff --name-status fb365d0 HEAD` 精确生成。
 > **未修改**:`LICENSE`、`THIRD-PARTY-NOTICES.md`、`THIRD-PARTY-LICENSES.txt`、`MaShanZheng-*`、全部 vendor 快照(逐字节一致,已由 .gitattributes 钉死)。
+> **阅读口径**:本文件按批次追加,同一事项在不同批次可能更新状态;出现冲突时以**最新批次**的小节为准。
 
 ## 新增文件(2)
 
@@ -166,7 +167,7 @@
 
 | 文件 | 内容 |
 |---|---|
-| `src/agent-workbench/contracts/provider-port.ts` | Provider 端口契约:ProviderPort / ProviderAskRequest / ProviderSecretPort / ProviderPortFactoryInput / DirectApiProviderFactory |
+| `src/agent-workbench/contracts/provider-port.ts` | Provider 端口契约:ProviderPort / ProviderAskRequest / ProviderPortFactoryInput / DirectApiProviderFactory |
 | `src/quyuan/voice-panel-labels.ts` | 面板标签与状态纯函数(模型/音色/权限/引擎文案、待机状态推导、Provider 类型) |
 | `src/quyuan/voice-confirm-card.ts` | 破坏性操作二次确认卡自包含组件(原 voice-panel 内联 50 行) |
 | `tests/voice-panel-labels.test.ts` | 9 项行为测试(标签兜底、引擎文案、权限标签、状态推导、确认卡超时/播报开关) |
@@ -187,6 +188,46 @@
 - F1 的 "voice-panel ≤800 行" 未达成:剩余主体为 `mount()`(约290行连续 DOM 构建)与 `buildRealtime()`(157行,强耦合面板状态),需面板状态容器方能安全拆分。
 - F2(qwen-realtime-voice 事件表化)、F3/F4(build/execute 拆分)未开始。
 
+## 1.4.1 — 审查问题清单落地(文档与验收记录批次,相对 1.4.0)
+
+### 新增文件
+
+| 文件 | 内容 |
+|---|---|
+| `scripts/check-file-size.mjs` + `scripts/file-size-baseline.json` | Q-ARC12:体量棘轮门(单文件 ≤800 行、函数 ≤100 行的目标模式 + 防回涨的基线模式),接入 `npm run check:file-size` 与 CI |
+| `scripts/run-chat-gate-fixtures.mjs` + `fixtures/chat-gate/{pass,fail-no-finish}/` | Q-TES9:把 chat-gate 从手工门变成合成夹具门(正例 exit 0 / 反例 exit 1),接入 CI |
+| `tests/doc-consistency.test.ts` | Q-DOC1–Q-DOC18 的文档一致性守卫(版本四处一致、tab 名、主题数、安装清单、G 闸门口径、**.md 制表符守卫**等) |
+| `tests/file-size-and-chat-gate.test.ts` | 体量门与 chat-gate 夹具的断言 |
+| `tests/security-audit-sink-and-handoff.test.ts` | Q-TES7:为 `security/jsonl-security-audit-sink.ts` 与 `core/context-handoff-service.ts` 补行为用例(此前 0% 覆盖) |
+| `tests/voice-panel-dom-probe.test.ts` | Q-ARC12 第 2 步:拆分前的 DOM 探针(证明面板可在 node 里 mount) |
+
+### 修改
+
+| 文件 | 内容 |
+|---|---|
+| `package.json` | 新增 `typecheck:tests`、`check:file-size`、`test:chat-gate:fixture` 三个脚本 |
+| `tests/tsconfig.json` | 只补 `compilerOptions.noEmit`(不加 `references`:主 tsconfig 无 `composite`,会报 TS6306/TS6310) |
+| `vitest.config.ts` | 新增 `coverage.thresholds`(全局 lines 37、security 78、storage 81,只锁报告给出的 lines 值) |
+| `.github/workflows/ci.yml` | 新增 Typecheck tests / Coverage / Chat gate fixtures / File size 四个 step;产物清单删掉 `claude-sdk.cjs` 并加存在性断言 |
+| `src/settings.ts` | `TALOS_SETTING_TABS` 与 `TalosSettingTabDefinition` 导出,供文档守卫 import |
+| `src/agent-workbench/security/process-sandbox.ts` | 用户提示里的 tab 名改为「对话与模型」 |
+| `src/quyuan/local-voice-supply-chain.ts` | 文件头补「0 引用,仅作供应链边界的类型留档」 |
+| `AGENTS.md` | 安装目录改 `plugins/tt-workbench/`;清除 `CLAUDE.md`/`refresh-dashboard.py` 死引用;统计口径真源指回 `src/data/schema.ts`;写明本仓库不定义 G4–G7 |
+| `README.md` | Q-DOC1/2/3/4/5/6/9/10 的正文修正(平台矩阵、产物清单、9 文件安装清单、tab 名、八套主题、版本徽章、发布状态口径、执行链路指向) |
+| `ACCEPTANCE.md` | Q-TES2/Q-TES4/Q-DOC2/Q-DOC18:composition 归因改为产品缺陷并单列「已知产品缺陷」;A5 判据改为同提交实测;A6 去掉已不存在的 split 守卫;`1.3.1` 实机路径改占位符(修掉吃掉反斜杠的制表符) |
+| `ROADMAP.md` | Q-DOC17:批次二三种说法收敛为一条;行数写 `wc -l` 实测值;批次二/三表格回填体量门与类型门 |
+| `CHANGELOG.md` | Q-DOC15:页脚「最近」改为全文最大条目日期 2026-10-25;Q-DOC4:两处历史 tab 名加括注(不改原文) |
+| `docs/design-qa.md` | Q-DOC8:同日 `passed`/`failed` 冲突加取消标注与双向指认,补文件级判定口径;陈旧测试计数标注为历史快照 |
+| `docs/multi-channel-execution.md` | Q-DOC10:顶部加失效横幅与失效证据 |
+| `docs/qa/wp7-upgrade-rollback.md` | Q-DOC11:`contracts/wp6-plugin-baseline.json` 改为「以本文档记录为准,仓库内无独立 json 副本」 |
+| `docs/qa/wp7-mock-acceptance.md` | Q-DOC12:`quyuan-v2.selftest.mjs` 判为未落地;更正 self-test 输出串 |
+| `docs/qa/g3-multiformat-preview-acceptance.md` | Q-DOC14:Preview 入口改到对话输入栏;补入口核对命令与常量比对说明 |
+| `docs/qa/wp7-obsidian-acceptance.md` | 陈旧测试计数标注为历史快照 |
+| `docs/TALOS-标准化方案.md` | Q-DOC13:补完成度回填与第七节四条逐条状态 |
+| `docs/superpowers/plans/2026-07-24-wp7-unified-ai-console.md` | Q-DOC12:规划稿里的 `quyuan-v2.selftest.mjs` 标注未落地 |
+| `agent-workbench-chat-gate.selftest.mjs` | Q-TES9:`RUNTIME_IDS` 收窄为 `ohmypi`;更正报错文案;补「不需要真实 Vault」的说明 |
+| `src/quyuan/qwen-realtime-voice.ts` | Q-ARC12 第 5 步(F2):`handleServerEvent()` 事件表化——新增 `SERVER_EVENT_HANDLERS` 表与 13 个 `onXxx()` 具名方法,分派器本身由 161 行降到 5 行;各分支体逐字搬迁,行为不变(22 项行为用例全绿) |
+
 ## 刻意保留(合规或合同要求)
 
 1. `LICENSE` / `THIRD-PARTY-NOTICES.md` / `THIRD-PARTY-LICENSES.txt` / `MaShanZheng-*` — 许可证与第三方声明逐字保留(license 第 2 节要求)。
@@ -194,4 +235,6 @@
 3. `.talos/` 数据目录、`.talos/private` 等保护区路径 — 既有用户数据与安全策略兼容层。
 4. vault 内 `TALOS系统/`、`TALOS中枢/` 目录约定 — 用户 Vault 侧数据结构,不属于插件品牌。
 5. CSS 类名 `talos-*` 前缀(约 4091 处)与 `VIEW_TYPE_TALOS` 等内部标识符 — 内部 ABI,52 个测试文件依赖;批量重命名属高风险重写,已列入 `ROADMAP.md` 批次三评估。
-6. 死代码链(本地 ASR 整链、背景动画三件套等) — 本批次不删(有供应链测试依赖),已列入 `ROADMAP.md` 批次二。
+6. 死代码链(本地 ASR 整链、背景动画三件套等) — 已于 1.2.0 删除(见本文件 1.2.0 节);`src/quyuan/local-voice-supply-chain.ts` 为 0 引用残留文件,按下方第 7 条保留并标注。
+7. `src/quyuan/local-voice-supply-chain.ts`(209 行) — **0 引用,保留为供应链边界的类型留档**。`grep -rn "local-voice-supply-chain" src/ tests/` 无命中。它导出 `LOCAL_VOICE_ASSET_PROTOCOL_VERSION`、`ALLOWED_LOCAL_VOICE_MODEL_HOSTS`、`LocalAsrTranscriber` 等供应链约束类型;删除会缩小未来的供应链约束面,故默认保留。若后续决定删除,验收改判为「`ls` 报 No such file 且 `npm run build` 仍退出码 0」。
+8. `TALOS-Favicon-64-v1.png` — 仅供 `prototype/overview-operations-qa.html` 与 `prototype/quyuan-voice-particle-qa.html` 的 QA 预览引用,代码零读取(`grep -rn Favicon src/` = 0),**不属分发必需**;分发包的资产清单见 `README.md` 安装章节(9 个文件,含被 `src/ui/welcome-easter-egg.ts:18` 读取的 `TALOS-Mascot-Character-Transparent-v1.png`)。

@@ -1,6 +1,14 @@
 # 屈原多通道执行链路对齐 Claudian · 技术方案
 
-> 日期：2026-06-28 · 状态：P0–P5 全部落地
+> 日期：2026-06-28 · 状态：**已失效（历史规划稿）**
+
+> ⚠️ **本稿是 2026-06-28 时点的架构规划稿，不是现状。** 现行执行链路见 `src/agent-workbench/`：
+> `contracts/` 定义端口与事件契约，`adapters/` 与 `transports/` 落地 OhMyPi 原生运行时与
+> Direct API 两类通道，`ui/` 提供工作台界面。本稿描述的目标文件多半已不存在
+> （`src/jarvis/engine.ts`、`engine-factory.ts`、`providers/registry.ts`、`session/store.ts`、
+> `context/mentions.ts`），且本稿 `:16` 仍写 `@anthropic-ai/claude-agent-sdk`、本稿的
+> `PROVIDERS`（`claude-cli`/`claude-api`/`codex`）与现行 `RuntimeId`（已收窄为 `"ohmypi"`）
+> 不一致，故不得按本稿理解当前执行链路。本文件仅作历史记录保留。
 
 > **目标**：常用的 Claudian 有的能力，屈原都要有；屈原独占的能力（语音双向 + 长在超级大脑里的人格），Claudian 没有也不动。
 > **一句话架构**：把「引擎」抽象成可替换的多通道，`JarvisEvents` 事件总线不变，`panel.ts` / `voiceio.ts` / 人格注入零改动——这是整个方案的承重墙。

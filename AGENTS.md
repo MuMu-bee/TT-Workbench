@@ -1,13 +1,13 @@
 # TALOS 控制台插件 — Agent 协作规则
 
-> 本文件与 `CLAUDE.md` 内容一致。任何 Agent 进入本项目前必读。
+> 本文件是本仓库唯一的 Agent 协作规则。任何 Agent 进入本项目前必读。
 
 ## 这是什么
 
 - TypeScript 编写的 **Obsidian community plugin**，不是 Obsidian Vault。
-- 插件 ID `tt-workbench`，显示名 `TT工作台`（TT-Workbench），版本 `1.0.0`，最低 Obsidian `1.11.4`。基于 TALOS v0.4.9 定制，原项目许可证与署名保留。
+- 插件 ID `tt-workbench`，显示名 `TT工作台`（TT-Workbench），版本 `1.4.0`，最低 Obsidian `1.11.4`。基于 TALOS v0.4.9 定制，原项目许可证与署名保留。
 - 定位：**超级大脑整个系统的原生控制台**。扫全库、实时统计、把每个系统模块的态势呈现在一个 Obsidian 视图里。
-- 取代旧方案：`07-控制台/dashboard.html` + `System/scripts/refresh-dashboard.py`（python 写 STATS）+ `超级大脑仪表盘.md` 的 DataviewJS iframe。`超级大脑仪表盘.md` 已于 2026-06-28 删除；`dashboard.html` + python 暂留为回退备份。
+- 取代旧方案：`07-控制台/dashboard.html` + `System/scripts/refresh-dashboard.py`（python 写 STATS）+ `超级大脑仪表盘.md` 的 DataviewJS iframe。`超级大脑仪表盘.md` 已于 2026-06-28 删除；`dashboard.html` 与 `refresh-dashboard.py` 已不在本仓库，该回退方案已由本控制台取代。
 
 ## 常用命令
 
@@ -15,13 +15,13 @@
 
 ## 产物与安装
 
-- 最终只需 `main.js`、`manifest.json`、`styles.css` → 拷到 `<vault>/.obsidian/plugins/talos/`。
+- 最终只需 `main.js`、`manifest.json`、`styles.css` → 拷到 `<vault>/.obsidian/plugins/tt-workbench/`。
 
-## 统计口径（必须与 refresh-dashboard.py 一致）
+## 统计口径（与 `src/data/schema.ts` 的目录约定一致）
 
 - 知识笔记 = 六大内容目录（04-项目/03-素材/02-洞察/05-归档/01-日志/00-收件箱）下 `.md`，排除 `_README.md` 及路径含 `/node_modules/`、`/客户交付物/`、`/交付包/`、`/talos-system-promo` 的副本。
 - 收件箱 = `00-收件箱` 计数；待审批 = `System/pending-approvals.md` 的「## 当前待审批」中 `**状态**：待审批` 数；偏好候选 = `System/working-memory/candidates.md`「待确认」条目数；健康分趋势 = `health-log.md` 的 `<!-- EVAL_HISTORY -->` 最近 9 点；今日焦点 = `System/working-memory/tasks.md`「## 焦点」。
-- TALOS 产品发布作战室 = `04-项目/TALOS系统/tasks.md`（G1/G2/G3 闸门 + PUB-W + 发布数/冻结天数）。
+- TALOS 产品发布作战室 = `04-项目/TALOS系统/tasks.md`（G1/G2/G3 闸门 + PUB-W + 发布数/冻结天数）。本仓库不定义 G4–G7，也不据此判定发布资格。
 
 ## 开发约束
 

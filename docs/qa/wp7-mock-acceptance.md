@@ -36,7 +36,7 @@
 
 1. RED：先创建 `tests/wp7-e2e.test.ts`；`npx vitest run tests/wp7-e2e.test.ts` 按预期以 `ENOENT` 失败，因为 `fixtures/wp7-vault/` 尚不存在（1 file，1 failed）。
 2. GREEN：建立九模块纯合成 fixture、审批夹具、假密钥边界、13 条 synthetic registry 和 canonical request 证据后，同一命令通过（1 file，1 test）。
-3. 契约固化：`quyuan-v2.selftest.mjs` 新增共享核心复用、无网络调用、fixture registry 和密钥边界文件存在性断言。
+3. 契约固化：**未落地**——计划中的 `quyuan-v2.selftest.mjs` 未随本批次入库，因此「共享核心复用、无网络调用、fixture registry、密钥边界文件存在性」四条断言没有载体（实测 `grep -c "registry\|network\|密钥\|fixture\|共享" agent-workbench-native.selftest.mjs` = 0）。这四条仍是未兑现的承诺，不得按已覆盖理解。
 4. 未修改 `src/` 生产实现；没有新增第二执行器、审批系统或会话存储。
 
 ## 新鲜验证结果
@@ -45,7 +45,7 @@
 |---|---|
 | `npx vitest run tests/wp7-e2e.test.ts` | PASS；1 file，1 test |
 | `npm test` | PASS；43 files，232 tests |
-| `npm run test:quyuan` | PASS；`Quyuan v2 self-test: passed` |
+| `npm run test:quyuan` | PASS；`TALOS native agent workbench self-test passed`（该命令即 `node agent-workbench-native.selftest.mjs`；本行原记的 `Quyuan v2 self-test: passed` 与脚本实际输出串不符，已按实测输出更正） |
 | `npm run test:approval-actions` | PASS；`approval action selftest passed` |
 | `npm run test:approval-executor` | PASS；`approval executor selftest passed` |
 | `npm run typecheck` | PASS；`tsc --noEmit --skipLibCheck` |
@@ -62,7 +62,9 @@
 
 ## 产物
 
-- `tests/wp7-e2e.test.ts`
-- `fixtures/wp7-vault/`
-- `docs/qa/wp7-mock-acceptance.md`
-- `quyuan-v2.selftest.mjs`
+- `tests/wp7-e2e.test.ts`（存在）
+- `fixtures/wp7-vault/`（存在）
+- `docs/qa/wp7-mock-acceptance.md`（本文件，存在）
+- ~~`quyuan-v2.selftest.mjs`~~ —— **未落地**：仓库根现有 4 个 selftest
+  （`agent-workbench-chat-gate` / `agent-workbench-native` / `approval-actions` / `approval-executor`），
+  没有 `quyuan-v2.selftest.mjs`。缺失 1 项，见上方 TDD 记录第 3 条。

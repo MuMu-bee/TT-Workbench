@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TalosAskService } from "../src/ai/ask-service";
+import { TalosAskService, MAX_TRACKED_RUNS } from "../src/ai/ask-service";
 import { ProviderFacade } from "../src/ai/provider/provider-facade";
 import type {
 	AskEvent,
@@ -321,5 +321,74 @@ describe("TalosAskService", () => {
 				audit: { deniedModules: ["identity"] },
 			},
 		]);
+	});
+
+	it("bounds the tracked runs table at MAX_TRACKED_RUNS over 100 asks", async () => {
+		const provider = new RecordingProvider("mock-main");
+		const facade = new ProviderFacade();
+		facade.register(provider);
+		const service = new TalosAskService({
+			facade,
+			retriever: retriever({ hits: [], blocked: [] }),
+			manualReview: () => true,
+			toolGateway: {
+				async propose() {
+					return { taskId: "task" };
+				},
+			},
+		});
+
+		for (let i = 0; i < 100; i++) {
+			await collect(
+				service.ask({
+					sessionId: "session",
+					namespace: "chat",
+					runId: `run-${i}`,
+					turnId: `turn-${i}`,
+					providerId: "mock-main",
+					query: `question ${i}`,
+				})
+			);
+		}
+
+		const runs = (service as unknown as { runs: Map<string, unknown> }).runs;
+		expect(runs.size).toBeLessThanOrEqual(MAX_TRACKED_RUNS);
+		expect(runs.size).toBe(MAX_TRACKED_RUNS);
+		// Map 插入序即时间序：最旧的被淘汰、最新的还在
+		expect(runs.has("run-0")).toBe(false);
+		expect(runs.has("run-99")).toBe(true);
+	});
+
+	it("consumes a run once so a second review reports the eviction cap", async () => {
+		const provider = new RecordingProvider("mock-main");
+		const facade = new ProviderFacade();
+		facade.register(provider);
+		const service = new TalosAskService({
+			facade,
+			retriever: retriever({ hits: [], blocked: [] }),
+			manualReview: () => true,
+			toolGateway: {
+				async propose() {
+					return { taskId: "task" };
+				},
+			},
+		});
+
+		await collect(
+			service.ask({
+				sessionId: "session",
+				namespace: "chat",
+				runId: "review-once",
+				turnId: "turn-once",
+				providerId: "mock-main",
+				query: "question",
+			})
+		);
+
+		await collect(service.review("review-once", "mock-main"));
+		// 一次性消费生效：第二次 review 命中「已被消费」，错误信息要能区分「被淘汰」与「从未存在」
+		await expect(collect(service.review("review-once", "mock-main"))).rejects.toThrow(
+			"仅保留最近 32 轮"
+		);
 	});
 });

@@ -22,10 +22,19 @@ function exactTool(toolName: string, metadata?: Record<string, unknown>): { kind
 	return EXACT_TOOLS[toolName.trim().toLowerCase()] ?? { kind: "unknown", canonicalToolId: "talos.unknown" };
 }
 
-function targetsFor(input: Record<string, unknown>, kind: ActionKind): ActionTarget[] {
+/**
+ * 目标路径扫描的包装层上限。按包装层数计（`visit` 的 depth 初值 0）：
+ * 0-3 层保留、4-6 层截断（实测两次结果一致）。不要把阈值写成「≤4 层保留」。
+ */
+const MAX_TARGET_SCAN_DEPTH = 4;
+
+function targetsFor(input: Record<string, unknown>, kind: ActionKind): { targets: ActionTarget[]; truncated: boolean } {
 	const targets: ActionTarget[] = [];
+	let truncated = false;
 	const visit = (value: unknown, key = "", depth = 0): void => {
-		if (depth > 4) return;
+		// `visit` 只在值是数组/对象时递归，因此能走到这个 bail 的位置必定是在切容器，
+		// 即 `truncated` 只在「真的丢了内容」时为 true。
+		if (depth > MAX_TARGET_SCAN_DEPTH) { truncated = true; return; }
 		const normalizedKey = key.toLowerCase();
 		if (PATH_KEYS.has(normalizedKey)) {
 			for (const raw of strings(value)) targets.push({ raw, role: normalizedKey.includes("destination") || normalizedKey.includes("target") || kind === "write" || kind === "delete" || kind === "export" ? "destination" : "source" });
@@ -34,7 +43,7 @@ function targetsFor(input: Record<string, unknown>, kind: ActionKind): ActionTar
 		else if (value && typeof value === "object") Object.entries(value as Record<string, unknown>).forEach(([childKey, child]) => visit(child, childKey, depth + 1));
 	};
 	visit(input);
-	return targets;
+	return { targets, truncated };
 }
 
 function networkFor(input: Record<string, unknown>): ActionRequest["network"] {
@@ -63,7 +72,7 @@ export function normalizeToolAction(input: {
 	const commandText = typeof input.toolInput.command === "string" ? input.toolInput.command.trim() : "";
 	const commandParts = commandText ? commandText.split(/\s+/) : [];
 	const cwd = typeof input.toolInput.cwd === "string" && input.toolInput.cwd.trim() ? input.toolInput.cwd.trim() : input.vaultRoot;
-	const targets = targetsFor(input.toolInput, kind);
+	const { targets, truncated } = targetsFor(input.toolInput, kind);
 	if ((kind === "shell" || kind === "mcp" || kind === "subagent") && !targets.some((target) => target.raw === cwd)) targets.push({ raw: cwd, role: "source" });
 	const destructive = kind === "delete" || /(?:^|\s)(?:rm|rmdir|git\s+(?:reset|clean)|chmod|chown)(?:\s|$)/i.test(commandText);
 	const risk: ActionRisk = kind === "read"
@@ -76,6 +85,7 @@ export function normalizeToolAction(input: {
 		kind,
 		risk,
 		targets,
+		targetsTruncated: truncated,
 		...(commandText ? { command: { executable: commandParts[0] ?? commandText, args: commandParts.slice(1), cwd } } : {}),
 		...(kind === "network" ? { network: networkFor(input.toolInput) } : {}),
 		reason: input.toolName,

@@ -48,14 +48,14 @@ type VoiceTestChunk =
 
 function runtimeWithChunks(chunks: VoiceTestChunk[]): AgentRuntimeAdapter {
 	return {
-		id: "codex",
-		probe: async () => ({ runtimeId: "codex", status: "ready" }),
+		id: "ohmypi",
+		probe: async () => ({ runtimeId: "ohmypi", status: "ready" }),
 		listModels: async () => [],
-		createSession: async () => ({ runtimeId: "codex", sessionId: "voice-session" }),
+		createSession: async () => ({ runtimeId: "ohmypi", sessionId: "voice-session" }),
 		resumeSession: async () => undefined,
 		send: async function* (turn) {
 			for (const [index, chunk] of chunks.entries()) {
-				const common = { eventId: `event-${index}`, conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex" as const, timestamp: new Date().toISOString() };
+				const common = { eventId: `event-${index}`, conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi" as const, timestamp: new Date().toISOString() };
 				if (chunk.type === "text") yield createAgentEvent({ ...common, type: "assistant.delta", payload: { text: chunk.content } });
 				else if (chunk.type === "tool_use") yield createAgentEvent({ ...common, type: "tool.started", payload: { id: chunk.id, name: chunk.name, input: chunk.input } });
 				else if (chunk.type === "tool_result") yield createAgentEvent({ ...common, type: "tool.finished", payload: { id: chunk.id, output: chunk.content, isError: chunk.isError } });
@@ -71,7 +71,7 @@ function runtimeWithChunks(chunks: VoiceTestChunk[]): AgentRuntimeAdapter {
 
 function voiceDriver(runtime: AgentRuntimeAdapter): QuyuanVoiceDriver {
 	const service = {
-		getSelectedRuntimeId: () => "codex",
+		getSelectedRuntimeId: () => "ohmypi",
 		getVaultRoot: () => "/synthetic/vault",
 		getWorkflowMode: () => "plan",
 		createRuntime: async () => runtime,
@@ -148,7 +148,7 @@ describe("voice driver terminal correctness", () => {
 		const runtime = runtimeWithChunks([]);
 		runtime.send = async function* (turn) {
 			await release.promise;
-			yield createAgentEvent({ eventId: "late", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "stale" } });
+			yield createAgentEvent({ eventId: "late", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "stale" } });
 		};
 		const driver = voiceDriver(runtime);
 		const onText = vi.fn();
@@ -173,7 +173,7 @@ describe("voice driver terminal correctness", () => {
 		const runtime = runtimeWithChunks([]);
 		runtime.send = async function* (turn) {
 			await release.promise;
-			yield createAgentEvent({ eventId: "late", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "codex", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "stale-after-dispose" } });
+			yield createAgentEvent({ eventId: "late", conversationId: turn.conversationId, turnId: turn.turnId, runtimeId: "ohmypi", type: "assistant.delta", timestamp: new Date().toISOString(), payload: { text: "stale-after-dispose" } });
 		};
 		const driver = voiceDriver(runtime);
 		const onText = vi.fn();

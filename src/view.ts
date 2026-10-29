@@ -28,6 +28,7 @@ import {
 } from "./data/stats";
 import { collectWarRoom } from "./data/talos";
 import type { TalosSchemaKey } from "./data/schema";
+import { createVaultSnapshot } from "./data/vault-snapshot";
 import { collectCapabilities, type CapabilityGroup } from "./data/capabilities";
 import {
 	collectHealthDigest,
@@ -73,6 +74,8 @@ import { createApprovalActionButton, createCandidateActionButton, renderApproval
 import { renderCosmosStats, syncPixelScene, updateCosmosHeader } from "./ui/view-cosmos";
 import { buildShell, renderNav, renderSecondaryTabs } from "./ui/view-chrome";
 import { addActionButtonContent, wireModuleSelection } from "./ui/view-modules";
+import { RefreshGate } from "./ui/refresh-gate";
+import { clockText, paintClock, type ClockRefs } from "./ui/view-clock";
 // 屈原语音面板按需动态加载，避免完整工作台运行时影响 TALOS 主控制台启动。
 
 /** 经典页面键 → Lens 模块（命令面板等经典入口在 Lens 界面下的落点）。 */
@@ -94,6 +97,8 @@ export class TalosView extends ItemView {
 	timeEl!: HTMLElement;
 	dateEl!: HTMLElement;
 	weekEl!: HTMLElement;
+	/** 时钟的固定 5 节点引用（Q-QUA20：一次建结构，之后只就地 setText）。 */
+	clockRefs!: ClockRefs;
 	pageNavEl!: HTMLElement;
 	chatSwitchHostEl!: HTMLElement;
 	cosmosNodesEl!: HTMLElement;
@@ -126,6 +131,8 @@ export class TalosView extends ItemView {
 	/** 收件箱分诊的会话状态（「稍后」顺序），页面重绘后保留，不写文件。 */
 	readonly inboxTriageSession: InboxTriageSession = { deferred: [] };
 	private clockTimer: number | null = null;
+	/** 刷新代际 + 单飞/尾随合并（Q-QUA17 / Q-PER2）。 */
+	private readonly refreshGate = new RefreshGate();
 	actionPanel: ConsoleActionPanel | null = null;
 	embeddedSettingsTab: TalosSettingTab | null = null;
 	/** Lens 界面语言外壳；经典界面时为 null。 */
@@ -314,7 +321,8 @@ export class TalosView extends ItemView {
 				this.plugin,
 				this.plugin.talosSettings,
 				() => this.plugin.saveTalosSettings(),
-				(pageKey) => this.navigateToPage(pageKey)
+				(pageKey) => this.navigateToPage(pageKey),
+				() => this.plugin.saveTalosVoiceSession()
 			);
 			this.jarvis.mount(host);
 			this.jarvisMounted = true;
@@ -458,19 +466,9 @@ export class TalosView extends ItemView {
 	private updateClock(): void {
 		if (!this.timeEl) return;
 		const d = new Date();
-		const hh = String(d.getHours()).padStart(2, "0");
-		const mm = String(d.getMinutes()).padStart(2, "0");
-		const ss = String(d.getSeconds()).padStart(2, "0");
-		this.timeEl.empty();
-		this.timeEl.appendText(hh);
-		this.timeEl.createEl("em", { text: ":" });
-		this.timeEl.appendText(mm);
-		this.timeEl.createEl("em", { text: ":" });
-		this.timeEl.appendText(ss);
-		this.dateEl.setText(
-			`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}\n周${WEEKDAYS[d.getDay()]}`
-		);
-		this.cosmosClockEl?.setText(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${hh}:${mm}:${ss}`);
+		// Q-QUA20：结构已在 buildSidebar 里建好，这里只算文本并就地写入，
+		// 不再 empty() + appendText + createEl 重建 5 个节点。
+		paintClock(this.clockRefs, clockText(d));
 		if (this.weekEl.childElementCount === 0) this.renderWeek();
 	}
 
@@ -491,64 +489,90 @@ export class TalosView extends ItemView {
 
 	// ---------- 刷新 ----------
 	async refresh(): Promise<void> {
-		await this.refreshPeerStatus();
-		const app = this.app;
-		const s = this.plugin.talosSettings;
-		const paths = this.paths;
-		const { dist, total } = collectDist(app, paths);
-		const inboxCount = dist.find((d) => d.name === "收件箱")?.count ?? 0;
-		const modules = collectModules(app, paths);
-		const { focus, taskFlow } = await collectFocusAndFlow(app, s);
-		const healthTrend = await collectHealthTrend(app, s);
-		const overview = collectOverview(app, paths, total, inboxCount, taskFlow, healthTrend);
-		const approvals = await collectApprovals(app, s);
-		const candidates = await collectCandidates(app, s);
-		const heatmap = collectHeatmap(app);
-		const warRoom = await collectWarRoom(app, s);
-		const capGroups = await collectCapabilities(app);
-		const output = await collectOutputCenter(app, paths);
-		const inbox = await collectInboxDigest(app, s);
-		const healthDigest = await collectHealthDigest(app, paths, s, approvals, candidates);
-		const projects = await collectProjectScenes(app, paths);
-		const knowledge = collectKnowledgeHub(app, paths);
-		const talosProduct = collectTalosProduct(app, paths);
+		// Q-PER2：单飞 + 尾随合并。在途期间的新请求只记一次 pending，
+		// 结束时由 finally 补跑一轮，重叠刷新最多两轮。
+		const ticket = this.refreshGate.tryBegin();
+		if (!ticket.run) return;
+		// Q-QUA17：代际守卫。begin() 必须在第一个 await 之前取，
+		// 之后每一处写 this.data / 重绘都要先判 isCurrent，旧代结果直接丢弃。
+		const refreshVersion = ticket.gen;
+		try {
+			const peerStatus = await this.refreshPeerStatus();
+			if (!this.refreshGate.isCurrent(refreshVersion)) return;
+			this.peerStatus = peerStatus;
+			const app = this.app;
+			const s = this.plugin.talosSettings;
+			const paths = this.paths;
+			// Q-PER1：一次刷新只取一份全库文件列表，后续采集器共用这一快照。
+			const snapshot = createVaultSnapshot(app);
+			const { dist, total } = collectDist(app, paths, snapshot);
+			const inboxCount = dist.find((d) => d.name === "收件箱")?.count ?? 0;
+			const modules = collectModules(app, paths, snapshot);
+			const { focus, taskFlow } = await collectFocusAndFlow(app, s);
+			const healthTrend = await collectHealthTrend(app, s);
+			const overview = collectOverview(app, paths, total, inboxCount, taskFlow, healthTrend, snapshot);
+			const approvals = await collectApprovals(app, s);
+			const candidates = await collectCandidates(app, s);
+			const heatmap = collectHeatmap(app, snapshot);
+			const warRoom = await collectWarRoom(app, s);
+			const capGroups = await collectCapabilities(app);
+			const output = await collectOutputCenter(app, paths, snapshot);
+			const inbox = await collectInboxDigest(app, s, snapshot);
+			const healthDigest = await collectHealthDigest(app, paths, s, approvals, candidates);
+			const projects = await collectProjectScenes(app, paths, snapshot);
+			const knowledge = collectKnowledgeHub(app, paths, snapshot);
+			const talosProduct = collectTalosProduct(app, paths, snapshot);
 
-		this.data = {
-			total,
-			dist,
-			modules,
-			focus,
-			healthTrend,
-			overview,
-			approvals,
-			candidates,
-			heatmap,
-			warRoom,
-			capGroups,
-			output,
-			inbox,
-			healthDigest,
-			projects,
-			knowledge,
-			talosProduct,
-		};
+			if (!this.refreshGate.isCurrent(refreshVersion)) return;
+			this.data = {
+				total,
+				dist,
+				modules,
+				focus,
+				healthTrend,
+				overview,
+				approvals,
+				candidates,
+				heatmap,
+				warRoom,
+				capGroups,
+				output,
+				inbox,
+				healthDigest,
+				projects,
+				knowledge,
+				talosProduct,
+			};
 
-		if (this.lens) {
-			this.lens.setData(this.data, this.peerStatus);
-			return;
+			if (this.lens) {
+				this.lens.setData(this.data, this.peerStatus);
+				return;
+			}
+
+			// 重绘组（时间戳 / 导航 / Hero / 审批侧栏 / 页面）统一一次代际校验：
+			// 旧代结果不重绘，避免旧采集覆盖新采集（审批项「复活」）。
+			if (!this.refreshGate.isCurrent(refreshVersion)) return;
+
+			const now = new Date();
+			this.stampEl.setText(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+			this.renderNav();
+
+			// 屈原页活跃时，库变动触发的后台刷新不重绘控制台——
+			// 否则会拆掉对话页、打断朗读、画面闪跳。数据已存，离开此页时自然刷新。
+			if (this.activePage === "jarvis" && this.jarvisMounted) return;
+
+			this.renderHeroStats();
+			this.renderApprovalSide();
+			this.renderPage();
+		} finally {
+			// 补跑一轮（靠 begin 自增保证补跑拿到新代）；补跑自身的异常
+			// 不能盖掉原始错误，单独收敛到 runtime 错误记录。
+			if (this.refreshGate.end()) {
+				void this.refresh().catch((error: unknown) => {
+					this.plugin.recordQuyuanRuntimeError("console-refresh-trailing", error);
+				});
+			}
 		}
-
-		const now = new Date();
-		this.stampEl.setText(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
-		this.renderNav();
-
-		// 屈原页活跃时，库变动触发的后台刷新不重绘控制台——
-		// 否则会拆掉对话页、打断朗读、画面闪跳。数据已存，离开此页时自然刷新。
-		if (this.activePage === "jarvis" && this.jarvisMounted) return;
-
-		this.renderHeroStats();
-		this.renderApprovalSide();
-		this.renderPage();
 	}
 
 	// Hero 数字只住星轨节点一处（门面层）；行动指标住总览页（行动层）。
@@ -600,18 +624,17 @@ export class TalosView extends ItemView {
 
 	// ---------- 页 ----------
 	// ---------- TT 状态桥（只读消费 lili 派生缓存） ----------
-	private async refreshPeerStatus(): Promise<void> {
+	private async refreshPeerStatus(): Promise<TalosPeerStatusState> {
 		try {
 			const vaultRoot = resolveVaultRootFromAdapter(this.app.vault.adapter);
 			if (!vaultRoot) {
-				this.peerStatus = { state: "invalid", reason: "vault-not-filesystem" };
-				return;
+				return { state: "invalid", reason: "vault-not-filesystem" };
 			}
-			this.peerStatus = await readTalosPeerStatus(new NodePeerStatusFileHost(vaultRoot), {
+			return await readTalosPeerStatus(new NodePeerStatusFileHost(vaultRoot), {
 				enabled: this.plugin.talosSettings.talosPeerStatusBridgeEnabled !== false,
 			});
 		} catch {
-			this.peerStatus = { state: "invalid", reason: "cache-unreachable" };
+			return { state: "invalid", reason: "cache-unreachable" };
 		}
 	}
 
@@ -739,7 +762,13 @@ export class TalosView extends ItemView {
 
 		// 总览页：主判断缩成可操作模块，指标与二级状态重排，避免横向大面板铺满。
 		fillOverviewKanban(parent: HTMLElement, d: Collected): void {
-		const runs = this.plugin.getConsoleActionRuntime().store.list();
+		const runtime = this.plugin.getConsoleActionRuntime();
+		// Q-ARC3 之后提案已移出 task store，未注册 actionId 的主路径消失了；
+		// 但一个未注册 id 混进来就会让「进行中」永久虚高、动作也永远跑不动，
+		// 这道零成本的存在性过滤留作防回归兜底。
+		const runs = runtime.store
+			.list()
+			.filter((run) => runtime.registry.get(run.actionId) !== undefined);
 		const activeStates = new Set(["ready", "queued", "running"]);
 		const active = runs.filter((run) => activeStates.has(run.state));
 		const finished = runs.filter((run) => !activeStates.has(run.state)).slice(-5).reverse();

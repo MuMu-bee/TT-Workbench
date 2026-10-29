@@ -5,6 +5,49 @@ import { setIcon } from "obsidian";
 export type LensChild = Node | string | number | null | undefined | false;
 export type LensAttrs = Record<string, string | number | boolean | null | undefined>;
 
+/** 防抖句柄：run 推迟执行、flush 立刻执行待处理调用、cancel 丢弃待处理调用。 */
+export interface Debounced {
+	run(): void;
+	flush(): void;
+	cancel(): void;
+}
+
+/**
+ * 极简防抖（Q-PER9）：搜索框每个字符都会触发一次整页重建，先合并成一个窗口再渲染。
+ *
+ * 定时器来源不能写 `window.setTimeout`：Lens 的用例跑在 node 下，那里没有 `window`
+ * （本会话实测 `node -e "typeof window"` 为 undefined），照抄 native-composer.ts 的写法
+ * 会让任何用例在第一次输入时直接抛错。取全局对象本身（不是它上面的方法），
+ * 所以 vitest 的 `vi.useFakeTimers()` 运行时替换 setTimeout 仍然生效。
+ * 唯一一处全局对象引用，按仓库既有做法逐行豁免 obsidianmd/no-global-this。
+ */
+// eslint-disable-next-line obsidianmd/no-global-this -- 需要 node（测试）与 Obsidian 都能用；见上方注释
+const globalTimers: Pick<Window, "setTimeout" | "clearTimeout"> = globalThis;
+
+export function debounce(fn: () => void, waitMs: number): Debounced {
+	let handle: ReturnType<Window["setTimeout"]> | null = null;
+	const cancel = (): void => {
+		if (handle === null) return;
+		globalTimers.clearTimeout(handle);
+		handle = null;
+	};
+	const invoke = (): void => {
+		cancel();
+		fn();
+	};
+	return {
+		run(): void {
+			cancel();
+			handle = globalTimers.setTimeout(invoke, waitMs);
+		},
+		flush(): void {
+			if (handle === null) return;
+			invoke();
+		},
+		cancel,
+	};
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(
 	doc: Document,
 	tag: K,

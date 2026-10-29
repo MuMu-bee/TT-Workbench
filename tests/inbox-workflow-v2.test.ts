@@ -1,15 +1,11 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { functionSource, viewSource as readViewSource } from "./helpers/source-text";
+import { functionSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
 const css = readFileSync(`${root}styles.ui-v2.css`, "utf8");
-const pageSpec = readFileSync(
-	`${root}design-system/talos/pages/inbox.md`,
-	"utf8"
-);
 
 const inboxPage = functionSource(view, "renderInboxPage");
 
@@ -41,7 +37,7 @@ describe("Inbox triage v2", () => {
 		expect(view).toContain("(bucket.count / inbox.count) * 100");
 		expect(view).toContain("(cluster.count / max) * 100");
 		expect(inboxPage).toContain("rankedClusters");
-		expect(pageSpec).toContain("下方模块**禁止重复**同一数字");
+		expectSourceContains("design-system/talos/pages/inbox.md", "下方模块**禁止重复**同一数字");
 	});
 
 	it("keeps recent files as a lower-priority compact entry grid", () => {
@@ -57,6 +53,6 @@ describe("Inbox triage v2", () => {
 		expect(inboxPage).toContain('cls: "cluster-grid"');
 		expect(view).toContain('cls: `age-seg tone-${bucket.tone}`');
 		expect(view).toContain('cls: "cluster-bar-fill"');
-		expect(css).toContain("@container workflow-v2 (max-width: 560px)");
+		expectSourceContains("styles.ui-v2.css", "@container workflow-v2 (max-width: 560px)");
 	});
 });

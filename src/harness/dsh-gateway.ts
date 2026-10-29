@@ -6,6 +6,8 @@ import { DSH_HOST, dshBaseUrl } from "./dsh-runtime";
 export const DSH_HEALTH_PATH = "/__talos/harness-health";
 export const DSH_HEALTH_PRODUCT = "talos-deepseek-harness";
 export const DSH_HEALTH_PROTOCOL_VERSION = 1;
+/** 健康接口响应体上限：超限即判「不是受管 Harness」，不再等 end。 */
+export const DSH_HEALTH_MAX_BODY_BYTES = 8192;
 
 export interface DshHealthIdentity {
 	product: typeof DSH_HEALTH_PRODUCT;
@@ -92,9 +94,12 @@ export function probeDshHealth(
 ): Promise<DshHealthProbe> {
 	return new Promise((resolve) => {
 		let settled = false;
+		// 仓库约定：window.* 定时器句柄一律用 number（见 view.ts:133）。
+		let deadline: number | null = null;
 		const finish = (result: DshHealthProbe): void => {
 			if (settled) return;
 			settled = true;
+			if (deadline) window.clearTimeout(deadline);
 			resolve(result);
 		};
 		const request = http.get(
@@ -105,10 +110,24 @@ export function probeDshHealth(
 				response.setEncoding("utf8");
 				response.on("data", (chunk: string) => {
 					body += chunk;
-					if (body.length > 8192) request.destroy();
+					// 顺序是刻意的：先 finish 再 destroy。destroy 之后再追加 body 会出错，
+					// 而被 destroy 的响应不会触发 end —— 若把 finish 挂在 end 里，
+					// 超限服务端会让 ensureStarted 永久 pending。
+					if (body.length > DSH_HEALTH_MAX_BODY_BYTES) {
+						finish({
+							reachable: true,
+							identity: null,
+							error: "健康响应过大",
+						});
+						request.destroy();
+						return;
+					}
 				});
+				// 被 destroy / 服务端中断的响应不会走 end：这里兜住非 end 出口。
+				response.on("aborted", () => finish({ reachable: false }));
+				response.on("error", () => finish({ reachable: false }));
 				response.on("end", () => {
-					if (body.length > 8192) {
+					if (body.length > DSH_HEALTH_MAX_BODY_BYTES) {
 						finish({
 							reachable: true,
 							identity: null,
@@ -142,6 +161,11 @@ export function probeDshHealth(
 			}
 		);
 		request.on("error", () => finish({ reachable: false }));
+		// 总量兜底：不依赖对端发数据，任何分支都保证 settle。
+		deadline = window.setTimeout(() => {
+			request.destroy();
+			finish({ reachable: false });
+		}, timeoutMs);
 		request.setTimeout(timeoutMs, () => {
 			request.destroy();
 			finish({ reachable: false });

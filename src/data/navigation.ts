@@ -1,6 +1,7 @@
 import { App, TFile, TFolder, normalizePath } from "obsidian";
 import type { TalosSettings } from "../settings";
 import type { VaultPaths } from "./schema";
+import type { VaultSnapshot } from "./vault-snapshot";
 import { INBOX_FALLBACK_TOPIC, INBOX_TOPIC_RULES, classifyInboxTopic } from "../inbox-triage";
 import type {
 	HealthDigest,
@@ -37,7 +38,8 @@ function stripMd(s: string): string {
 		.trim();
 }
 
-function notesUnder(app: App, rel: string): TFile[] {
+function notesUnder(app: App, rel: string, snapshot?: VaultSnapshot): TFile[] {
+	if (snapshot) return snapshot.notesUnder(rel);
 	const prefix = normalizePath(rel) + "/";
 	return app.vault
 		.getMarkdownFiles()
@@ -62,8 +64,8 @@ function titleFor(app: App, file: TFile): string {
 	return typeof title === "string" && title.trim() ? title.trim() : file.basename;
 }
 
-function latestOf(app: App, rel: string): TFile | undefined {
-	const notes = notesUnder(app, rel);
+function latestOf(app: App, rel: string, snapshot?: VaultSnapshot): TFile | undefined {
+	const notes = notesUnder(app, rel, snapshot);
 	return notes.sort((a, b) => b.stat.mtime - a.stat.mtime)[0];
 }
 
@@ -77,17 +79,25 @@ async function readFile(app: App, path: string): Promise<string> {
 	return await app.vault.cachedRead(file);
 }
 
-function resolveWiki(app: App, raw: string): string | undefined {
+function resolveWiki(app: App, raw: string, snapshot?: VaultSnapshot): string | undefined {
 	const clean = raw.split("|")[0]?.split("#")[0]?.trim();
 	if (!clean) return undefined;
 	const direct = clean.endsWith(".md") ? clean : `${clean}.md`;
 	if (app.vault.getAbstractFileByPath(direct) instanceof TFile) return direct;
 	const base = direct.split("/").pop()?.replace(/\.md$/, "");
 	if (!base) return direct;
+	// 基名回退：有快照就走索引（同基名取第一个，与 Array.find 语义一致），否则退回全库遍历。
+	if (snapshot) return snapshot.pathByBasename(base) || direct;
 	return app.vault.getMarkdownFiles().find((f) => f.basename === base)?.path || direct;
 }
 
-function extractWikiItems(app: App, text: string, fallbackPath: string, limit = 8): SignalItem[] {
+function extractWikiItems(
+	app: App,
+	text: string,
+	fallbackPath: string,
+	limit = 8,
+	snapshot?: VaultSnapshot
+): SignalItem[] {
 	const seen = new Set<string>();
 	const out: SignalItem[] = [];
 	for (const line of text.split("\n")) {
@@ -95,7 +105,7 @@ function extractWikiItems(app: App, text: string, fallbackPath: string, limit = 
 		const matches = [...line.matchAll(/\[\[([^\]]+)\]\]/g)];
 		for (const match of matches) {
 			const target = match[1] || "";
-			const path = resolveWiki(app, target) || fallbackPath;
+			const path = resolveWiki(app, target, snapshot) || fallbackPath;
 			const title = stripMd(line).slice(0, 80);
 			const key = `${path}:${title}`;
 			if (seen.has(key)) continue;
@@ -120,33 +130,60 @@ function bulletItems(text: string, path: string, limit = 6): SignalItem[] {
 	return out;
 }
 
-function isPublished(app: App, file: TFile): boolean {
+/**
+ * 平台稿件的三态分类（Q-QUA18）。只用这里原本就在读的 frontmatter 字段：
+ * - 命中原 published 判定 → published（有 status=published，或有 publish_url / publishUrl / publish_date / url）；
+ * - 有 frontmatter 且 status 或上述发布字段任一存在、但未命中 published → pending；
+ * - 无 frontmatter，或上述字段全空 → unclassified。
+ * 「未分类」是独立计数，不是 count - published 的残差。
+ */
+function classificationOf(app: App, file: TFile): "published" | "pending" | "unclassified" {
 	const fm = app.metadataCache.getFileCache(file)?.frontmatter;
-	if (!fm) return false;
+	if (!fm) return "unclassified";
 	const status = String(fm.status || "").toLowerCase();
-	return (
-		/published|已发布/.test(status) ||
-		Boolean(fm.publish_url || fm.publishUrl || fm.publish_date || fm.url)
-	);
+	// 只要出现任一发布字段、或 status 命中已发布，就是 published（与旧的 isPublished 判定一致）。
+	if (/published|已发布/.test(status) || Boolean(fm.publish_url || fm.publishUrl || fm.publish_date || fm.url)) {
+		return "published";
+	}
+	// 未命中 published 时：发布字段全部为空，剩下唯一还能表明「有意向」的线索就是 status 本身。
+	return status.trim() !== "" ? "pending" : "unclassified";
 }
 
-export async function collectOutputCenter(app: App, paths: VaultPaths): Promise<OutputCenter> {
+/** 单点「是否已发布」判定，保留为三态分类的薄封装（导出以免成为死代码）。 */
+export function isPublished(app: App, file: TFile): boolean {
+	return classificationOf(app, file) === "published";
+}
+
+export async function collectOutputCenter(
+	app: App,
+	paths: VaultPaths,
+	snapshot?: VaultSnapshot
+): Promise<OutputCenter> {
 	const outletPath = paths.outletFile;
 	const opsPath = paths.opsCandidatesFile;
 	const outlet = await readFile(app, outletPath);
-	const queue = extractWikiItems(app, outlet, outletPath, 8);
+	const queue = extractWikiItems(app, outlet, outletPath, 8, snapshot);
 	const opsCandidates = bulletItems(await readFile(app, opsPath), opsPath, 6);
 
 	const platforms: OutputPlatform[] = OUTPUT_PLATFORMS.map((name) => {
 		const rel = paths.outputPlatform(name);
-		const notes = notesUnder(app, rel);
-		const latest = latestOf(app, rel);
-		const published = notes.filter((f) => isPublished(app, f)).length;
+		const notes = notesUnder(app, rel, snapshot);
+		const latest = latestOf(app, rel, snapshot);
+		let published = 0;
+		let pending = 0;
+		let unclassified = 0;
+		for (const file of notes) {
+			const kind = classificationOf(app, file);
+			if (kind === "published") published += 1;
+			else if (kind === "pending") pending += 1;
+			else unclassified += 1;
+		}
 		return {
 			name,
 			count: notes.length,
 			published,
-			pending: Math.max(0, notes.length - published),
+			pending,
+			unclassified,
 			readme: readmeFor(rel),
 			latestTitle: latest ? titleFor(app, latest) : "—",
 			latestPath: latest?.path,
@@ -155,6 +192,7 @@ export async function collectOutputCenter(app: App, paths: VaultPaths): Promise<
 
 	const total = platforms.reduce((sum, p) => sum + p.count, 0);
 	const published = platforms.reduce((sum, p) => sum + p.published, 0);
+	const totalPending = platforms.reduce((sum, p) => sum + p.pending, 0);
 	const metrics: MetricTile[] = [
 		{
 			label: "今日待发",
@@ -166,7 +204,7 @@ export async function collectOutputCenter(app: App, paths: VaultPaths): Promise<
 		{
 			label: "平台稿件",
 			value: String(total),
-			sub: `${published} 已发布 · ${Math.max(0, total - published)} 待闭环`,
+			sub: `${published} 已发布 · ${totalPending} 待闭环`,
 			path: paths.readme("output"),
 			tone: total > published ? "warn" : "good",
 		},
@@ -182,8 +220,12 @@ export async function collectOutputCenter(app: App, paths: VaultPaths): Promise<
 	return { metrics, queue, platforms, opsCandidates };
 }
 
-export async function collectInboxDigest(app: App, settings: TalosSettings): Promise<InboxDigest> {
-	const notes = notesUnder(app, settings.inboxFolder);
+export async function collectInboxDigest(
+	app: App,
+	settings: TalosSettings,
+	snapshot?: VaultSnapshot
+): Promise<InboxDigest> {
+	const notes = notesUnder(app, settings.inboxFolder, snapshot);
 	let oldestDays = 0;
 	const clusters: InboxCluster[] = [
 		...INBOX_TOPIC_RULES.map((rule) => ({ name: rule.name, count: 0, hint: rule.hint })),
@@ -318,9 +360,10 @@ export async function collectHealthDigest(
 /** 单项目任务进度：读最近改动的 md（上限 40 个，防爆量），统计复选框完成率 */
 async function projectProgress(
 	app: App,
-	folderPath: string
+	folderPath: string,
+	snapshot?: VaultSnapshot
 ): Promise<ProjectScene["progress"]> {
-	const files = notesUnder(app, folderPath)
+	const files = notesUnder(app, folderPath, snapshot)
 		.sort((a, b) => b.stat.mtime - a.stat.mtime)
 		.slice(0, 40);
 	let done = 0;
@@ -337,7 +380,11 @@ async function projectProgress(
 	return total > 0 ? { done, total } : undefined;
 }
 
-export async function collectProjectScenes(app: App, paths: VaultPaths): Promise<ProjectScene[]> {
+export async function collectProjectScenes(
+	app: App,
+	paths: VaultPaths,
+	snapshot?: VaultSnapshot
+): Promise<ProjectScene[]> {
 	const root = app.vault.getAbstractFileByPath(paths.dir("projects"));
 	if (!(root instanceof TFolder)) return [];
 	const folders: TFolder[] = [];
@@ -346,18 +393,18 @@ export async function collectProjectScenes(app: App, paths: VaultPaths): Promise
 	}
 	const scenes = await Promise.all(
 		folders.map(async (folder) => {
-			const latest = latestOf(app, folder.path);
+			const latest = latestOf(app, folder.path, snapshot);
 			const name = folder.name;
 			const priority: ProjectScene["priority"] = /TALOS|医美|AI社群|云心/.test(name) ? "p0" : "p1";
 			return {
 				name,
-				count: notesUnder(app, folder.path).length,
+				count: notesUnder(app, folder.path, snapshot).length,
 				status: priority === "p0" ? "高频项目" : "观察项目",
 				readme: readmeFor(folder.path),
 				latestTitle: latest ? titleFor(app, latest) : "—",
 				latestPath: latest?.path,
 				priority,
-				progress: await projectProgress(app, folder.path),
+				progress: await projectProgress(app, folder.path, snapshot),
 			};
 		})
 	);
@@ -367,15 +414,19 @@ export async function collectProjectScenes(app: App, paths: VaultPaths): Promise
 	});
 }
 
-export function collectKnowledgeHub(app: App, paths: VaultPaths): KnowledgeHub {
-	const mocs = notesUnder(app, paths.mocDir)
+export function collectKnowledgeHub(
+	app: App,
+	paths: VaultPaths,
+	snapshot?: VaultSnapshot
+): KnowledgeHub {
+	const mocs = notesUnder(app, paths.mocDir, snapshot)
 		.sort((a, b) => b.stat.mtime - a.stat.mtime)
 		.map((f) => ({ title: titleFor(app, f), meta: "MOC", path: f.path }));
-	const recentInsights = notesUnder(app, paths.dir("insights"))
+	const recentInsights = notesUnder(app, paths.dir("insights"), snapshot)
 		.sort((a, b) => b.stat.mtime - a.stat.mtime)
 		.slice(0, 8)
 		.map((f) => ({ title: titleFor(app, f), meta: "原创洞察", path: f.path }));
-	const recentMaterials = notesUnder(app, paths.dir("assets"))
+	const recentMaterials = notesUnder(app, paths.dir("assets"), snapshot)
 		.sort((a, b) => b.stat.mtime - a.stat.mtime)
 		.slice(0, 8)
 		.map((f) => ({ title: titleFor(app, f), meta: "外部素材", path: f.path }));
@@ -389,14 +440,14 @@ export function collectKnowledgeHub(app: App, paths: VaultPaths): KnowledgeHub {
 		},
 		{
 			label: "原创洞察",
-			value: String(notesUnder(app, paths.dir("insights")).length),
+			value: String(notesUnder(app, paths.dir("insights"), snapshot).length),
 			sub: paths.dir("insights"),
 			path: paths.readme("insights"),
 			tone: "default",
 		},
 		{
 			label: "外部素材",
-			value: String(notesUnder(app, paths.dir("assets")).length),
+			value: String(notesUnder(app, paths.dir("assets"), snapshot).length),
 			sub: paths.dir("assets"),
 			path: paths.readme("assets"),
 			tone: "default",
@@ -405,16 +456,20 @@ export function collectKnowledgeHub(app: App, paths: VaultPaths): KnowledgeHub {
 	return { metrics, mocs, recentInsights, recentMaterials };
 }
 
-export function collectTalosProduct(app: App, paths: VaultPaths): TalosProduct {
+export function collectTalosProduct(
+	app: App,
+	paths: VaultPaths,
+	snapshot?: VaultSnapshot
+): TalosProduct {
 	const root = app.vault.getAbstractFileByPath(paths.talosProjectDir);
 	const modules: TalosModule[] = [];
 	if (root instanceof TFolder) {
 		for (const child of root.children) {
 			if (!(child instanceof TFolder)) continue;
-			const latest = latestOf(app, child.path);
+			const latest = latestOf(app, child.path, snapshot);
 			modules.push({
 				name: child.name.replace(/^\d+-/, ""),
-				count: notesUnder(app, child.path).length,
+				count: notesUnder(app, child.path, snapshot).length,
 				readme: readmeFor(child.path),
 				latestTitle: latest ? titleFor(app, latest) : "—",
 				latestPath: latest?.path,

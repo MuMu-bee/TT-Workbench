@@ -96,17 +96,26 @@ export class WorkbenchSettingsStore {
 		assertSafeWorkbenchSettings(raw);
 		const value = raw as WorkbenchSettings;
 		if (value.schemaVersion !== 1 || !Array.isArray(value.runtimes) || !Array.isArray(value.providers)) throw new Error("工作台设置 schema 无效");
-		// 旧版可能带有本版不再支持的协议(如自定义 hermes-agent):丢弃那一条,
-		// 保留其余可用 profile。不能让单条历史配置导致整个对话视图加载失败。
-		const providers = value.providers
-			.map((profile) => migrateProviderProfile(profile))
-			.flatMap((profile) => {
-				try {
-					return [validateProviderProfile(profile)];
-				} catch {
-					return [];
-				}
-			});
+	// Q-SEC7：单条 profile 校验失败时不再静默丢弃（原来的 `return []`），改为
+	// 「保留 + 标注无效」。理由：端点收严后，用户现存的一些 profile（如任意 scheme + loopback
+	// 的端点）会开始校验失败；静默丢弃会让配置无声消失，而「丢弃并提示」这条路无法断言
+	// 「用户是否真的看到了提示」。保留 + 显式无效标记是确定性、可断言的行为。
+	// 无效 profile 仍带 `enabled: false`，所以 normalizeSelection 与 getProviderProfiles
+	// 都会照旧跳过它——界面上不会出现一个「可选但发不出请求」的 provider。
+	const providers = value.providers
+		.map((profile) => migrateProviderProfile(profile))
+		.map((profile): ProviderProfile => {
+			try {
+				return validateProviderProfile(profile);
+			} catch (error) {
+				return {
+					...profile,
+					enabled: false,
+					invalidReason: error instanceof Error ? error.message : "Provider profile 校验失败",
+				};
+			}
+		});
+
 		for (const profile of providers) {
 			if (profile.secretRef && !SECRET_REF.test(profile.secretRef)) throw new Error("secretRef 无效");
 		}
@@ -116,7 +125,12 @@ export class WorkbenchSettingsStore {
 
 	async save(settings: WorkbenchSettings): Promise<void> {
 		assertSafeWorkbenchSettings(settings);
-		const providers = settings.providers.map((profile) => validateProviderProfile(profile));
+		// Q-SEC7：load() 会保留「已标注无效」的 profile（`invalidReason` 非空、enabled: false）。
+		// 这类条目必须能原样写回，否则用户一改 workflow/permission 就会因一条读不出来的
+		// 历史 profile 而整个落盘失败——把「无声消失」换成「无声不可保存」而已。
+		// 仍然校验的那一侧是「用户新填/编辑过的 profile」：它们没有 invalidReason。
+		const providers = settings.providers.map((profile) =>
+			profile.invalidReason ? profile : validateProviderProfile(profile));
 		for (const profile of providers) if (profile.secretRef && !SECRET_REF.test(profile.secretRef)) throw new Error("secretRef 无效");
 		await this.host.write({ ...settings, providers, selection: normalizeSelection(settings.selection, providers) });
 	}

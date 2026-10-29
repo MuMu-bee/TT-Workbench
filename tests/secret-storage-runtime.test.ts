@@ -30,6 +30,7 @@ function legacy(): LegacySecretSettings {
 		aliyunApiKey: "",
 		anthropicApiKey: "anthropic-private",
 		openaiApiKey: "",
+		codexApiKey: "",
 		jarvisSttApiKey: "",
 		providerSecretRefs: {},
 	};

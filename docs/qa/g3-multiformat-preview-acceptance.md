@@ -5,9 +5,9 @@ Standard binding gates pass for the same immutable Plugin revision.
 
 ## Product surface
 
-The Quyuan action row exposes `Preview`. It opens a Vault file picker and previews exactly one
-local file. Preview is a display action only: it does not attach the file to a provider request,
-change chat state, or authorize later egress.
+The conversation composer exposes `本地安全预览`（`src/agent-workbench/ui/native-composer.ts:151`,
+icon `file-search`）, which opens `LocalFilePreviewPicker` over exactly one local file. Preview is a
+display action only: it does not attach the file to a provider request, change chat state, or authorize later egress.
 
 ## Formal format matrix
 
@@ -44,3 +44,12 @@ Run `npm test`, `npm run typecheck`, `npm run lint`, `npm run licenses:check` an
 The G3 regression includes the exact matrix, upper bounds, active-format rejection, markup/formula
 inertness, malformed inputs, extension spoofing, local-only rendering and UI wiring. G3 must remain
 open until Standard binds the tested Plugin revision and its release tree passes the full gate.
+
+Entry point can be re-checked in one grep: `grep -n "本地安全预览" src/agent-workbench/ui/native-composer.ts`.
+The implementation lives in `src/agent-workbench/ui/file-preview/`（`local-preview-policy.ts` 的六个限额常量、
+`local-preview-modal.ts` 的文件选择器），not in `src/quyuan/`.
+
+The limit values above are no longer checked by hand: `tests/local-preview-policy-doc.test.ts` imports
+the six constants from `src/agent-workbench/ui/file-preview/local-preview-policy.ts`, parses the numbers
+out of this file's :14-32 region with a regex, and compares each pair with `toBe`（100 rows / 20 columns /
+500 characters / 200,000 characters / 2 MB / 10 MB）.

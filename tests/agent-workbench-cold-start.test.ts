@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import type { ChatSurfaceWorkbench } from "../src/quyuan/chat-surface";
 import { DeferredChatWorkbench } from "../src/quyuan/deferred-chat-workbench";
-import { pluginSource as readPluginSource, viewSource as readViewSource } from "./helpers/source-text";
+import { pluginSource as readPluginSource, viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const mainSource = readPluginSource();
@@ -115,8 +115,8 @@ describe("agent workbench cold-start lifecycle", () => {
 		expect(body.indexOf("this.deps.setActiveId(id)")).toBeGreaterThan(
 			body.indexOf('await this.ensureChannelMounted(id, "chat")'),
 		);
-		expect(switcherSource).toContain("channelMounts");
-		expect(switcherSource).toContain("onSwitchError");
-		expect(switcherSource).toContain("await channel.workbench.destroy()");
+		expectSourceContains("src/harness/harness-switcher.ts", "channelMounts");
+		expectSourceContains("src/harness/harness-switcher.ts", "onSwitchError");
+		expectSourceContains("src/harness/harness-switcher.ts", "await channel.workbench.destroy()");
 	});
 });

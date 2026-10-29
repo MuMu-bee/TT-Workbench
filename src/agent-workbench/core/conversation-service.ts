@@ -65,19 +65,19 @@ export class ConversationService {
 	/**
 	 * 审查 F8:上层(service)不再直接触达 store。
 	 * 以"投影 + 补丁"的方式更新 manifest,避免调用方各自 load/store 拼装。
+	 * 读→写必须在 store 的同一把 manifest 锁内完成（store.patchManifest），
+	 * service 层不再各持一把锁：否则与 touch/setLifecycle 交错时会被陈旧快照覆盖。
 	 */
 	async patchManifest(
 		id: string,
 		patch: Partial<ConversationManifest>,
 	): Promise<ConversationManifest> {
-		const current = await this.store.load(id);
-		const next: ConversationManifest = {
-			...current.manifest,
+		const updatedAt = this.clock.now();
+		return this.store.patchManifest(id, (current) => ({
+			...current,
 			...patch,
-			updatedAt: this.clock.now(),
-		};
-		await this.store.updateManifest(next);
-		return next;
+			updatedAt,
+		}));
 	}
 
 	/** 会话选择的持久化入口(原 service 内联的 load+updateManifest 组合)。 */

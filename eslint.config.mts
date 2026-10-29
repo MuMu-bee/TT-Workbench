@@ -20,6 +20,11 @@ export default tseslint.config(
 		// Node .mjs 合同由 Vitest 执行（bundle 守卫有专项测试）
 		'scripts/check-peer-status-bundle.mjs',
 		'scripts/check-claude-sdk-split.mjs',
+		// 模块边界守卫：Node 脚本，由 tests/module-boundaries.test.ts 直接 import 断言
+		'scripts/check-module-boundaries.mjs',
+		// 体量门与 chat-gate 夹具驱动：Node 脚本，由 tests/file-size-and-chat-gate.test.ts 直接 import 断言
+		'scripts/check-file-size.mjs',
+		'scripts/run-chat-gate-fixtures.mjs',
 		// Lens 样式同步脚本：开发期手动运行的 Node 工具，产物 styles.lens.css 由测试校验
 		'scripts/sync-lens-css.mjs',
 		'esbuild.config.mjs',
@@ -80,6 +85,8 @@ export default tseslint.config(
 		files: ['tests/**/*.ts'],
 		rules: {
 			'obsidianmd/prefer-window-timers': 'off',
+			// 测试夹具需要挂 `globalThis.activeDocument` 之类宿主全局，Node 下没有 window
+			'obsidianmd/no-global-this': 'off',
 		},
 	},
 );

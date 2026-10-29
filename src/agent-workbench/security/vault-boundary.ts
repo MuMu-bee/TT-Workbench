@@ -1,6 +1,7 @@
 import path from "node:path";
 import { lstat, realpath } from "node:fs/promises";
 import type { ActionRequest, ActionTarget } from "../contracts/approval";
+import { protectedVaultSubpaths } from "./vault-protected-subpaths";
 
 export interface BoundaryTarget extends ActionTarget {
 	canonical: string;
@@ -38,8 +39,18 @@ export class NodeCanonicalPathHost implements CanonicalPathHost {
 	isAbsolute(candidate: string) { return path.isAbsolute(candidate); }
 }
 
-const PERMANENT_SEGMENTS = new Set([
-	".talos/private", ".talos/secrets", ".git", "credentials", "secrets",
+/**
+ * 永久禁区（模块层,不经 governance）。导出以便表驱动防漂移断言。
+ * `.talos/credentials` 必须显式列出：裸 `credentials` 只按
+ * `portable === segment || startsWith(segment + "/")` 比对，压不住
+ * `.talos/credentials/token.json`（`vault-protected-subpaths.ts:12` 与
+ * `secret-policy.ts` 都把它当凭据区，三处口径必须一致）。
+ */
+export const PERMANENT_SEGMENTS = new Set([
+	".talos/private", ".talos/secrets", ".talos/credentials", ".git", "credentials", "secrets",
+	// talos 管理目录：审计、权限规则、运行时绑定与外部出库审计都在其下。
+	// agent 改写自己的审计与授权规则属设计缺口，模块层直接拒。
+	".talos/agent-workbench/v1", ".talos/audit",
 ]);
 const SECRET_FILE = /(?:^|\/)(?:\.env(?:\..*)?|credentials?(?:\..*)?|.*\.(?:pem|key|p12))$/i;
 const PATH_ARG = /^(?:\.{0,2}[\\/]|~[\\/]|[A-Za-z]:[\\/]|\/)/;
@@ -85,11 +96,29 @@ export class VaultBoundary {
 		return relative === "" || (relative !== ".." && !relative.startsWith(`..${this.paths.separator}`) && !this.paths.isAbsolute(relative));
 	}
 
+	/**
+	 * 永久禁区清单：固定项 ∪ 由 configDir 派生的受保护子路径。
+	 *
+	 * 派生而不是只写死在 `PERMANENT_SEGMENTS`：`protectedVaultSubpaths` 是 OS 沙箱拒绝
+	 * 清单（`desktop-runtime-factory.ts` → `process-sandbox.ts`）的唯一来源，两处共用同一份
+	 * 派生意图才不会分叉。但它会校验 configDir 并在非法时抛错（`vault-protected-subpaths.ts:5-9`），
+	 * 所以这里降级为「只用固定项」——不能把校验前移到构造函数，否则
+	 * `quyuan-workbench-init.ts` 的 catch 会 `throw error`，坏 configDir 直接打挂工作台启动。
+	 * 降级后固定项仍生效，`.talos/credentials` 依然被拒。
+	 */
+	private permanentSegments(): string[] {
+		let derived: string[] = [];
+		if (this.configDir) {
+			try { derived = protectedVaultSubpaths(this.configDir); } catch { derived = []; }
+		}
+		return [...new Set([...PERMANENT_SEGMENTS, ...derived])]
+			.map((segment) => segment.normalize("NFC").toLocaleLowerCase("en-US"));
+	}
+
 	private permanent(relative: string): boolean {
 		const portable = relative.split(this.paths.separator).join("/").normalize("NFC").toLocaleLowerCase("en-US");
 		if (SECRET_FILE.test(portable)) return true;
-		const segments = this.configDir ? [...PERMANENT_SEGMENTS, this.configDir.toLocaleLowerCase("en-US")] : [...PERMANENT_SEGMENTS];
-		return segments.some((segment) => portable === segment || portable.startsWith(`${segment}/`));
+		return this.permanentSegments().some((segment) => portable === segment || portable.startsWith(`${segment}/`));
 	}
 
 	async inspect(target: ActionTarget): Promise<BoundaryTarget> {

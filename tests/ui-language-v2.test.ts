@@ -1,21 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { viewSource as readViewSource } from "./helpers/source-text";
+import { viewSource as readViewSource, expectSourceContains } from "./helpers/source-text";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
 const view = readViewSource();
-const primitives = readFileSync(
-	`${projectRoot}src/ui/page-primitives.ts`,
-	"utf8"
-);
 const styles = readFileSync(`${projectRoot}styles.ui-v2.css`, "utf8");
 const build = readFileSync(`${projectRoot}build-styles.mjs`, "utf8");
-const legacyStyles = readFileSync(`${projectRoot}styles.talos.css`, "utf8");
-const voiceStyles = readFileSync(
-	`${projectRoot}styles.quyuan-shell.css`,
-	"utf8"
-);
 
 describe("TALOS unified interface language v2 foundation", () => {
 	it("assigns every route to one of the five page archetypes", () => {
@@ -35,15 +26,15 @@ describe("TALOS unified interface language v2 foundation", () => {
 		// 页面渲染已拆到 src/ui/pages，按相对路径从同一个共享模块引入
 		expect(view).toMatch(/from "(?:\.\/ui|\.\.)\/page-primitives"/);
 		expect(view).toContain("renderTalosPageHeader(parent");
-		expect(primitives).toContain('data.talosComponent = "page-header"'.replace("data.", "dataset."));
-		expect(primitives).toContain("metrics.slice(0, 4)");
-		expect(primitives).toContain("actions.slice(0, 3)");
+		expectSourceContains("src/ui/page-primitives.ts", 'data.talosComponent = "page-header"'.replace("data.", "dataset."));
+		expectSourceContains("src/ui/page-primitives.ts", "metrics.slice(0, 4)");
+		expectSourceContains("src/ui/page-primitives.ts", "actions.slice(0, 3)");
 	});
 
 	it("keeps interactive metrics keyboard reachable", () => {
-		expect(primitives).toContain('setAttribute("role", "button")');
-		expect(primitives).toContain('setAttribute("tabindex", "0")');
-		expect(primitives).toContain('event.key !== "Enter"');
+		expectSourceContains("src/ui/page-primitives.ts", 'setAttribute("role", "button")');
+		expectSourceContains("src/ui/page-primitives.ts", 'setAttribute("tabindex", "0")');
+		expectSourceContains("src/ui/page-primitives.ts", 'event.key !== "Enter"');
 	});
 
 	it("defines semantic tokens and reference-theme mappings", () => {
@@ -58,9 +49,9 @@ describe("TALOS unified interface language v2 foundation", () => {
 			"--talos-ui-danger",
 			"--talos-ui-focus",
 		]) {
-			expect(styles).toContain(token);
+			expectSourceContains("styles.ui-v2.css", token);
 		}
-		expect(styles).toContain(".talos-console.theme-geometric-modern");
+		expectSourceContains("styles.ui-v2.css", ".talos-console.theme-geometric-modern");
 	});
 
 	it("builds the cohesive v2 layer after validated legacy overrides", () => {
@@ -71,28 +62,28 @@ describe("TALOS unified interface language v2 foundation", () => {
 	});
 
 	it("uses container reflow without forcing the page-content height", () => {
-		expect(styles).toContain("container: talos-ui-page / inline-size");
-		expect(styles).toContain("@container talos-ui-page (max-width: 900px)");
-		expect(styles).toContain("@container talos-ui-page (max-width: 560px)");
+		expectSourceContains("styles.ui-v2.css", "container: talos-ui-page / inline-size");
+		expectSourceContains("styles.ui-v2.css", "@container talos-ui-page (max-width: 900px)");
+		expectSourceContains("styles.ui-v2.css", "@container talos-ui-page (max-width: 560px)");
 		expect(styles).not.toMatch(/\.talos-ui-page\s*\{[^}]*min-height/s);
 		expect(styles).not.toMatch(/\.talos-ui-page\s*\{[^}]*max-height/s);
 		expect(styles).not.toMatch(/\.talos-ui-page\s*\{[^}]*flex:/s);
 	});
 
-	it("keeps every non-overview pixel bot inside the compact header safe area", () => {
+	it("keeps every non-today pixel bot inside the compact header safe area", () => {
 		const stageSelector =
-			'.talos-console[data-talos-archetype]:not([data-talos-page="overview"])\n\t.module-hero .talos-pixel-patrol.talos-ui-page-header__scene.in-module-hero';
+			'.talos-console[data-talos-archetype]:not([data-talos-page="today"])\n\t.module-hero .talos-pixel-patrol.talos-ui-page-header__scene.in-module-hero';
 		const botSelector =
-			'.talos-console[data-talos-archetype]:not([data-talos-page="overview"])\n\t.module-hero .talos-pixel-patrol.in-module-hero .talos-pixel-bot';
+			'.talos-console[data-talos-archetype]:not([data-talos-page="today"])\n\t.module-hero .talos-pixel-patrol.in-module-hero .talos-pixel-bot';
 		const trackSelector =
-			'.talos-console[data-talos-archetype]:not([data-talos-page="overview"])\n\t.module-hero .talos-pixel-patrol.in-module-hero .talos-pixel-track';
+			'.talos-console[data-talos-archetype]:not([data-talos-page="today"])\n\t.module-hero .talos-pixel-patrol.in-module-hero .talos-pixel-track';
 
-		expect(styles).toContain(stageSelector);
-		expect(styles).toContain(botSelector);
-		expect(styles).toContain(trackSelector);
-		expect(styles).toContain("--talos-pixel-safe-stage-height: 86px");
-		expect(styles).toContain("--talos-pixel-safe-bot-top: 28px");
-		expect(styles).toContain("--talos-pixel-safe-track-bottom: 4px");
+		expectSourceContains("styles.ui-v2.css", stageSelector);
+		expectSourceContains("styles.ui-v2.css", botSelector);
+		expectSourceContains("styles.ui-v2.css", trackSelector);
+		expectSourceContains("styles.ui-v2.css", "--talos-pixel-safe-stage-height: 86px");
+		expectSourceContains("styles.ui-v2.css", "--talos-pixel-safe-bot-top: 28px");
+		expectSourceContains("styles.ui-v2.css", "--talos-pixel-safe-track-bottom: 4px");
 		expect(styles).toMatch(
 			/\.talos-pixel-patrol\.talos-ui-page-header__scene\.in-module-hero\s*\{[^}]*height:\s*var\(--talos-pixel-safe-stage-height\)[^}]*overflow:\s*hidden[^}]*--pixel-scale:\s*1\.25/s
 		);
@@ -123,10 +114,10 @@ describe("TALOS unified interface language v2 foundation", () => {
 			".geometry-field",
 			".talos-pixel-patrol",
 		]) {
-			expect(legacyStyles).toContain(surface);
+			expectSourceContains("styles.talos.css", surface);
 		}
-		expect(voiceStyles).toContain(".tq-voice");
-		expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
+		expectSourceContains("styles.quyuan-shell.css", ".tq-voice");
+		expectSourceContains("styles.ui-v2.css", "@media (prefers-reduced-motion: reduce)");
 		expect(styles).not.toMatch(
 			/(?:cosmos-scene|data-rain|geometry-field|talos-pixel-patrol|tq-voice)[^{]*\{[^}]*display:\s*none/s
 		);

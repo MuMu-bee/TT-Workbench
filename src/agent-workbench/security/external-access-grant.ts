@@ -10,6 +10,15 @@ export interface ExternalAccessGrant {
 	conversationId?: string;
 }
 
+/**
+ * 动作类型 → 授权方向的唯一口径。`approval-broker.ts` 的 `grants.consume`
+ * 与写入方必须走同一函数，否则写入的 direction 与查询的 direction 分叉，
+ * 授权永远 miss。
+ */
+export function grantDirection(kind: ActionKind): ExternalAccessGrant["direction"] {
+	return kind === "export" ? "export" : kind === "write" ? "write" : "read";
+}
+
 export class ExternalAccessGrantStore {
 	private readonly grants = new Map<string, ExternalAccessGrant>();
 	add(grant: ExternalAccessGrant): void { this.grants.set(grant.id, grant); }

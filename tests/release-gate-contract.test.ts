@@ -1,11 +1,9 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import type { App } from "obsidian";
 import { TFile } from "obsidian";
 import { describe, expect, it, vi } from "vitest";
 import type { TalosSettings } from "../src/settings";
 import { collectWarRoom } from "../src/data/talos";
-import { viewSource as readViewSource } from "./helpers/source-text";
+import { viewSource as readViewSource, expectSourceContains, expectSourceNotContains } from "./helpers/source-text";
 
 vi.mock("obsidian", () => ({
   TFile: class MockTFile {
@@ -14,22 +12,15 @@ vi.mock("obsidian", () => ({
   normalizePath: (path: string) => path,
 }));
 
-const projectRoot = fileURLToPath(new URL("../", import.meta.url));
-const parser = readFileSync(`${projectRoot}src/data/talos.ts`, "utf8");
 const view = readViewSource();
-const readme = readFileSync(`${projectRoot}README.md`, "utf8");
-const providerQa = readFileSync(
-  `${projectRoot}docs/qa/wp7-real-provider-acceptance.md`,
-  "utf8"
-);
 
 describe("unified TALOS release-gate contract", () => {
   it("accepts exactly G1-G7 and presents them in canonical order", () => {
-    expect(parser).toContain(
+    expectSourceContains("src/data/talos.ts", 
       'const PRODUCT_GATE_IDS = ["G1", "G2", "G3", "G4", "G5", "G6", "G7"] as const;'
     );
-    expect(parser).toContain("PRODUCT_GATE_ID_SET.has(id)");
-    expect(parser).toContain("PRODUCT_GATE_IDS.flatMap");
+    expectSourceContains("src/data/talos.ts", "PRODUCT_GATE_ID_SET.has(id)");
+    expectSourceContains("src/data/talos.ts", "PRODUCT_GATE_IDS.flatMap");
     expect(view).toContain('"统一七门", "G1–G7"');
     expect(view).not.toContain('"前置闸门", "G1 / G2 / G3"');
   });
@@ -69,21 +60,21 @@ describe("unified TALOS release-gate contract", () => {
 
   it("keeps content publishing separate from product release authority", () => {
     expect(view).toContain('"内容发布动作", "PUB-W · 非产品发布门"');
-    expect(readme).toContain("PUB-W 属于内容发布工作流");
-    expect(readme).toContain("formal_release_allowed=false");
-    expect(readme).not.toContain("G1–G3 + PUB-W");
-    expect(readme).not.toContain("G1-G3 + PUB-W");
+    expectSourceContains("README.md", "PUB-W 属于内容发布工作流");
+    expectSourceContains("README.md", "formal_release_allowed=false");
+    expectSourceNotContains("README.md", "G1–G3 + PUB-W");
+    expectSourceNotContains("README.md", "G1-G3 + PUB-W");
   });
 
   it("records real-provider evidence as partial without overclaiming", () => {
-    expect(providerQa).toContain("- 状态：PARTIAL");
-    expect(providerQa).toContain("这些子项只足以把 G1 维持为 `partial`");
-    expect(providerQa).not.toContain("- 状态：NOT STARTED");
-    expect(providerQa).not.toContain("G1 为 `pass`");
+    expectSourceContains("docs/qa/wp7-real-provider-acceptance.md", "- 状态：PARTIAL");
+    expectSourceContains("docs/qa/wp7-real-provider-acceptance.md", "这些子项只足以把 G1 维持为 `partial`");
+    expectSourceNotContains("docs/qa/wp7-real-provider-acceptance.md", "- 状态：NOT STARTED");
+    expectSourceNotContains("docs/qa/wp7-real-provider-acceptance.md", "G1 为 `pass`");
   });
 
   it("uses the component-bound minimum Obsidian version", () => {
-    expect(readme).toContain("Obsidian **≥ 1.11.4**");
-    expect(readme).not.toContain("Obsidian **≥ 1.8.0**");
+    expectSourceContains("README.md", "Obsidian **≥ 1.11.4**");
+    expectSourceNotContains("README.md", "Obsidian **≥ 1.8.0**");
   });
 });
